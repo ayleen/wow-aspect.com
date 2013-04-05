@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 44846 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 56040 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('cpuser', 'forum', 'timezone', 'user');
@@ -1005,6 +1005,19 @@ if ($_POST['do'] == 'reallydomerge')
 			userid = $sourceinfo[userid]
 	");
 
+	// Update change logs
+	$db->query_write("
+		UPDATE " . TABLE_PREFIX . "userchangelog
+		SET userid = $destinfo[userid]
+		WHERE userid = $sourceinfo[userid]
+	");
+
+	$db->query_write("
+		UPDATE " . TABLE_PREFIX . "userchangelog
+		SET adminid = $destinfo[userid]
+		WHERE adminid = $sourceinfo[userid]
+	");
+
 	$list = $remove = $update = array();
 	// Combine active subscriptions
 	$subs = $db->query_read("
@@ -1091,8 +1104,6 @@ if ($_POST['do'] == 'reallydomerge')
 	$userdm->set_existing($sourceinfo);
 	$userdm->delete();
 	unset($userdm);
-
-
 
 	define('CP_BACKURL', '');
 	print_stop_message('user_accounts_merged', $sourceinfo['username'], $destinfo['username']);
@@ -2356,8 +2367,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44846 $
+|| # CVS: $RCSfile$ - $Revision: 56040 $
 || ####################################################################
 \*======================================================================*/
 ?>

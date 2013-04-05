@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -738,7 +738,7 @@ abstract class vB_DM
 		$this->loadExisting();
 
 		// Check if the update differs from the existing value
-		return ($this->set_fields[$fieldname] == $this->existing_fields[$fieldname]);
+		return ($this->set_fields[$fieldname] != $this->existing_fields[$fieldname]);
 	}
 
 
@@ -896,7 +896,7 @@ abstract class vB_DM
 				}
 
 				// perform insert on primary table
-				$result = $this->execInsert($this->primary_table);
+				$result = $this->execInsert($this->primary_table, $replace, $ignore);
 
 				// set auto increment from primary table
 				if ($this->requireAutoIncrementId())
@@ -1445,7 +1445,6 @@ abstract class vB_DM
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 28749 $
 || ####################################################################
 \*======================================================================*/

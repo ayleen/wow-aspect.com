@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -125,6 +125,10 @@ if ($_REQUEST['do'] == 'list')
 	$subscribedbits = '';
 	$subscriptionbits = '';
 
+	$membergroupids = fetch_membergroupids_array($vbulletin->userinfo);
+	$allow_secondary_groups = $vbulletin->bf_ugp_genericoptions['allowmembergroups'] & 
+	$vbulletin->usergroupcache[$vbulletin->userinfo['usergroupid']]['genericoptions'];
+
 	($hook = vBulletinHook::fetch_hook('paidsub_list_start')) ? eval($hook) : false;
 
 	foreach ($subobj->subscriptioncache AS $subscription)
@@ -159,7 +163,15 @@ if ($_REQUEST['do'] == 'list')
 				}
 			}
 
-			if (!empty($subscription['deniedgroups']) AND !count(array_diff(fetch_membergroupids_array($vbulletin->userinfo), $subscription['deniedgroups'])))
+			if (
+				!empty($subscription['deniedgroups'])
+				AND
+				(
+					($allow_secondary_groups AND !count(array_diff($membergroupids, $subscription['deniedgroups'])))
+					OR
+					(!$allow_secondary_groups AND in_array($vbulletin->userinfo['usergroupid'], $subscription['deniedgroups']))
+				)
+			)
 			{
 					continue;
 			}
@@ -260,13 +272,25 @@ if ($_POST['do'] == 'order')
 
 	$sub = $subobj->subscriptioncache["$subscriptionid"];
 
-	if (!empty($sub['deniedgroups']) AND !count(array_diff(fetch_membergroupids_array($vbulletin->userinfo), $sub['deniedgroups'])))
+	// first check this is active if not die
+	if (!$sub['active'])
 	{
 		eval(standard_error(fetch_error('invalidid', $vbphrase['subscription'], $vbulletin->options['contactuslink'])));
 	}
 
-	// first check this is active if not die
-	if (!$subobj->subscriptioncache["$subscriptionid"]['active'])
+	$membergroupids = fetch_membergroupids_array($vbulletin->userinfo);
+	$allow_secondary_groups = $vbulletin->bf_ugp_genericoptions['allowmembergroups'] & 
+	$vbulletin->usergroupcache[$vbulletin->userinfo['usergroupid']]['genericoptions'];
+
+	if (
+		!empty($sub['deniedgroups'])
+		AND
+		(
+			($allow_secondary_groups AND !count(array_diff($membergroupids, $sub['deniedgroups'])))
+			OR
+			(!$allow_secondary_groups AND in_array($vbulletin->userinfo['usergroupid'], $sub['deniedgroups']))
+		)
+	)
 	{
 		eval(standard_error(fetch_error('invalidid', $vbphrase['subscription'], $vbulletin->options['contactuslink'])));
 	}
@@ -352,7 +376,7 @@ if ($_POST['do'] == 'order')
 	}
 
 	$navbits['payments.php' . $vbulletin->session->vars['sessionurl_q']] = $vbphrase['paid_subscriptions'];
-	$navbits[''] = $vbphrase['select_payment_method'];
+	$navbits[''] = $vbphrase['subscription_payment_method'];
 
 	$page_templater = vB_Template::create('subscription_payment');
 	$page_templater->register('orderbits', $orderbits);
@@ -395,8 +419,7 @@ if (!empty($page_templater))
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 37230 $
+|| # CVS: $RCSfile$ - $Revision: 58240 $
 || ####################################################################
 \*======================================================================*/
 ?>

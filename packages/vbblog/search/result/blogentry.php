@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -85,7 +85,17 @@ class vBBlog_Search_Result_BlogEntry extends vB_Search_Result
 			$items[$record['blogid']] = $item;
 		}
 
-		return $items;
+		$ordered_items = array();
+		foreach($ids AS $item_key)
+		{
+			if(isset($items[$item_key]))
+			{
+				$ordered_items[$item_key] = $items[$item_key];
+				unset($items[$item_key]);
+			}
+		}
+
+		return $ordered_items;
 	}
 
 	public function create_from_record($record)
@@ -148,17 +158,18 @@ class vBBlog_Search_Result_BlogEntry extends vB_Search_Result
 		$show['blogtitle'] = $blog['blogtitle'];
 		$blog['time'] = vbdate($vbulletin->options['timeformat'], $blog['dateline']);
 		$blog['date'] = vbdate($vbulletin->options['dateformat'], $blog['dateline'], true);
+		$blog['lastcommenter_link'] = $vbulletin->options['vbforum_url'] . ($vbulletin->options['vbforum_url'] ? '/' : '') . 'member.php?' . $vbulletin->session->vars['sessionurl'] . 'username=' . $blog['lastcommenter_encoded'];	
 
 		$templater = vB_Template::create($template_name);
 		$templater->register('blog', $blog);
 		$templater->register('dateline', $blog['dateline']);
 		$templater->register('dateformat', $vbulletin->options['dateformat']);
-		$templater->register('timeformat', $vbulletin->options['default_timeformat']);
+		$templater->register('timeformat', $vbulletin->options['timeformat']);
 
 		if ($vbulletin->options['avatarenabled'] AND (intval($blog['userid'])))
 
 		{
-			$avatar = fetch_avatar_url($blog['userid']);
+			$avatar = fetch_avatar_url($blog['userid'], true);
 		}
 
 		if (!isset($avatar) )
@@ -199,7 +210,6 @@ class vBBlog_Search_Result_BlogEntry extends vB_Search_Result
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

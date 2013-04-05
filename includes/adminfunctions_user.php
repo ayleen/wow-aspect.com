@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -55,7 +55,7 @@ function construct_ip_usage_table($ipaddress, $prevuserid, $depth = 1)
 		$retdata .= '<li>' .
 			"<a href=\"user.php?" . $vbulletin->session->vars['sessionurl'] . "do=" . iif(VB_AREA == 'ModCP', 'viewuser', 'edit') . "&amp;u=$user[userid]\"><b>$user[username]</b></a> &nbsp;
 			<a href=\"$userscript?" . $vbulletin->session->vars['sessionurl'] . "do=gethost&amp;ip=$user[ipaddress]\" title=\"" . $vbphrase['resolve_address'] . "\">$user[ipaddress]</a> &nbsp; " .
-			construct_link_code($vbphrase['find_posts_by_user'], "../search.php?" . $vbulletin->session->vars['sessionurl'] . "do=finduser&amp;u=$user[userid]", '_blank') .
+			construct_link_code($vbphrase['find_posts_by_user'], "../search.php?" . $vbulletin->session->vars['sessionurl'] . "do=finduser&amp;u=$user[userid]&amp;contenttype=vBForum_Post&amp;showposts=1", '_blank') .
 			construct_link_code($vbphrase['view_other_ip_addresses_for_this_user'], "$userscript?" . $vbulletin->session->vars['sessionurl'] . "do=doips&amp;u=$user[userid]&amp;hash=" . CP_SESSIONHASH) .
 			"</li>\n";
 
@@ -116,7 +116,7 @@ function construct_ip_register_table($ipaddress, $prevuserid, $depth = 1)
 		$retdata .= '<li>' .
 			"<a href=\"user.php?" . $vbulletin->session->vars['sessionurl'] . "do=" . iif(VB_AREA == 'ModCP', 'viewuser', 'edit') . "&amp;u=$user[userid]\"><b>$user[username]</b></a> &nbsp;
 			<a href=\"$userscript?" . $vbulletin->session->vars['sessionurl'] . "do=gethost&amp;ip=$user[ipaddress]\" title=\"" . $vbphrase['resolve_address'] . "\">$user[ipaddress]</a> &nbsp; " .
-			construct_link_code($vbphrase['find_posts_by_user'], "../search.php?" . $vbulletin->session->vars['sessionurl'] . "do=finduser&amp;u=$user[userid]", '_blank') .
+			construct_link_code($vbphrase['find_posts_by_user'], "../search.php?" . $vbulletin->session->vars['sessionurl'] . "do=finduser&amp;u=$user[userid]&amp;contenttype=vBForum_Post&amp;showposts=1", '_blank') .
 			construct_link_code($vbphrase['view_other_ip_addresses_for_this_user'], "$userscript?" . $vbulletin->session->vars['sessionurl'] . "do=doips&amp;u=$user[userid]&amp;hash=" . CP_SESSIONHASH) .
 			"</li>\n";
 
@@ -450,8 +450,7 @@ function fetch_user_search_sql(&$user, &$profile, $prefix = 'user')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 35788 $
+|| # CVS: $RCSfile$ - $Revision: 46971 $
 || ####################################################################
 \*======================================================================*/
 ?>

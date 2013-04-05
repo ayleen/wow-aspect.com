@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,8 +14,8 @@
 * Class to handle style variable storage
 *
 * @package	vBulletin
-* @version	$Revision: 35346 $
-* @date		$Date: 2010-02-05 14:51:56 -0800 (Fri, 05 Feb 2010) $
+* @version	$Revision: 58798 $
+* @date		$Date: 2012-02-08 15:40:25 -0800 (Wed, 08 Feb 2012) $
 */
 
 abstract class vB_StyleVar
@@ -43,20 +43,20 @@ abstract class vB_StyleVar
 		return true;
 	}
 
-	public function print_editor()
+	public function print_editor($masterstyleid)
 	{
 		global $vbulletin, $vbphrase;
-
-		$header = $vbphrase["stylevar_{$this->stylevarid}_name"] ? $vbphrase["stylevar_{$this->stylevarid}_name"] : $this->stylevarid;
+		$addon = ($masterstyleid == -2) ? '_mobile' : '';
+		$header = $vbphrase["stylevar_{$this->stylevarid}_name{$addon}"] ? $vbphrase["stylevar_{$this->stylevarid}_name{$addon}"] : $this->stylevarid;
 
 		$addbit = false;
-		if ($vbulletin->GPC['dostyleid'] == -1)
+		if ($vbulletin->GPC['dostyleid'] == -1 OR $vbulletin->GPC['dostyleid'] == -2)
 		{
-			$header .= ' - <span class="smallfont">' . construct_link_code($vbphrase['edit'], "stylevar.php?" . $vbulletin->session->vars['sessionurl'] . "do=dfnedit&amp;stylevarid=" . $this->stylevarid);;
+			$header .= ' - <span class="smallfont">' . construct_link_code($vbphrase['edit'], "stylevar.php?" . $vbulletin->session->vars['sessionurl'] . "do=dfnedit&amp;stylevarid=" . $this->stylevarid . "&dostyleid=" . $vbulletin->GPC['dostyleid']);
 			$addbit = true;
 		}
 
-		if ($this->inherited == -1)
+		if ($this->inherited == -1 OR $this->inherited == -2)
 		{
 			if (!$addbit)
 			{
@@ -66,7 +66,7 @@ abstract class vB_StyleVar
 			{
 				$header .= ' - ';
 			}
-			$header .= (count($header) == 1 ? '<span class="smallfont">' : '') . construct_link_code($vbphrase['revert'], "stylevar.php?" . $vbulletin->session->vars['sessionurl'] . "do=confirmrevert&amp;dostyleid=" . $vbulletin->GPC['dostyleid'] . "&stylevarid=" . $this->stylevarid . "&rootstyle=-1");
+			$header .= (count($header) == 1 ? '<span class="smallfont">' : '') . construct_link_code($vbphrase['revert'], "stylevar.php?" . $vbulletin->session->vars['sessionurl'] . "do=confirmrevert&amp;dostyleid=" . $vbulletin->GPC['dostyleid'] . "&stylevarid=" . $this->stylevarid . "&rootstyle=" . $this->inherited);
 		}
 
 		if ($addbit)
@@ -76,9 +76,9 @@ abstract class vB_StyleVar
 
 		print_table_header($header);
 
-		if ($vbphrase["stylevar_{$this->stylevarid}_description"])
+		if ($vbphrase["stylevar_{$this->stylevarid}_description{$addon}"])
 		{
-			print_description_row($vbphrase["stylevar_{$this->stylevarid}_description"], false, 2);
+			print_description_row($vbphrase["stylevar_{$this->stylevarid}_description{$addon}"], false, 2);
 		}
 
 		// once we have LSB change this to self::
@@ -131,6 +131,7 @@ abstract class vB_StyleVar
 				break;
 
 			case -1:
+			case -2:
 			default:
 				$class = 'col-c';
 				break;
@@ -179,6 +180,27 @@ abstract class vB_StyleVar
 		print_select_row($vbphrase['units'], 'stylevar[' . $this->stylevarid . '][units]', $svunitsarray, $current_units);
 	}
 
+	public function print_border_style($current_style)
+	{
+		global $vbphrase;
+
+		$svborderstylearray = array(
+			'none' => 'none',
+			'hidden' => 'hidden',
+			'dotted' => 'dotted',
+			'dashed' => 'dashed',
+			'solid' => 'solid',
+			'double' => 'double',
+			'groove' => 'groove',
+			'ridge' => 'ridge',
+			'inset' => 'inset',
+			'outset' => 'outset',
+			'inherit' => 'inherit'
+		);
+
+		print_select_row($vbphrase['border_style'], 'stylevar[' . $this->stylevarid . '][style]', $svborderstylearray, $current_style);
+	}
+	
 	protected function print_color_input_row($title, $name, $value)
 	{
 		$cp = "";
@@ -187,7 +209,7 @@ abstract class vB_StyleVar
 		if (self::$need_colorpicker)
 		{
 			//construct all of the markup/javascript for the color picker.
-			global $vbulletin;
+			global $vbulletin, $vbphrase;
 
 			//set from construct_color_picker
 			global $colorPickerWidth, $colorPickerType;
@@ -197,7 +219,7 @@ abstract class vB_StyleVar
 				$vbulletin->options['simpleversion'] . '"></script>' . "\n";
 			$cp .= construct_color_picker(11);
 
-			$js_phrases[] = array();
+			$js_phrases = array();
 			foreach (array(
 				'css_value_invalid',
 				'color_picker_not_ready',
@@ -206,7 +228,7 @@ abstract class vB_StyleVar
 				$js_phrases[] = "vbphrase.$phrasename = \"" . fetch_js_safe_string($vbphrase["$phrasename"]) . "\"";
 			}
 
-			$js_phrases = implode(";\r\n\t", $js_phrases) . ";\r\n";
+			$js_phrases = "\r\n\t\t\t\t\t" . implode(";\r\n\t\t\t\t\t", $js_phrases) . ";";
 
 			$cp .= '
 					<script type="text/javascript">
@@ -512,8 +534,7 @@ class vB_StyleVar_border extends vB_StyleVar
 
 		$this->print_units($this->value['units']);
 		print_input_row($vbphrase['width'], 'stylevar[' . $this->stylevarid . '][width]', $this->value['width'], true);
-		print_input_row($vbphrase['border_style'], 'stylevar[' . $this->stylevarid . '][style]', $this->value['style'], true);
-		//print_input_row($vbphrase['color'], 'stylevar[' . $this->stylevarid . '][color]', $this->value['color'], true);
+		$this->print_border_style($this->value['style']);
 		$this->print_color_input_row($vbphrase['color'], 'stylevar[' . $this->stylevarid . '][color]', $this->value['color']);
 	}
 }
@@ -594,7 +615,6 @@ class vB_StyleVar_factory
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 35346 $
+|| # CVS: $RCSfile$ - $Revision: 58798 $
 || ####################################################################
 \*======================================================================*/

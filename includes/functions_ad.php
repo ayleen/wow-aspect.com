@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -100,23 +100,21 @@ function build_ad_template($location)
 						}
 						break;
 					case "is_time":
-						if (preg_match('#^(\d{1,2}):(\d{2})$#', $criteria[1], $start_time) AND preg_match('#^(\d{1,2}):(\d{2})$#', $criteria[2], $end_time))
+						if (preg_match('#^(\d{1,2}):(\d{2})$#', $criteria['condition1'], $start_time) AND preg_match('#^(\d{1,2}):(\d{2})$#', $criteria['condition2'], $end_time))
 						{
 							if ($criteria['condition3'])
 							{
-								$start = gmmktime($start_time[1], $start_time[2]);
-								$end   = gmmktime($end_time[1], $end_time[2]);
-								// $now   = gmmktime();
-								$conditional_prefix .= '<vb:if condition="$' . 'now = gmmktime()"></vb:if>';
+								$conditional_prefix .= '<vb:if condition="$now = gmmktime()"></vb:if>';
+								$conditional_prefix .= '<vb:if condition="$end = gmmktime(' . $end_time[1] . ',' . $end_time[2] . ')"></vb:if>';
+								$conditional_prefix .= '<vb:if condition="$start = gmmktime(' . $start_time[1] . ',' . $start_time[2] . ')"></vb:if>';
 							}
 							else
 							{
-								$start = mktime($start_time[1], $start_time[2]) + $vbulletin->options['hourdiff'];
-								$end   = mktime($end_time[1], $end_time[2]) + $vbulletin->options['hourdiff'];
-								// $now   = mktime() + $vbulletin->options['hourdiff'];
-								$conditional_prefix .= '<vb:if condition="$' . 'now = mktime() + ' . $vbulletin->options['hourdiff'] . '"></vb:if>';
+								$conditional_prefix .= '<vb:if condition="$now = mktime()"></vb:if>';
+								$conditional_prefix .= '<vb:if condition="$end = mktime(' . $end_time[1] . ',' . $end_time[2] . ') + $vboptions[\'hourdiff\']"></vb:if>';
+								$conditional_prefix .= '<vb:if condition="$start = mktime(' . $start_time[1] . ',' . $start_time[2] . ') + $vboptions[\'hourdiff\']"></vb:if>';
 							}
-							$conditional_prefix .= '<vb:if condition="$' . 'now > ' . $start . ' OR $' . 'now < ' . $end . '">';
+							$conditional_prefix .= '<vb:if condition="$now >= $start AND $now <= $end">';
 							$conditional_postfix .= '</vb:if>';
 						}
 						break;
@@ -197,8 +195,7 @@ function wrap_ad_template($template, $id_name, $id_prefix='ad_')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 41161 $
+|| # CVS: $RCSfile$ - $Revision: 52723 $
 || ####################################################################
 \*======================================================================*/
 ?>

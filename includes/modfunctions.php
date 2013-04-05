@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -40,6 +40,11 @@ function print_moderator_forum_chooser($name = 'forumid', $selectedid = -1, $top
 	}
 
 	$select_options = fetch_moderator_forum_options($topname, $displaytop, $displayselectforum, $permcheck);
+
+	if ($displayselectforum AND $selectedid < 0)
+	{
+		$selectedid = 0;
+	}
 
 	print_select_row($title, $name, $select_options, $selectedid, 0, iif($multiple, 10, 0), $multiple);
 }
@@ -187,7 +192,7 @@ function inlinemod_authenticated($updatetimeout = true)
 /**
 * Shows the form for inline mod authentication.
 */
-function show_inline_mod_login($showerror = false)
+function show_inline_mod_login($showerror = false, $forumcontext = false)
 {
 	global $vbulletin, $vbphrase, $show;
 
@@ -196,7 +201,14 @@ function show_inline_mod_login($showerror = false)
 
 	if (!$showerror)
 	{
-		$vbulletin->url = SCRIPTPATH;
+		if ($forumcontext AND $vbulletin->options['vbforum_url'] AND !preg_match('/^https?/si', SCRIPTPATH))
+		{
+			$vbulletin->url = rtrim($vbulletin->options['vbforum_url'], '/') . '/' . ltrim(SCRIPTPATH, '/');
+		}
+		else
+		{
+			$vbulletin->url = SCRIPTPATH;
+		}
 	}
 	eval(standard_error(fetch_error('nopermission_loggedin',
 		$vbulletin->userinfo['username'],
@@ -210,8 +222,7 @@ function show_inline_mod_login($showerror = false)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40911 $
+|| # CVS: $RCSfile$ - $Revision: 55275 $
 || ####################################################################
 \*======================================================================*/
 ?>

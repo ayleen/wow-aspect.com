@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -63,6 +63,7 @@ class vB_Legacy_Post extends vB_Legacy_Dataobject
 		{
 			$post->set_thread($thread);
 		}
+	
 		return $post;
 	}
 
@@ -126,10 +127,40 @@ class vB_Legacy_Post extends vB_Legacy_Dataobject
 	public static function create_array($ids, $thread_map = array())
 	{
 		global $vbulletin;
-		$set = $vbulletin->db->query("
-			SELECT p.*
-			FROM " . TABLE_PREFIX . "post AS p
-			WHERE p.postid IN (" . implode(',', $ids) . ")
+
+		if (empty($ids))
+		{
+			return array();
+		}
+
+		$select = array();
+		$joins = array();
+		$where = array();
+
+		$select[] = 'post.*';
+		$select[] = 'userfield.*, usertextfield.*, user.*, IF(displaygroupid=0, user.usergroupid, displaygroupid) AS displaygroupid';
+
+		$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'user AS user ON (user.userid = post.userid)';
+		$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'userfield AS userfield ON (user.userid = userfield.userid)';
+		$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'usertextfield AS usertextfield ON (user.userid = usertextfield.userid)';
+
+		$where[] = 'post.postid IN (' . implode(',', $ids) . ')';
+
+		if ($vbulletin->options['avatarenabled'])
+		{
+			$select[] = 'avatar.avatarpath, NOT ISNULL(customavatar.userid) AS hascustomavatar,
+						customavatar.dateline AS avatardateline, customavatar.width AS width, customavatar.height AS height,
+						customavatar.height_thumb AS height_thumb, customavatar.width_thumb AS width_thumb, customavatar.filedata_thumb';
+			$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'avatar AS avatar ON (avatar.avatarid = user.avatarid)';
+			$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'customavatar AS customavatar ON (customavatar.userid = post.userid)';
+		}
+
+		// Get all the post and user data in one go
+		$set = $vbulletin->db->query_read_slave("
+			SELECT " . implode(",", $select) . "
+			FROM " . TABLE_PREFIX . "post AS post
+				" . implode("\n", $joins) . "
+			WHERE " . implode (' AND ', $where) . "
 		");
 
 		//ensure that $items is in the same order as $ids
@@ -340,7 +371,7 @@ class vB_Legacy_Post extends vB_Legacy_Dataobject
 
 	public function get_post_template_array($current_user, $summary_length, $highlight="")
 	{
-		global $vbulletin, $vbphrase, $show;
+		global $vbphrase, $show;
 
 		require_once (DIR . '/includes/functions_forumdisplay.php');
 		/*
@@ -775,7 +806,6 @@ class vB_Legacy_Post extends vB_Legacy_Dataobject
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

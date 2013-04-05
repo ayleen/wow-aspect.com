@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -128,11 +128,8 @@ class vB_Block
 			if (!$data)
 			{
 				$data = $this->blocktype->getData();
-				if (!$this->registry->options['disableblockcache'] AND $this->blockinfo['allowcache'] AND $this->blockinfo['cachettl'] > 0)
-				{
-					vB_Cache::instance()->write($cache_key,
-					$data, $this->blockinfo['cachettl'], $this->event);
-				}
+				vB_Cache::instance()->write($cache_key,
+				$data, $this->blockinfo['cachettl'], $this->event);
 			}
 		}
 
@@ -418,6 +415,7 @@ abstract class vB_BlockType
 	{
 		$strip_quotes = true;
 		$page_text = $this->get_pagetext_noquote($pagetext);
+		$page_text = strip_tags($page_text);
 
 		// Deal with the case that quote was the only content of the post
 		if (trim($page_text) == '')
@@ -426,6 +424,10 @@ abstract class vB_BlockType
 			$strip_quotes = false;
 		}
 
+		if ($prbreak = strpos($page_text, '[PRBREAK][/PRBREAK]'))
+		{
+			$length = ($length < $prbreak) ? $length : $prbreak;
+		}
 		return htmlspecialchars_uni(fetch_censored_text(
 			trim(fetch_trimmed_title(strip_bbcode($page_text, $strip_quotes, false, false, true), $length))));
 	}
@@ -455,11 +457,11 @@ abstract class vB_BlockType
 			{
 				if ($this->registry->options['usefileavatar'])
 				{
-					$userinfo['avatarurl'] = $this->registry->options['avatarurl'] . '/avatar' . $userinfo['userid'] . '_' . $userinfo['avatarrevision'] . '.gif';
+					$userinfo['avatarurl'] = $this->registry->options['avatarurl'] . '/thumbs/avatar' . $userinfo['userid'] . '_' . $userinfo['avatarrevision'] . '.gif';
 				}
 				else
 				{
-					$userinfo['avatarurl'] = 'image.php?' . $this->registry->session->vars['sessionurl'] . 'u=' . $userinfo['userid'] . '&amp;dateline=' . $userinfo['avatardateline'];
+					$userinfo['avatarurl'] = 'image.php?' . $this->registry->session->vars['sessionurl'] . 'u=' . $userinfo['userid'] . '&amp;dateline=' . $userinfo['avatardateline'] . '&amp;type=thumb';
 				}
 
 				$userinfo['avwidthpx'] = intval($userinfo['avwidth']);
@@ -854,24 +856,33 @@ class vB_BlockManager
 		throw new Exception('Invalid block type name');
 	}
 
-	public function saveNewBlock($blocktypeid, $title, $description, $cachettl, $settings)
+	public function saveNewBlock($blocktypeid, $title, $description, $cachettl, $displayorder, $settings, $product = '')
 	{
 		$title = trim($title);
 		$description = trim($description);
 		$cachettl = intval($cachettl);
+		$displayorder = intval($displayorder);
 		if (empty($title))
 		{
 			throw new Exception("Block title is required");
 		}
 
+		if (!$product)
+		{
+			$list = $this->getBlockTypes();
+			$product = $list[$blocktypeid]['productid'] ? $list[$blocktypeid]['productid'] : 'vbulletin';
+		}
+
 		$blocktype = $this->getBlockTypeById($blocktypeid);
 
-		$this->registry->db->query("INSERT INTO " . TABLE_PREFIX . "block (blocktypeid, title, description, cachettl, active)
+		$this->registry->db->query("INSERT INTO " . TABLE_PREFIX . "block (blocktypeid, product, title, description, cachettl, displayorder, active)
 			VALUES (
 				$blocktype[blocktypeid],
+				'" . $this->registry->db->escape_string($product) . "',
 				'" . $this->registry->db->escape_string($title) . "',
 				'" . $this->registry->db->escape_string($description) . "',
 				$cachettl,
+				$displayorder,
 				1
 			)
 		");
@@ -884,13 +895,14 @@ class vB_BlockManager
 		$this->getBlocks(true, true);
 	}
 
-	public function updateBlock($blockid, $title, $description, $cachettl, $active, $settings)
+	public function updateBlock($blockid, $title, $description, $cachettl, $displayorder, $active, $settings)
 	{
 		$blockid = intval($blockid);
 		$title = trim($title);
 		$description = trim($description);
 		$cachettl = intval($cachettl);
 		$active = intval($active);
+		$displayorder = intval($displayorder);
 
 		if (empty($title))
 		{
@@ -904,6 +916,7 @@ class vB_BlockManager
 				title = '" . $this->registry->db->escape_string($title) . "',
 				description = '" . $this->registry->db->escape_string($description) . "',
 				cachettl = $cachettl,
+				displayorder = $displayorder,
 				active = $active
 			WHERE blockid = $blockid
 		");
@@ -1042,7 +1055,8 @@ class vB_BlockManager
 
 	public function purgeBlockCache()
 	{
-		$this->registry->db->query("DELETE FROM " . TABLE_PREFIX . "cache WHERE cacheid LIKE 'forumblock.%'");
+		$this->registry->db->query_write("DELETE FROM " . TABLE_PREFIX . "cache WHERE cacheid LIKE 'forumblock.%'");
+		$this->registry->db->query_write("DELETE FROM ". TABLE_PREFIX ."datastore WHERE title = 'activeblocks'"); 
 		return true;
 	}
 
@@ -1065,13 +1079,6 @@ class vB_BlockManager
 	{
 		$block = $this->createBlock($blockid, $blockscache);
 		$blockinfo = $block->getBlockInfo();
-
-		if (!$this->registry->options['disableblockcache'] AND $blockinfo['allowcache'] AND $blockinfo['cachettl'] > 0)
-		{
-			// We need vB_Cache so we need to bootstrap framework
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			vB_Bootstrap_Framework::init();
-		}
 
 		return $block->getBlockHTML();
 	}
@@ -1106,11 +1113,39 @@ class vB_BlockManager
 		}
 		return $html;
 	}
+
+	// Returns any array of blockids associated with a product
+	public function getBlockidsFromProduct($product)
+	{
+		$data = $this->registry->db->query_first_slave("
+			SELECT GROUP_CONCAT(blockid) AS blocks
+			FROM " . TABLE_PREFIX . "block 
+			WHERE product = '" . $this->registry->db->escape_string($product). "'
+			ORDER BY blockid
+		"); 
+
+		return explode(',', $data['blocks']);
+	}
+
+	// Return the blocktypeid for a block type
+	public function getBlocktypeidFromName($name)
+	{
+		$list = $this->getBlockTypes();
+
+		foreach ($list AS $typeid => $data)
+		{
+			if ($data['name'] == $name)
+			{
+				return $typeid;
+			}
+		}
+
+		return 0;
+	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35105 $
 || ####################################################################
 \*======================================================================*/

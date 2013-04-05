@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: recent.php 46033 2011-07-19 00:48:38Z michael.lavaveshkul $
+ * @version $Id: recent.php 58956 2012-02-11 01:31:19Z pmarsden $
  * @access public
  */
 class vBCms_Widget_Recent extends vBCms_Widget
@@ -345,8 +345,7 @@ class vBCms_Widget_Recent extends vBCms_Widget
 			$optionvalue = $forumid;
 			$optiontitle = "$forum[depthmark] $forum[title_clean]";
 
-			if ($vbulletin->options['fulltextsearch'] AND
-				!($vbulletin->userinfo['forumpermissions'][$forumid] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
+			if (!($vbulletin->userinfo['forumpermissions'][$forumid] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
 			{
 				$optiontitle .= '*';
 				$show['cantsearchposts'] = true;
@@ -360,11 +359,11 @@ class vBCms_Widget_Recent extends vBCms_Widget
 				$haveforum = true;
 			}
 
-			$options .= render_option_template($optiontitle, $forumid, $optionselected,
-				'fjdpth' . min(4, $forum['depth']));
+			require_once DIR . '/includes/adminfunctions.php';
+			$options .= render_option_template(construct_depth_mark($forum['depth'], '--') . ' ' . $optiontitle, $forumid, $optionselected);
 		}
 
-		$select = "<select name=\"" .$name."[]\" multiple=\"multiple\" size=\"4\" $style_string>\n" .
+		$select = "<select name=\"" .$name."[]\" multiple=\"multiple\" size=\"6\" $style_string>\n" .
 					render_option_template($vbphrase['search_all_open_forums'], '',
 						$haveforum ? '' : 'selected="selected"') .
 					render_option_template($vbphrase['search_subscribed_forums'], 'subscribed') .
@@ -411,19 +410,16 @@ class vBCms_Widget_Recent extends vBCms_Widget
 	 */
 	protected function getHash($widgetid)
 	{
-		$context = new vB_Context('widget' , array( 'widgetid' =>$widgetid,
+		$context = new vB_Context("widget_$widgetid" , array( 'widgetid' =>$widgetid,
 			'usergroup' => vB::$vbulletin->userinfo['usergroupid'],
 			'membergroupids' => vB::$vbulletin->userinfo['membergroupids']));
 
 		return strval($context);
-
 	}
-
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 46033 $
+|| # SVN: $Revision: 58956 $
 || ####################################################################
 \*======================================================================*/

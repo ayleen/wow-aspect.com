@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -76,7 +76,6 @@ class vBDBSearch_CoreSearchController extends vB_Search_SearchController
 		//reset any existing state
 		$this->clear();
 
-		global $vbulletin;
 		$this->process_keywords_filters($user, $criteria);
 
 		$filters = $criteria->get_equals_filters();
@@ -151,7 +150,7 @@ class vBDBSearch_CoreSearchController extends vB_Search_SearchController
 			return $similarthreads;
 		}
 
-		$contenttypeid = vB_Types::instance()->getContentTypeId('vBForum_Thread');
+		$contenttypeid = vB_Types::instance()->getContentTypeID('vBForum_Thread');
 
 		$safetitle = $vbulletin->db->escape_string($threadtitle);
 		$threads = $vbulletin->db->query_read_slave("
@@ -779,8 +778,6 @@ class vBDBSearch_CoreSearchController extends vB_Search_SearchController
 
 	protected function get_query($criteria)
 	{
-		global $vbulletin;
-
 		if (($criteria->get_grouped() == vB_Search_Core::GROUP_NO) OR $this->needcore)
 		{
 			//unset($this->join['searchgroup_text']);
@@ -920,7 +917,6 @@ class vBDBSearch_CoreSearchController extends vB_Search_SearchController
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

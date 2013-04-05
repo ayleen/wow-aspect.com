@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -44,7 +44,6 @@ $actiontemplates = array(
 		'postbit',
 		'postbit_wrapper',
 		'postbit_onlinestatus',
-		'postbit_reputation',
 		'usernote_nonotes',
 		'bbcode_code',
 		'bbcode_html',
@@ -81,8 +80,6 @@ function parse_usernote_bbcode($bbcode, $smilies = true)
 require_once('./global.php');
 require_once(DIR . '/includes/functions_bigthree.php');
 require_once(DIR . '/includes/functions_editor.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -131,10 +128,11 @@ $navpopup = array(
 
 construct_quick_nav($navpopup);
 
-$bbcodeon = iif($vbulletin->options['unallowvbcode'], $vbphrase['on'], $vbphrase['off']);
-$imgcodeon = iif($vbulletin->options['unallowimg'], $vbphrase['on'], $vbphrase['off']);
-$htmlcodeon = iif($vbulletin->options['unallowhtml'], $vbphrase['on'], $vbphrase['off']);
-$smilieson = iif($vbulletin->options['unallowsmilies'], $vbphrase['on'], $vbphrase['off']);
+$bbcodeon = ($vbulletin->options['unallowvbcode'] ? $vbphrase['on'] : $vbphrase['off']);
+$imgcodeon = ($vbulletin->options['unallowimg'] ? $vbphrase['on'] : $vbphrase['off']);
+$videocodeon = ($vbulletin->options['unallowvideo'] ? $vbphrase['on'] : $vbphrase['off']);
+$htmlcodeon = ($vbulletin->options['unallowhtml'] ? $vbphrase['on'] : $vbphrase['off']);
+$smilieson = ($vbulletin->options['unallowsmilies'] ? $vbphrase['on'] : $vbphrase['off']);
 
 // only show posting code allowances in forum rules template
 $show['codeonly'] = true;
@@ -146,6 +144,7 @@ $templater = vB_Template::create('forumrules');
 	$templater->register('can', $can);
 	$templater->register('htmlcodeon', $htmlcodeon);
 	$templater->register('imgcodeon', $imgcodeon);
+	$templater->register('videocodeon', $videocodeon);
 	$templater->register('smilieson', $smilieson);
 $forumrules = $templater->render();
 
@@ -188,12 +187,12 @@ if ($_POST['do'] == 'deletenote')
 			WHERE usernoteid = $noteinfo[usernoteid]
 		");
 		$vbulletin->url = 'usernote.php?' . $vbulletin->session->vars['sessionurl'] . "u=$userinfo[userid]";
-		eval(print_standard_redirect('redirect_deleteusernote'));
+		print_standard_redirect(array('redirect_deleteusernote',$userinfo['username']));  
 	}
 	else
 	{
 		$vbulletin->url = 'usernote.php?' . $vbulletin->session->vars['sessionurl'] . "u=$userinfo[userid]";
-		eval(print_standard_redirect('redirect_nodeletenote'));
+		print_standard_redirect(array('redirect_nodeletenote',$userinfo['username']));  
 	}
 }
 
@@ -406,7 +405,7 @@ if ($_POST['do'] == 'donote')
 	{
 		$vbulletin->url = 'usernote.php?' . $vbulletin->session->vars['sessionurl'] . "do=viewuser&amp;u=$userinfo[userid]";
 	}
-	eval(print_standard_redirect('redirect_usernoteaddevent'));
+	print_standard_redirect(array('redirect_usernoteaddevent',$userinfo['username']));  
 
 }
 
@@ -624,8 +623,7 @@ if ($_REQUEST['do'] == 'viewuser')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 43599 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

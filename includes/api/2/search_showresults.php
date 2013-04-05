@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -26,7 +26,7 @@ $VB_API_WHITELIST = array(
 				'title', 'html_title', 'username', 'description',
 				'parenttitle', 'parentid', 'previewtext',
 				'publishtime', 'lastpostdatetime', 'lastposter',
-				'lastposterinfo', 'avatar',
+				'lastposterinfo', 'avatar', 'forumid', 'forumtitle',
 				// Blog
 				'blog' => array(
 					'blogid', 'username', 'userid', 'title',
@@ -37,9 +37,9 @@ $VB_API_WHITELIST = array(
 				'forum' => $VB_API_WHITELIST_COMMON['forum'],
 				// Article
 				'article' => array(
-					'contentid', 'nodeid', 'username', 'userid'
+					'contentid', 'nodeid', 'username', 'userid', 'publishtime', 'title'
 				),
-				'page_url', 'lastcomment_url', 'parent_url', 'parenttitle', 'replycount',
+				'page_url', 'lastcomment_url', 'parent_url', 'parenttitle', 'replycount', 'title', 'publishtime',
 				'categories' => array(
 					'*' => array(
 						'category', 'category_url', 'categoryid'
@@ -103,13 +103,16 @@ function api_result_prerender_2($t, &$r)
 		case 'search_results_postbit':
 			$r['lastpostdatetime'] = $r['post']['lastpost'];
 			break;
-		case 'vbcms_searchresult_article_general':
+		case 'vbcms_searchresult_article_general':			
+			$r['article']['publishtime'] = $r['publishdateline'];
 			$r['publishtime'] = $r['publishdateline'];
 			$r['lastpostdatetime'] = $r['lastpostdateline'];
+			$r['previewtext'] = strip_tags($r['previewtext']);
 			break;
 		case 'blog_search_results_result':
 			$r['blog']['lastposttime'] = $r['blog']['lastcomment'];
 			$r['blog']['time'] = $r['blog']['dateline'];
+			$r['blog']['previewtext'] = strip_tags($r['blog']['pagetext']);
 			break;
 	}
 }
@@ -118,7 +121,6 @@ vB_APICallback::instance()->add('result_prerender', 'api_result_prerender_2', 2)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35584 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
    || #################################################################### ||
-   || # vBulletin 4.1.5 Patch Level 1 
+   || # vBulletin 4.2.0 Patch Level 3
    || # ---------------------------------------------------------------- # ||
-   || # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+   || # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
    || # This file may not be redistributed in whole or significant part. # ||
    || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
    || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * to allow browsing, moving, copying, editing, etc. of CMS content
  * It is intended for admins or for those with substantial privileges.
  * @author Ed Brown, vBulletin Development Team
- * @version 4.1.5 Patch Level 1
+ * @version 4.2.0 Patch Level 3
  * @since 1st Dec, 2008
  * @copyright vBulletin Solutions Inc.
  */
@@ -102,7 +102,6 @@ class vBCms_ContentManager
 	 ******************/
 	public static function getNodePanel($divId)
 	{
-		global $vbulletin;
 		global $vbphrase;
 		global $phrasegroups;
 		global $sect_js_varname;
@@ -320,7 +319,7 @@ class vBCms_ContentManager
 
 	public static function getAllCategories()
 	{
-		$context = new vB_Context('widget' , array('permissions' => vB::$vbulletin->userinfo->permissions['cms']));
+		$context = new vB_Context('widget_categories' , array('permissions' => vB::$vbulletin->userinfo->permissions['cms']));
 		$cache_key = strval($context);
 
 		if (!$nodes = vB_Cache::instance()->read($cache_key,  true, true))
@@ -329,35 +328,38 @@ class vBCms_ContentManager
 			$permString = vBCMS_Permissions::getPermissionString();
 			//compose the sql
 			$sql = "SELECT parent.category AS parentcat, cat.categoryid, cat.category, parent.categoryid AS parentid,
-			cat.catleft, cat.catright, node.nodeid, info.title, count(nodecat.nodeid) as qty
-      	FROM " . TABLE_PREFIX . "cms_node AS node
-      	INNER JOIN " . TABLE_PREFIX . "cms_nodeinfo AS info on info.nodeid = node.nodeid
-      	INNER JOIN " . TABLE_PREFIX . "cms_category AS parent on parent.parentnode = node.nodeid
+			cat.catleft, cat.catright, node.nodeid, info.title, count(nodecat.nodeid) as qty, cat.parentcat as parentcatid
+			FROM " . TABLE_PREFIX . "cms_node AS node
+			INNER JOIN " . TABLE_PREFIX . "cms_nodeinfo AS info on info.nodeid = node.nodeid
+			INNER JOIN " . TABLE_PREFIX . "cms_category AS parent on parent.parentnode = node.nodeid
 			INNER JOIN " . TABLE_PREFIX . "cms_category AS cat ON (cat.catleft >= parent.catleft AND cat.catleft <= parent.catright)
 			LEFT JOIN " . TABLE_PREFIX . "cms_nodecategory AS nodecat ON nodecat.categoryid = cat.categoryid
 			WHERE node.setpublish > 0 AND node.publishdate <= " . TIMENOW . " AND " . $permString . "
-			GROUP BY parent.category, cat.categoryid, cat.category,
-			cat.catleft, cat.catright, info.title
+			GROUP BY parent.category, cat.categoryid, cat.category,	cat.catleft, cat.catright, info.title
 			ORDER BY node.nodeleft, cat.catleft;";
 
-			$rst = vB::$vbulletin->db->query_read($sql);
-
-
-			$parents = array();
 			$level = 0;
 			$nodes = array();
+			$dupemap = array();
+			$parents = array();
+			$rst = vB::$vbulletin->db->query_read($sql);
+
+			$dupemap = array();
+			$parents = array();
+
+			$rst = vB::$vbulletin->db->query_read($sql);
 			if ($record = vB::$vbulletin->db->fetch_array($rst))
 			{
+				$record['duplicate'] = 0;
 				$record['level'] = $level;
-				$record['route_info'] = $record['categoryid'] .
-					($record['category'] != '' ? '-' . str_replace(' ', '-', $record['category']) : '');
-				$nodes[strtolower($record['category'])] = $parents[0] = $record;
+				$dupemap[$record['category']][] = strtolower($record['category'] . ' #' . $record['categoryid']);
+				$record['route_info'] = $record['categoryid'] .	($record['category'] != '' ? '-' . str_replace(' ', '-', $record['category']) : '');
+				$nodes[strtolower($record['category'] . ' #' . $record['categoryid'])] = $parents[0] = $record;
 				$last_category = -1;
 
 				while($record = vB::$vbulletin->db->fetch_array($rst))
 				{
-					$record['route_info'] = $record['categoryid'] .
-						($record['category'] != '' ? '-' . str_replace(' ', '-', $record['category']) : '');
+					$record['route_info'] = $record['categoryid'] . ($record['category'] != '' ? '-' . str_replace(' ', '-', $record['category']) : '');
 
 					if ($record['categoryid'] == $last_category )
 					{
@@ -372,10 +374,25 @@ class vBCms_ContentManager
 					$level++;
 					$record['level'] = $level;
 
-					$nodes[strtolower($record['category'])] = $parents[$level] = $record;
+					$record['duplicate'] = 0;
+					$dupemap[$record['category']][] = strtolower($record['category'] . ' #' . $record['categoryid']);
+					$nodes[strtolower($record['category'] . ' #' . $record['categoryid'])] = $parents[$level] = $record;
 					$last_category = $record['categoryid'];
 				}
 			}
+			
+			// Flag duplicate names.
+			foreach($dupemap AS $data)
+			{
+				if (sizeOf($data) > 1)
+				{
+					foreach($data AS $cat)
+					{
+						$nodes[$cat]['duplicate'] = 1;
+					}					
+				}
+			}
+
 			$keys = array_keys($nodes);
 			$size = sizeOf($key);
 			for ($i = 0; $i < $size; $i++)
@@ -484,8 +501,7 @@ class vBCms_ContentManager
 			vB::$vbulletin->GPC['name'] = 'categoryids[]';
 		}
 
-		$already_checked = vB::$vbulletin->GPC_exists['checkedcat'] ? vB::$vbulletin->GPC['checkedcat'] :
-			 array();
+		$already_checked = vB::$vbulletin->GPC_exists['checkedcat'] ? vB::$vbulletin->GPC['checkedcat'] : array();
 
 		//we have all categories. First let's see if we have a parent category.
 		if (vB::$vbulletin->GPC_exists['type'] AND vB::$vbulletin->GPC['type'] == 'catid'
@@ -526,8 +542,7 @@ class vBCms_ContentManager
 				{
 					if (!$sort AND $category['nodeid'] != $section)
 					{
-					$template_section->register('title', $category['title'] );
-					$template_section->register('nodeid', $category['nodeid'] );
+						$template_section->register('category', $category);
 					$result .= $template_section->render();
 						$section = $category['nodeid'];
 					}
@@ -566,18 +581,39 @@ class vBCms_ContentManager
 				$category = next($categories);
 			}
 		}
-		else
+		else //we don't have anything that will let us limit. Just return everything.
 		{
-			//we don't have anything that will let us limit. Just return everything.
-			//first see if they want it sorted.
+			// Expand children.
+			$names = array();
+			foreach ($categories as $nodeid => $record)
+			{
+				$names[$categories[$nodeid]['categoryid']] = $categories[$nodeid]['category'];
+
+				// Get expanded children.
+				if ($categories[$nodeid]['parentcatid'])
+				{
+					$names[$categories[$nodeid]['categoryid']] = $names[$categories[$nodeid]['parentcatid']] . ' > ' . $names[$categories[$nodeid]['categoryid']];
+				}
+			}
 
 			$sort = (vB::$vbulletin->GPC_exists['sort'] AND intval(vB::$vbulletin->GPC['sort']));
+
 			if ($sort)
 			{
+				foreach ($categories as $nodeid => $record)
+				{
+					// Add section title for duplicates.
+					if ($categories[$nodeid]['duplicate'])
+					{
+						$names[$categories[$nodeid]['categoryid']] = $categories[$nodeid]['title'] . ': ' . $names[$categories[$nodeid]['categoryid']];
+					}
+
+					// Set expanded children.
+					$categories[$nodeid]['category'] = $names[$categories[$nodeid]['categoryid']];
+				}
+
 				ksort($categories);
 			}
-			reset($categories);
-			$category = current($categories);
 
 			$section = false;
 
@@ -585,8 +621,7 @@ class vBCms_ContentManager
 			{
 				if (!$sort AND $category['nodeid'] != $section)
 				{
-					$template_section->register('title', $category['title'] );
-					$template_section->register('nodeid', $category['nodeid'] );
+					$template_section->register('category', $category);
 					$result .= $template_section->render();
 					$section = $category['nodeid'];
 				}
@@ -1058,7 +1093,7 @@ class vBCms_ContentManager
 			($vbulletin->GPC_exists['title_filter'] ? $vbulletin->GPC['title_filter'] : false),
 			$per_page, ($page -1) * $per_page );
 		$data = $categories['results'];
-		$sequence_no = 0;
+		$sequence_no = ($page - 1) * $per_page;
 		if (! count($data))
 		{
 			//This has no sub-categories, so let's pull the section title.
@@ -1093,7 +1128,7 @@ class vBCms_ContentManager
 				<td class=\"thead\">#</td>
 				<td class=\"thead\">"	. $vbphrase['table_header_category_name'] . " </td>
 				<td class=\"thead\" style=\"display:none;\">"	. $vbphrase['published'] . "</td>
-				<td>"	. $vbphrase['item_count'] . "</td>
+				<td class=\"thead\">"	. $vbphrase['item_count'] . "</td>
 			</tr>";
 
 		$bgclass = fetch_row_bgclass();
@@ -1363,7 +1398,7 @@ class vBCms_ContentManager
 	******/
 	public static function getOrderSelect($displayorder, $sectionid)
 	{
-		global $vbulletin;
+		//global $vbulletin;
 
 //		if (!isset(self::$items_perhomepage))
 //		{
@@ -1417,7 +1452,7 @@ class vBCms_ContentManager
 		}
 		else
 		{
-			$hourdiff = $vbulletin->options['hourdiff'];
+			$hourdiff = vB::$vbulletin->options['hourdiff'];
 		}
 		return $hourdiff;
 	}
@@ -1607,7 +1642,6 @@ class vBCms_ContentManager
 	private static function getEnabledSelect($categoryid, $enabled)
 	{
 		global $vbphrase;
-		global $vbulletin;
 
 		$result = "<select name=\"state_$categoryid\" id=\"state_$categoryid\"
 			onchange=\"setFormValue('do','saveonecategorystate');
@@ -1736,7 +1770,6 @@ class vBCms_ContentManager
 	private static function getNodeHeaders()
 	{
 		global $vbphrase;
-		global $vbulletin;
 		// we need a select list of content types;
 
 		$return = "
@@ -1770,7 +1803,6 @@ class vBCms_ContentManager
 	private static function getSectionHeaders($sectionid = 1)
 	{
 		global $vbphrase;
-		global $vbulletin;
 		// we need a select list of content types;
 
 		if (! $sectionid)
@@ -1802,7 +1834,6 @@ class vBCms_ContentManager
 	private static function getCategoryHeaders($nodeid)
 	{
 		global $vbphrase;
-		global $vbulletin;
 
 		//We default nodeid  to 1;
 		if (! $nodeid)
@@ -2006,8 +2037,8 @@ class vBCms_ContentManager
 			'id' => TYPE_INT,
 			'ids' => TYPE_ARRAY,
 			));
-		$ids = array();
 
+		$ids = array();
 		switch($vbulletin->GPC['do'])
 		{
 			case 'delete_category' :
@@ -2385,7 +2416,7 @@ class vBCms_ContentManager
 					{
 
 						$node = new vBCms_Item_Content($this_id);
-						$class  = vB_Types::instance()->getContentClassFromId($node->getContentTypeId());
+						$class  = vB_Types::instance()->getContentClassFromId($node->getContentTypeID());
 						$classname = $class['package']. "_Item_Content_" . $class['class'];
 
 						if (class_exists($classname))
@@ -3181,6 +3212,11 @@ class vBCms_ContentManager
 			//nothing to change
 			return true;
 		}
+
+		if ($newparent == $record)
+		{
+			return true; // They are the same, nothing to do
+		}
 		//If we got here, we have valid data and we're ready to move.
 
 		//If we have a new parentnode, let's set it.
@@ -3188,7 +3224,6 @@ class vBCms_ContentManager
 					WHERE categoryid = " . $vbulletin->GPC['categoryid'];
 		$vbulletin->db->query_write($sql);
 		self::fixCategoryLR();
-
 	}
 
 	/**********************
@@ -3488,7 +3523,7 @@ class vBCms_ContentManager
 					($vbulletin->GPC_exists['filter_section'] ?
 						" node.nodeid = " . $filtersection :
 						" node.nodeid IS NULL" )));
-		$i = 1;
+			$i = (($page - 1) * $per_page) + 1;
 		}
 		$result = print_form_header('cms_content_admin', '', false, true, 'cms_data', '100%', '_self',
 				true, 'post', 0, false);
@@ -3902,7 +3937,7 @@ class vBCms_ContentManager
 				WHERE " .
 				( $sectionid ?
 					" node.nodeid = " . $sectionid : " node.nodeid IS NULL" ));
-			$i = 1;
+			$i = ($page-1) * $per_page;
 
 			$result = print_form_header('cms_content_admin', '', false, true, 'cms_data', '100%', '_self',
 					true, 'post', 0, false);
@@ -3944,6 +3979,7 @@ class vBCms_ContentManager
 			foreach($sections as $key => $section)
 			{
 				$sequence++;
+				$i++;
 				$first_selected_parent_row_class = "";
 				$change_display_order_buttons = "";
 				$section_name_prefix = ((vB_Template_Runtime::fetchStyleVar('textdirection') == 'ltr') ?
@@ -3975,7 +4011,7 @@ class vBCms_ContentManager
 				$bgclass = fetch_row_bgclass();
 				$result .= "<tr" . $first_selected_parent_row_class . " align=\"center\">\n <input type=\"hidden\" name=\"ids[]\" value=\"" .
 					$section['nodeid'] . "\" />\n";
-				$result .= "  <td class=\"$bgclass\" style=\"font-size:80%;\">$sequence</td>\n";
+				$result .= "  <td class=\"$bgclass\" style=\"font-size:80%;\">$i</td>\n";
 				$result .= "  <td align=\"" . vB_Template_Runtime::fetchStyleVar('left') . "\" class=\"$bgclass\" style=\"font-size:80%;width:400px;\"><div class=\"sectionTitleWrapper\" style=\"width:400px;\">
 					" . $change_display_order_buttons . $section_name_prefix . "<a href=\"./cms_content_admin.php?do=filter&sectionid=" . $section['nodeid'] . "&contenttypeid=" .
 					vb_Types::instance()->getContentTypeID("vBCms_Section") .
@@ -4326,7 +4362,7 @@ class vBCms_ContentManager
 	 *
 	 *	@return	string
 	 * ***/
-	public static function makePreviewText($pagetext, $chars, $canUseHtml, $htmlstate = null)
+	public static function makePreviewText($pagetext, $chars, $canUseHtml, $htmlstate = null, $strip_quotes = true)
 	{
 		//We don't want any table content to display when we generate the preview- unless there
 		// is nothing else
@@ -4344,7 +4380,8 @@ class vBCms_ContentManager
 			$chars,
 			$canUseHtml,
 			true,
-			$htmlstate);
+			$htmlstate,
+			$strip_quotes);
 
 		if ($previewtext =='')
 		{
@@ -4353,7 +4390,8 @@ class vBCms_ContentManager
 				$chars,
 				$canUseHtml,
 				true,
-				$htmlstate);
+				$htmlstate,
+				$strip_quotes);
 		}
 		//We tend to get some blank lines that we don't need.
 		$previewtext = preg_replace('/^\<br\>$/i', '', $previewtext);

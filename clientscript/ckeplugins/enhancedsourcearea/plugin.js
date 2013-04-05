@@ -298,6 +298,23 @@ CKEDITOR.plugins.add( 'enhancedsourcearea',
 						YAHOO.util.Dom.get(editor.editorid + '_mode').value = 0;
 					}
 
+					// Turn off the "highlighted" buttons from WYSIWYG mode, that may be on, that don't mean anything when in source mode
+					var commandsOff = [
+						'bold',
+						'italic',
+						'underline',
+						'justifyleft',
+						'justifycenter',
+						'justifyright',
+						'numberedlist',
+						'bulletedlist'
+					];
+
+					for (command in commandsOff)
+					{
+						editor.getCommand(commandsOff[command]).setState(CKEDITOR.TRISTATE_OFF);
+					}
+	
 					if ( CKEDITOR.env.ie && CKEDITOR.env.version < 8 )
 						holderElement.setStyle( 'position', 'relative' );
 
@@ -541,6 +558,19 @@ CKEDITOR.plugins.add( 'enhancedsourcearea',
 								original.exec(editor);
 							}
 						},
+						table: function (editor)
+						{
+							var original = defaultCommands['table'];
+							if (CKEDITOR.env.ie)
+							{
+								editor.savedselection = document.selection.createRange();
+								original.exec(editor);
+							}
+							else
+							{
+								original.exec(editor);
+							}
+						},
 						iespell: function(editor)
 						{
 							try
@@ -626,7 +656,16 @@ CKEDITOR.plugins.add( 'enhancedsourcearea',
 						link: function(editor)
 						{
 							var line = prompt(editor.lang.vbulletin.enter_link_url, 'http://');
-							if (typeof line == 'string' && line.length > 0 && line != 'http://')
+							if (typeof line == 'string')
+							{
+								line = PHP.trim(line);
+							}
+							else
+							{
+								return;
+							}
+							
+							if (line.length > 0 && line != 'http://')
 							{
 								var selection = editor.esGetSelectionText();
 								if (selection)
@@ -641,7 +680,7 @@ CKEDITOR.plugins.add( 'enhancedsourcearea',
 						},
 						Email: function(editor)
 						{
-							var line = prompt(editor.lang.vbulletin.enter_the_email_address);
+							var line = PHP.trim(prompt(editor.lang.vbulletin.enter_the_email_address));
 							if (typeof line == 'string' && line.length > 0)
 							{
 								var selection = editor.esGetSelectionText();
@@ -800,6 +839,7 @@ CKEDITOR.plugins.add( 'enhancedsourcearea',
 												if (evt.name == 'ok')
 												{
 													var color = this.getContentElement( 'picker', 'selectedColor' ).getValue();
+													CKEDITOR.vbtextcolor.setLastColor(color);
 													editor.esWrapAroundSelection('[COLOR="'+color+'"]', '[/COLOR]');
 												}
 											}
@@ -848,7 +888,8 @@ CKEDITOR.plugins.add( 'enhancedsourcearea',
 						}
 						else
 						{
-							editor.addCommand(command, defaultCommands[command]);
+							editor._.commands[command] = defaultCommands[command];
+							//editor.addCommand(command, defaultCommands[command]);
 						}
 					}
 

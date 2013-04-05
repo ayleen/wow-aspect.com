@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -20,7 +20,7 @@ require_once (DIR . '/vb/search/type.php');
  * @package
  * @author Ed Brown
  * @copyright Copyright (c) 2009
- * @version $Id: staticpage.php 37602 2010-06-18 18:37:15Z ksours $
+ * @version $Id: staticpage.php 58581 2012-02-03 01:37:09Z michael.lavaveshkul $
  * @access public
  */
 class vBCms_Search_Type_StaticPage extends vB_Search_Type
@@ -53,7 +53,11 @@ class vBCms_Search_Type_StaticPage extends vB_Search_Type
 		//anyone can see anything that is published
 		$html = vBCms_Search_Result_StaticPage::create_array($ids);
 
-		return array('list' => $html, 'groups_rejected' => array());
+		$retval = array('list' => $html, 'groups_rejected' => array());
+
+		($hook = vBulletinHook::fetch_hook('search_validated_list')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	// ###################### Start prepare_render ######################
@@ -69,6 +73,7 @@ class vBCms_Search_Type_StaticPage extends vB_Search_Type
 		$phrase = new vB_Legacy_Phrase();
 		$phrase->add_phrase_groups(array('user', 'search'));
 
+		($hook = vBulletinHook::fetch_hook('search_prepare_render')) ? eval($hook) : false;
 	}
 
 	/**
@@ -106,11 +111,9 @@ class vBCms_Search_Type_StaticPage extends vB_Search_Type
 	 * 	grouping option(s).
 	 * @return $html: complete html for the search elements
 	 */
-	public function listUi($prefs = null, $contenttypeid = null, $registers = null,
-		$template_name = null)
+	public function listUi($prefs = null, $contenttypeid = null, $registers = null,	$template_name = null)
 	{
 		global $vbulletin, $vbphrase;
-
 
 		if (! isset($template_name))
 		{
@@ -141,6 +144,9 @@ class vBCms_Search_Type_StaticPage extends vB_Search_Type
 				$template->register($key, htmlspecialchars_uni($value));
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_listui_complete')) ? eval($hook) : false;
+
 		return $template->render();
 	}
 
@@ -236,20 +242,24 @@ class vBCms_Search_Type_StaticPage extends vB_Search_Type
  */
 	public function additional_pref_defaults()
 	{
-		return array(
+		$retval = array(
 			'query'         => '',
 			'exactname'     => 0,
-			'searchuser'     => '',
+			'searchuser'    => '',
 			'searchdate'    => 0,
 			'beforeafter'   => 'after',
-			'sortby'   => 'title',
-			'sortorder'   => 'descending');
+			'sortby'        => 'title',
+			'sortorder'     => 'descending'
+		);
+
+		($hook = vBulletinHook::fetch_hook('search_pref_defaults')) ? eval($hook) : false;
+
+		return $retval;
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 37602 $
+|| # SVN: $Revision: 58581 $
 || ####################################################################
 \*======================================================================*/

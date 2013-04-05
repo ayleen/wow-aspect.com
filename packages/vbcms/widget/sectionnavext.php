@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: sectionnavext.php 39687 2010-10-13 17:15:03Z ebrown $
+ * @version $Id: sectionnavext.php 60418 2012-03-16 15:52:01Z pmarsden $
  * @access public
  */
 class vBCms_Widget_SectionNavExt extends vBCms_Widget
@@ -166,7 +166,7 @@ class vBCms_Widget_SectionNavExt extends vBCms_Widget
 		$segments = array('node' => $node, 'action' => 'view');
 
 		$result = "<ul >\n<li" . (intval($currentnode['nodeid']) == intval($currentnodeid) ? ' class="active" ' : '')
-			. '><a href="' . vBCms_Route_Content::getURL($segments) . '">' . $currentnode['title'] . "</a>\n" ;
+			. '><a href="' . vBCms_Route_Content::getURL($segments) . '" title="' . $currentnode['title'] . '">' . $currentnode['title'] . "</a>\n" ;
 
 		$lastnodeid = $currentnode['nodeid'];
 		$parentnodeid = $currentnode['parentnode'];
@@ -191,7 +191,7 @@ class vBCms_Widget_SectionNavExt extends vBCms_Widget
 				$node = $currentnode['nodeid'] . ($currentnode['url'] ? '-'.$currentnode['url'] : '');
 				$segments = array('node' => $node, 'action' =>'view');
 				$result .= "</li>\n<li" . (intval($currentnode['nodeid']) == intval($currentnodeid) ? ' class="active" ' : '')
-				. '><a href="' . vBCms_Route_Content::getURL($segments) . '">' . $currentnode['title'] . "</a>\n" ;
+				. '><a href="' . vBCms_Route_Content::getURL($segments) . '" title="' . $currentnode['title'] . '">' . $currentnode['title'] . "</a>\n" ;
 			}
 			$lastnodeid = $currentnode['nodeid'];
 		}
@@ -200,7 +200,7 @@ class vBCms_Widget_SectionNavExt extends vBCms_Widget
 		{
 			$segments = array('node' => $currentnode['nodeid'], 'action' =>'view');
 			$result .= "</li>\n<li" . (intval($currentnode['nodeid']) == intval($currentnodeid) ? ' class="active" ' : '')
-			. '><a href="' . vBCms_Route_Content::getURL($segments, array('url' => $currentnode['url'])) . '">' . $currentnode['title'] . "</a>\n" ;
+			. '><a href="' . vBCms_Route_Content::getURL($segments, array('url' => $currentnode['url'])) . '" title="' . $currentnode['title'] . '">' . $currentnode['title'] . "</a>\n" ;
 		}
 		return $result . "</li></ul>\n ";
 
@@ -216,7 +216,7 @@ class vBCms_Widget_SectionNavExt extends vBCms_Widget
 		//We need to set the indent level and the url
 		$indentlevel = array();
 		//What is the current section
-		$sectionid = ($this->content->getContentTypeId() == vb_Types::instance()->getContentTypeID("vBCms_Section")) ?
+		$sectionid = ($this->content->getContentTypeID() == vb_Types::instance()->getContentTypeID("vBCms_Section")) ?
 			$this->content->getNodeId() : $this->content->getParentId();
 
 		//because we're ordered by nodeleft, we'll always see parents before children
@@ -266,7 +266,7 @@ class vBCms_Widget_SectionNavExt extends vBCms_Widget
 
 		$this->assertWidget();
 
-		if (! isset($vbulletin->userinfo['permissions']['cms']))
+		if (! isset(vB::$vbulletin->userinfo['permissions']['cms']))
 		{
 			vBCMS_Permissions::getUserPerms();
 		}
@@ -343,18 +343,15 @@ class vBCms_Widget_SectionNavExt extends vBCms_Widget
 	 */
 	protected function getHash($widgetid, $nodeid)
 	{
-		$context = new vB_Context('widget' , array('widgetid' => $widgetid,
+		$context = new vB_Context("widget_$widgetid" , array('widgetid' => $widgetid,
 		'permissions' => vB::$vbulletin->userinfo['permissions']['cms'],
 		'nodeid' => $nodeid));
 		return strval($context);
-
 	}
-
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 39687 $
+|| # SVN: $Revision: 60418 $
 || ####################################################################
 \*======================================================================*/

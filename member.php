@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -30,7 +30,7 @@ $phrasegroups = array(
 	'infractionlevel',
 	'posting',
 	'profilefield',
-	'style'
+	'activitystream',
 );
 
 // get special data templates from the datastore
@@ -48,18 +48,36 @@ $globaltemplates = array(
 	'im_msn',
 	'im_yahoo',
 	'im_skype',
+	'activitystream_album_album',
+	'activitystream_album_comment',
+	'activitystream_album_photo',
+	'activitystream_blog_comment',	// Use a hook to add this
+	'activitystream_blog_entry',	// Use a hook to add this
+	'activitystream_calendar_event',
+	'activitystream_cms_article',
+	'activitystream_cms_comment',
+	'activitystream_date_group',
+	'activitystream_photo_date_bit',
+	'activitystream_forum_post',
+	'activitystream_forum_thread',
+	'activitystream_forum_visitormessage',
+	'activitystream_socialgroup_discussion',
+	'activitystream_socialgroup_group',
+	'activitystream_socialgroup_groupmessage',
+	'activitystream_socialgroup_photo',
+	'activitystream_socialgroup_photocomment',
 	'bbcode_code',
 	'bbcode_html',
 	'bbcode_php',
 	'bbcode_quote',
 	'bbcode_video',
+	'blog_taglist',
 	'editor_clientscript',
 	'editor_ckeditor',
 	'editor_jsoptions_font',
 	'editor_jsoptions_size',
 	'editor_smilie_category',
 	'editor_smilie_row',
-	'postbit_reputation',
 	'postbit_onlinestatus',
 	'userfield_checkbox_option',
 	'userfield_select_option',
@@ -67,6 +85,7 @@ $globaltemplates = array(
 	'memberinfo_assetpicker',
 	'memberinfo_block_aboutme',
 	'memberinfo_block_albums',
+	'memberinfo_block_activity',
 	'memberinfo_block_contactinfo',
 	'memberinfo_block_friends',
 	'memberinfo_block_friends_mini',
@@ -78,6 +97,7 @@ $globaltemplates = array(
 	'memberinfo_block_recentvisitors',
 	'memberinfo_block_statistics',
 	'memberinfo_block_profilepicture',
+	'memberinfo_block_reputation',
 	'memberinfo_infractionbit',
 	'memberinfo_profilefield',
 	'memberinfo_profilefield_category',
@@ -88,7 +108,6 @@ $globaltemplates = array(
 	'memberinfo_socialgroupbit_text',
 	'memberinfo_tab',
 	'memberinfo_tiny',
-	'memberinfo_visitorbit',
 	'memberinfo_albumbit',
 	'memberinfo_imbit',
 	'memberinfo_publicgroupbit',
@@ -113,8 +132,6 @@ if ($_REQUEST['do'] == 'vcard') // don't alter this $_REQUEST
 require_once('./global.php');
 require_once(DIR . '/includes/class_postbit.php');
 require_once(DIR . '/includes/functions_user.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -126,15 +143,12 @@ if (!($permissions['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['ca
 	print_no_permission();
 }
 
-// bootstrap framework
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
-
 $vbulletin->input->clean_array_gpc('r', array(
 	'find'        => TYPE_STR,
 	'moderatorid' => TYPE_UINT,
 	'userid'      => TYPE_UINT,
 	'username'    => TYPE_NOHTML,
+	'token'        => TYPE_STR,
 ));
 
 ($hook = vBulletinHook::fetch_hook('member_start')) ? eval($hook) : false;
@@ -220,8 +234,6 @@ else if ($vbulletin->GPC['find'] == 'lastposter' AND $foruminfo['forumid'])
 	// check if there is a forum password and if so, ensure the user has it set
 	verify_forum_password($foruminfo['forumid'], $foruminfo['password']);
 
-	//require_once(DIR . '/includes/functions_misc.php');
-	//$forumslist = $forumid . ',' . fetch_child_forums($foruminfo['forumid']);
 	$forumslist = $forumid;
 
 	require_once(DIR . '/includes/functions_bigthree.php');
@@ -278,13 +290,6 @@ else if ($vbulletin->GPC['find'] == 'lastposter' AND $foruminfo['forumid'])
 
 	exec_header_redirect(fetch_seo_url('member|js', $getuserid));
 }
-/*
-else if ($vbulletin->GPC['find'] == 'moderator' AND $vbulletin->GPC['moderatorid'])
-{	// For this fetch_seo_url to work, verify_id needs to return the moderators username as 'username'
-	$moderatorinfo = verify_id('moderator', $vbulletin->GPC['moderatorid'], 1, 1);
-	exec_header_redirect(fetch_seo_url('member|js', $moderatorinfo));
-}
-*/
 else if ($vbulletin->GPC['username'] != '' AND !$vbulletin->GPC['userid'])
 {
 	$user = $db->query_first_slave("SELECT userid FROM " . TABLE_PREFIX . "user WHERE username = '" . $db->escape_string($vbulletin->GPC['username']) . "'");
@@ -304,7 +309,7 @@ $fetch_userinfo_options = (
 
 ($hook = vBulletinHook::fetch_hook('member_start_fetch_user')) ? eval($hook) : false;
 
-$userinfo = verify_id('user', $vbulletin->GPC['userid'], 1, 1, $fetch_userinfo_options);
+$userinfo = verify_id('user', $vbulletin->GPC['userid'], true, true, $fetch_userinfo_options);
 
 if ($userinfo['usergroupid'] == 4 AND !($permissions['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']))
 {
@@ -315,6 +320,29 @@ if ($userinfo['usergroupid'] == 4 AND !($permissions['adminpermissions'] & $vbul
 // and redirect to this if not
 verify_seo_url('member|js', $userinfo);
 
+/*
+Swap the show user css option before loading the profile.
+*/
+if ($_REQUEST['do'] == 'swapcss')
+{
+	if (verify_security_token($vbulletin->GPC['token'], $vbulletin->userinfo['securitytoken_raw']))
+	{
+		if ($vbulletin->options['socnet'] & $vbulletin->bf_misc_socnet['enable_profile_styling'])
+		{
+			$userdata =& datamanager_init('User', $vbulletin, ERRTYPE_STANDARD);
+			$userdata->set_existing($vbulletin->userinfo);
+			$userdata->set_bitfield('options', 'showusercss', ($vbulletin->userinfo['options'] & $vbulletin->bf_misc_useroptions['showusercss'] ? 0 : 1));
+			$userdata->save();
+
+			$vbulletin->url = fetch_seo_url('member', $userinfo);
+			print_standard_redirect('redirect_usercss_toggled');
+		}
+	}
+	else
+	{ // Invalid token.
+		print_no_permission();
+	}
+}
 
 $show['vcard'] = ($vbulletin->userinfo['userid'] AND $userinfo['showvcard']);
 
@@ -371,6 +399,7 @@ $vbulletin->input->clean_array_gpc('r', array(
 	'vmid'        => TYPE_UINT,
 	'showignored' => TYPE_BOOL,
 	'simple'      => TYPE_BOOL,
+	'type'        => TYPE_NOHTML,
 ));
 
 if ($vbulletin->GPC['vmid'] AND !$vbulletin->GPC['tab'])
@@ -461,6 +490,25 @@ $blocklist = array(
 	),
 	'profile_picture' => array(
 		'class'  => 'ProfilePicture'
+	),
+    'reputation' => array(
+	    'wrap' => false,
+	    'class' => 'Reputation',
+	    'title' => $vbphrase['reputation'],
+		'options' => array(
+			'tab'        => $vbulletin->GPC['tab'],
+			'comments' => $vbulletin->options['member_rep_comments'],
+			'showraters' => $permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canseeownrep'], // Odd name, but correct
+	    ),
+    ),
+	'activitystream' => array(
+		'class'   => 'ActivityStream',
+		'title'   => $userinfo['userid'] == $vbulletin->userinfo['userid'] ? $vbphrase['my_activity'] : construct_phrase($vbphrase['x_activity'], $userinfo['username']),
+		'options' => array(
+			'tab'        => $vbulletin->GPC['tab'],
+			'type'       => $vbulletin->GPC['type'],
+			'pagenumber' => $vbulletin->GPC['pagenumber'],
+		)
 	)
 );
 
@@ -497,6 +545,48 @@ foreach ($profileblock->locations AS $profilecategoryid => $location)
 			'wrap' => $wrap,
 		);
 	}
+}
+
+if ($vbulletin->userinfo['options'] & $vbulletin->bf_misc_useroptions['showusercss'])
+{
+	$show['showusercss'] = 1;
+	$usercss_switch_phrase = $vbphrase['hide_user_customizations'];
+}
+else
+{
+	$show['showusercss'] = 0;
+	$usercss_switch_phrase = $vbphrase['show_user_customizations'];
+}
+
+if (!isset($vbulletin->bf_ugp_usercsspermissions['canusetheme']))
+{
+	$canusetheme = false;
+}
+else
+{
+	$canusetheme = $vbulletin->userinfo['permissions']['usercsspermissions'] & $vbulletin->bf_ugp_usercsspermissions['canusetheme'] ? true : false;
+}
+
+$cancustomize = $vbulletin->userinfo['permissions']['usercsspermissions'] & $vbulletin->bf_ugp_usercsspermissions['cancustomize'] ? true : false;
+
+//Fairly complex permissions check. Does the admin allow customization?
+$show_customize_profile = (bool)($vbulletin->options['socnet'] & $vbulletin->bf_misc_socnet['enable_profile_styling']) ;
+
+//Even if so, there are a number of reasons not to show the link.
+if (!intval($vbulletin->userinfo['userid']) OR
+	(($vbulletin->userinfo['userid']) != intval($userinfo['userid'])) OR
+	(! $canusetheme AND !$cancustomize))
+{
+	$show_customize_profile = false;
+}
+
+vB_dB_Assertor::init($vbulletin->db, $vbulletin->userinfo);
+$usertheme = vB_ProfileCustomize::getUserTheme($vbulletin->GPC['userid']);
+$show['userhastheme'] = (vB_ProfileCustomize::getUserThemeType($vbulletin->GPC['userid']) == 1) ? 1 : 0;
+
+if ($show['userhastheme'] AND $show['showusercss'])
+{
+	define('AS_PROFILE', true);
 }
 
 ($hook = vBulletinHook::fetch_hook('member_build_blocks_start')) ? eval($hook) : false;
@@ -554,9 +644,6 @@ foreach ($blocklist AS $blockid => $blockinfo)
 	}
 }
 
-$usercss = construct_usercss($userinfo, $show['usercss_switch']);
-construct_usercss_switch($show['usercss_switch'], $usercss_switch_phrase);
-
 // check to see if we can see a 'Members List' link in the breadcrumb
 if ($vbulletin->options['enablememberlist'] AND $permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canviewmembers'])
 {
@@ -586,36 +673,11 @@ $navbar = render_navbar_template($navbits);
 
 $templatename = 'MEMBERINFO';
 
-//Initially we are commenting out "theme" permissions.
-if (!isset($vbulletin->bf_ugp_usercsspermissions['canusetheme']))
-{
-	$canusetheme = false;
-}
-else
-{
-	$canusetheme = $vbulletin->userinfo['permissions']['usercsspermissions'] & $vbulletin->bf_ugp_usercsspermissions['canusetheme'] ? true : false;
-}
-
-$cancustomize = $vbulletin->userinfo['permissions']['usercsspermissions'] & $vbulletin->bf_ugp_usercsspermissions['cancustomize'] ? true : false;
-//Fairly complex permissions check. Does the admin allow customization?
-$show_customize_profile = (bool)($vbulletin->options['socnet'] & $vbulletin->bf_misc_socnet['enable_profile_styling']) ;
-
-//Even if so, there are a number of reasons not to show the link.
-if (!intval($vbulletin->userinfo['userid']) OR
-	(($vbulletin->userinfo['userid']) != intval($userinfo['userid'])) OR
-	(! $canusetheme AND !$cancustomize))
-{
-	$show_customize_profile = false;
-}
-
 $show['pmlink'] =& $show['pm']; // VBIV-12742 Lets be consistant with the name.
 
 ($hook = vBulletinHook::fetch_hook('member_complete')) ? eval($hook) : false;
 
-vB_dB_Assertor::init($vbulletin->db, $vbulletin->userinfo);
-
 //Now we need to get the css theme information if applicable
-
 
 if ($show_customize_profile)
 {
@@ -679,13 +741,14 @@ $page_templater = vB_Template::create($templatename);
 	$page_templater->register('selected_tab', $selected_tab);
 	$page_templater->register('template_hook', $template_hook);
 	$page_templater->register('author_list_url', $author_list_url);
-	$page_templater->register('usercss', $usercss);
 	$page_templater->register('usercss_switch_phrase', $usercss_switch_phrase);
 	$page_templater->register('userinfo', $userinfo);
 	$page_templater->register('show_customize_profile', $show_customize_profile);
 	$page_templater->register('author_list_url', $author_list_url);
+	$page_templater->register('show_userid', $vbulletin->GPC['userid']);
+	$page_templater->register('reputationdisplay', $prepared['reputationdisplay']);
+	$page_templater->register('activity_phrase', $userinfo['userid'] == $vbulletin->userinfo['userid'] ? $vbphrase['my_activity'] : construct_phrase($vbphrase['x_activity'], $userinfo['username']));
 
-	$usertheme = vB_ProfileCustomize::getUserTheme($vbulletin->GPC['userid']);
 	if ($usertheme)
 	{
 		$jsblock .= "var userTheme = new Array();\n" ;
@@ -715,10 +778,6 @@ $page_templater = vB_Template::create($templatename);
 		$jsblock .= "var profile_reverted_message = '" . vB_Template_Runtime::escapeJS($vbphrase['profile_reverted_message']) . "';\n";
 		$jsblock .= "var nothing_to_revert = '" . vB_Template_Runtime::escapeJS($vbphrase['nothing_to_revert']) . "';\n";
 		$jsblock .= "var confirm_sitedefault_save = '" . vB_Template_Runtime::escapeJS($vbphrase['confirm_sitedefault_msg']) . "';\n";
-
-
-		$page_templater->register('show_customcss', $vbulletin->GPC['userid']);
-		$page_templater->register('show_userid', $vbulletin->GPC['userid']);
 	}
 
 	//create the user profile customization interface
@@ -830,14 +889,12 @@ $page_templater = vB_Template::create($templatename);
 		$page_templater->register('timenow', TIMENOW);
 		$page_templater->register('posthash',
 			vB_Template_Runtime::escapeJS( md5(TIMENOW . $vbulletin->userinfo['userid'] . $vbulletin->userinfo['salt'])));
-
 	}
 
 print_output($page_templater->render(false));
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 46034 $
+|| # CVS: $RCSfile$ - $Revision: 62660 $
 || ####################################################################
 \*======================================================================*/

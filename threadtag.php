@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -29,7 +29,6 @@ $globaltemplates = array(
 	'newpost_errormessage',
 	'tag_edit',
 	'tag_managebit',
-	'tagbit',
 	'tagbit_wrapper'
 );
 
@@ -38,17 +37,11 @@ $actiontemplates = array();
 
 // ######################### REQUIRE BACK-END ############################
 require_once('./global.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
 require_once(DIR . '/includes/functions_bigthree.php');
 require_once(DIR . '/includes/class_taggablecontent.php');
-require_once(DIR . '/vb/types.php');
 
 //do we still need this?  if so, why
 require_once(DIR . '/includes/functions_newpost.php');
-
-//get autoloader hooked up.
-vB_Bootstrap_Framework::init();
-
 
 if (empty($_REQUEST['do']))
 {
@@ -104,7 +97,7 @@ if (!$vbulletin->options['threadtagging'])
 
 if (!$contenttypeid)
 {
-	eval(standard_error("~~Content type is not taggable~~"));
+	eval(standard_error(fetch_error('content_not_taggable')));
 }
 
 //this will terminate if there are permission errors
@@ -112,7 +105,7 @@ $content = vB_Taggable_Content_Item::create($vbulletin, $contenttypeid, $content
 if (!$content)
 {
 	//do we need a phrase?  This really shouldn't happen under normal operation.
-	eval(standard_error("~~Content type is not taggable~~"));
+	eval(standard_error(fetch_error('content_not_taggable')));
 }
 $content->verify_ui_permissions();
 
@@ -229,7 +222,7 @@ if ($_POST['do'] == 'managetags')
 		else
 		{
 			$vbulletin->url = $returnurl;
-			eval(print_standard_redirect(fetch_error('tags_edited_successfully'), false));
+			print_standard_redirect(fetch_error('tags_edited_successfully'), false);  
 		}
 	}
 }
@@ -379,7 +372,6 @@ if ($_REQUEST['do'] == 'manage')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45788 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/

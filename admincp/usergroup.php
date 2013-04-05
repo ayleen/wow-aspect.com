@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 45030 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 56530 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('cppermission', 'cpuser', 'promotion', 'pm', 'cpusergroup');
@@ -1249,6 +1249,8 @@ if ($_POST['do'] == 'processjoinrequests')
 		'request' => TYPE_ARRAY_INT
 	));
 
+	($hook = vBulletinHook::fetch_hook('admin_joinrequest_process_start')) ? eval($hook) : false;
+
 	// check we have some results to process
 	if (empty($vbulletin->GPC['request']))
 	{
@@ -1324,6 +1326,8 @@ if ($_POST['do'] == 'processjoinrequests')
 		}
 	}
 
+	($hook = vBulletinHook::fetch_hook('admin_joinrequest_process_complete')) ? eval($hook) : false;
+
 	// delete processed join requests
 	if (!empty($vbulletin->GPC['request']))
 	{
@@ -1340,6 +1344,8 @@ if ($_POST['do'] == 'processjoinrequests')
 // show usergroup join requests
 if ($_REQUEST['do'] == 'viewjoinrequests')
 {
+
+	($hook = vBulletinHook::fetch_hook('admin_joinrequest_view_start')) ? eval($hook) : false;
 
 	// first query groups that have join requests
 	$getusergroups = $db->query_read("
@@ -1480,7 +1486,14 @@ if ($_REQUEST['do'] == 'viewjoinrequests')
 					'<label for="d' . $request['usergrouprequestid'] . '" class="smallfont">' . $vbphrase['deny'] . '<input type="radio" name="request[' . $request['usergrouprequestid'] . ']" value="0" id="d' . $request['usergrouprequestid'] . '" tabindex="1" /></label>',
 					'<label for="i' . $request['usergrouprequestid'] . '" class="smallfont">' . $vbphrase['ignore'] . '<input type="radio" name="request[' . $request['usergrouprequestid'] . ']" value="-1" id="i' . $request['usergrouprequestid'] . '" tabindex="1" checked="checked" /></label>'
 				);
-				print_cells_row($cell, 0, '', -5);
+				
+				$printcells = true;
+				($hook = vBulletinHook::fetch_hook('admin_joinrequest_view_bit')) ? eval($hook) : false;
+
+				if ($printcells)
+				{
+					print_cells_row($cell, 0, '', -5);
+				}
 			}
 			unset($request);
 			$db->free_result($requests);
@@ -1494,14 +1507,15 @@ if ($_REQUEST['do'] == 'viewjoinrequests')
 		}
 
 	}
+
+	($hook = vBulletinHook::fetch_hook('admin_joinrequest_view_complete')) ? eval($hook) : false;
 }
 
 print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45030 $
+|| # CVS: $RCSfile$ - $Revision: 56530 $
 || ####################################################################
 \*======================================================================*/
 ?>

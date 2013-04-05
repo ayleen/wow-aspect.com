@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -60,7 +60,7 @@ class vB_Bootstrap_Framework
 
 			// Check datastore
 			// This should be redundant as all routes are accessed via vB_Router
-			if (!sizeof($vbulletin->routes))
+			if (!sizeof($vbulletin->routes) AND VBINSTALL !== true)
 			{
 				$vbulletin->datastore->fetch(array('routes'));
 			}
@@ -74,7 +74,7 @@ class vB_Bootstrap_Framework
 			// Mark the framework as loaded
 			if (!defined('VB_FRAMEWORK'))
 			{
-				define('VB_FRAMEWORK', 1);
+				define('VB_FRAMEWORK', true);
 			}
 
 			// Get the entry time
@@ -107,7 +107,6 @@ class vB_Bootstrap_Framework
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 26995 $
 || ####################################################################
 \*======================================================================*/

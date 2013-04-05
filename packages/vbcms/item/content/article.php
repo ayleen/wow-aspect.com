@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -53,8 +53,18 @@ class vBCms_Item_Content_Article extends vBCms_Item_Content
 	protected $query_info = array(
 		self::QUERY_BASIC => /* self::INFO_BASIC | self::INFO_NODE | self::INFO_DEPTH | self::INFO_CONTENT */ 39,
 		self::QUERY_PARENTS => self::INFO_PARENTS,
+		self::QUERY_NAVIGATION => self::INFO_NAVIGATION,
 		self::QUERY_CONFIG => self::INFO_CONFIG
 	);
+
+
+	/**
+	 * The total flags for all info.
+	 * This would be a constant if we had late static binding.
+	 *
+	 * @var int
+	 */
+	protected $INFO_ALL = 255;
 
 	/*ModelProperties===============================================================*/
 
@@ -67,7 +77,8 @@ class vBCms_Item_Content_Article extends vBCms_Item_Content
 		/*INFO_CONTENT================*/
 			'pagetext',	'threadid' , 'blogid', 'posttitle' ,
 			'postauthor', 'poststarter', 'postid', 'blogpostid', 'showrating', 'htmlstate',
-			'post_posted', 'post_started', 'previewimage', 'imagewidth', 'imageheight', 'previewvideo'
+			'post_posted', 'post_started', 'previewimage', 'imagewidth', 'imageheight', 'previewvideo',
+			'allcomments', 'keepthread', 'movethread', 'comment_count'
 	);
 
 	/*INFO_CONTENT================*/
@@ -119,7 +130,15 @@ class vBCms_Item_Content_Article extends vBCms_Item_Content
 
 	protected $showrating;
 
+	protected $keepthread;
+
+	protected $allcomments;
+
 	protected $query_hook = 'vbcms_article_querydata';
+
+	protected $comment_count;
+
+	protected $movethread;
 
 	/*LoadInfo======================================================================*/
 
@@ -130,7 +149,7 @@ class vBCms_Item_Content_Article extends vBCms_Item_Content
 	 * @return string
 	 */
 	protected function getLoadQuery($required_query)
-	{
+		{
 		// Hooks should check the required query before populating the hook vars
 		$hook_query_fields = $hook_query_joins = $hook_query_where = '';
 		($hook = vBulletinHook::fetch_hook($this->query_hook)) ? eval($hook) : false;
@@ -147,7 +166,8 @@ class vBCms_Item_Content_Article extends vBCms_Item_Content
 						user.username, article.pagetext, article.threadid, article.blogid,
 					article.posttitle, article.postauthor, thread.replycount, article.poststarter,
 					article.previewimage, article.imagewidth, article.imageheight, article.previewvideo,
-					article.postid, article.blogpostid, article.post_started, article.post_posted, article.htmlstate
+					article.postid, article.blogpostid, article.post_started, article.post_posted, article.htmlstate,
+					article.keepthread, article.allcomments, article.movethread
 					 $hook_query_fields
 				FROM " . TABLE_PREFIX . "cms_node AS node
 				INNER JOIN " . TABLE_PREFIX . "cms_article AS article ON article.contentid = node.contentid
@@ -328,7 +348,7 @@ class vBCms_Item_Content_Article extends vBCms_Item_Content
 	 * @return int
 	 ****/
 
-	public function getContentTypeId()
+	public function getContentTypeID()
 	{
 		return vb_Types::instance()->getContentTypeID("vBCms_Article");
 	}
@@ -337,10 +357,12 @@ class vBCms_Item_Content_Article extends vBCms_Item_Content
 	 *
 	 * @return string
 	 ****/
-	public function getPreviewText($forceload = false)
+	public function getPreviewText($forceload = false, $strip_quotes = true)
 	{
-		$context = new vB_Context($this->package . '_' . $this->class . '_previewtext_' . $this->nodeid);
+		$quotes = ($strip_quotes ? '_noquotes' : '_quotes');
+		$context = new vB_Context($this->package . '_' . $this->class . '_previewtext_' . $this->nodeid . $quotes);
 		$hashkey = strval($context);
+		
 		if (!$forceload AND ($rendered = vB_Cache::instance()->read($hashkey, true, true)))
 		{
 			return $rendered;
@@ -357,12 +379,11 @@ class vBCms_Item_Content_Article extends vBCms_Item_Content
 		$previewtext = vBCms_ContentManager::makePreviewText($this->pagetext,
 			vB::$vbulletin->options['default_cms_previewlength'],
 			$this->canUseHtml($this->userid),
-			$this->htmlstate);
+			$this->htmlstate, $strip_quotes);
 
-		vB_Cache::instance()->write($hashkey ,
+			vB_Cache::instance()->write($hashkey ,
 			$previewtext, 1440, array_merge($this->getCacheEvents(), array($this->getContentCacheEvent())));
 		return fetch_censored_text($previewtext) ;
-
 	}
 	/**** returns the previewimage value from the database record
 	 *
@@ -406,7 +427,7 @@ class vBCms_Item_Content_Article extends vBCms_Item_Content
 
 	public function getRendered($forceload = false)
 	{
-		$context = new vB_Context($this->package . '_' . $this->class . '_pagetext_' ,
+		$context = new vB_Context($this->package . '_' . $this->class . '_pagetext_' . $this->nodeid,
 			array( 'nodeid' => $this->nodeid,
 			'permissions' => vB::$vbulletin->userinfo['permissions']['cms']));
 		$hashkey = strval($context);
@@ -470,36 +491,132 @@ class vBCms_Item_Content_Article extends vBCms_Item_Content
 
 		$rendered = array('pages' => $pages, 'attachments' => $bbcode_parser->attachments,
 			'viewinfo' => $viewinfo, 'pagelist' => $pagelist);
-		vB_Cache::instance()->write($hashkey ,
-			$rendered, 1440, array_merge($this->getCacheEvents(), array($this->getContentCacheEvent())));
+		if (!VB_API)
+		{
+			vB_Cache::instance()->write($hashkey ,
+				$rendered, 1440, array_merge($this->getCacheEvents(), array($this->getContentCacheEvent())));
+		}
 		//If we updated the page text we need to also update the preview.
-		$this->getPreviewText(true);
+		$this->getPreviewText(true, false);
 		return $rendered;
 	}
 
 
+	/*** returns the current keepthread value
+	 * @return string
+	 * ******/
+	public function getKeepThread()
+	{
+		$this->Load();
+		return $this->keepthread;
+	}
 
 	/**
-	 * Gets a consistent key for cache events.
+	 * Gets the "move thread" flag- whether the admin wants to move this thread.
 	 *
-	 * @return array string
+	 * @return string
 	 */
-	public function getCacheEvents()
+	public function getMoveThread()
 	{
-		$events = parent::getCacheEvents();
-		if ($thread = $this->getAssociatedThreadId())
-		{
-			$events[] = "cms_comments_change_$thread";
-		}
-		return $events;
+		$this->Load(self::INFO_CONTENT);
+
+		return $this->movethread;
 	}
 
 
+	/** fetches the replycount
+	 * @return integer
+	 *  **/
+	public function getReplyCount()
+	{
+		//This is different from the standard reply count because if we have promoted
+		// a post and are sharing the thread we may need to recalculate.
+
+		$this->Load();
+
+		if (!$this->keepthread)
+		{
+			return $this->replycount;
+		}
+
+		//if we got here then we need to get the count from the thread.
+		//We might have a cached version.
+		$hashkey = "cms_comments_count_" . $this->nodeid;
+		$count = vB_Cache::instance()->read($hashkey, false, true);
+
+		if ($count)
+		{
+			return $count;
+		}
+
+		if ($this->allcomments)
+		{
+			$count = $this->getCommentCount($this->associatedthreadid);
+		}
+		else
+		{
+			$count = $this->getCommentCount($this->associatedthreadid, $this->creationdate);
+		}
+
+		if ($count)
+		{
+			vB_Cache::instance()->write($hashkey, $count['comment_count'], 1440, 
+				array('cms_comments_change_' . $this->associatedthreadid, 'cms_comments_add_' . $this->nodeid));
+			return $count['comment_count'];
+		}
+		
+		return 0;
+	}
+
+	/*** returns the current allcomments value
+	 * @return string
+	 * ******/
+	public function getAllComments()
+	{
+		$this->Load();
+		return $this->allcomments;
+	}
+
+
+	/**
+	 * Gets the post count for the comments thread.
+	 * Note: Deleted and moderated comments are skipped.
+	 *
+	 * @return array int
+	 */
+	protected function getCommentCount($threadid, $cutoff = 0)
+	{
+		if (!$threadid)
+		{
+			return 0;
+		}
+
+		$hook_query_joins = $hook_query_where = '';
+		($hook = vBulletinHook::fetch_hook('vbcms_article_query_commentcount')) ? eval($hook) : false;
+
+		require_once DIR . '/includes/functions_bigthree.php' ;
+		$coventry = fetch_coventry('string');
+
+		$getposts = vB::$db->query_first_slave("
+			SELECT count(post.postid) AS posts
+			FROM " . TABLE_PREFIX . "post AS post 
+			INNER JOIN " . TABLE_PREFIX . "thread AS thread USING (threadid)
+			$hook_query_joins
+			WHERE post.threadid = $threadid
+				AND post.visible = 1
+				AND thread.visible = 1
+				AND post.dateline > {$cutoff}
+				AND thread.firstpostid <> post.postid
+				" . ($coventry ? "AND post.userid NOT IN ($coventry)" : '') . "
+				$hook_query_where
+		");
+
+		return $getposts['posts'];
+	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28694 $
 || ####################################################################
 \*======================================================================*/

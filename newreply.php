@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -67,7 +67,6 @@ $globaltemplates = array(
 	'postbit_attachmentmoderated',
 	'postbit_ip',
 	'postbit_onlinestatus',
-	'postbit_reputation',
 	'bbcode_code',
 	'bbcode_html',
 	'bbcode_php',
@@ -85,8 +84,7 @@ require_once('./global.php');
 require_once(DIR . '/includes/functions_newpost.php');
 require_once(DIR . '/includes/functions_editor.php');
 require_once(DIR . '/includes/functions_bigthree.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
+
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
 // #######################################################################
@@ -158,13 +156,14 @@ $newpost['message'] = '';
 $unquoted_posts = 0;
 $multiquote_empty = '';
 $specifiedpost = 0;
+
 if ($_REQUEST['do'] == 'newreply')
 {
 	$vbulletin->input->clean_array_gpc('c', array(
 		'vbulletin_multiquote' => TYPE_STR
 	));
 	$vbulletin->input->clean_array_gpc('r', array(
-		'return_node' => TYPE_INT
+		'return_node' => TYPE_UINT
 	));
 
 	if ($vbulletin->options['multiquote'] AND !empty($vbulletin->GPC['vbulletin_multiquote']))
@@ -245,7 +244,7 @@ if ($_POST['do'] == 'unquotedposts')
 		{
 			require_once(DIR . '/includes/class_wysiwygparser.php');
 			$html_parser = new vB_WysiwygHtmlParser($vbulletin);
-			$quote_text = $this->parse_wysiwyg_html(htmlspecialchars_uni($quote_text), false, $threadinfo['forumid'], ($foruminfo['allowsmilies'] ? 1 : 0));
+			$quote_text = $html_parser->parse_wysiwyg_html(htmlspecialchars_uni($quote_text), false, $threadinfo['forumid'], ($foruminfo['allowsmilies'] ? 1 : 0));
 		}
 
 		$xml->add_tag('quotes', process_replacement_vars($quote_text));
@@ -288,7 +287,7 @@ if ($_POST['do'] == 'postreply')
 		'humanverify'    => TYPE_ARRAY,
 		'multiquoteempty'=> TYPE_NOHTML,
 		'specifiedpost'  => TYPE_BOOL,
-		'return_node'    => TYPE_INT,
+		'return_node'    => TYPE_UINT,
 	));
 
 	if ($vbulletin->GPC['loggedinuser'] != 0 AND $vbulletin->userinfo['userid'] == 0)
@@ -356,20 +355,6 @@ if ($_POST['do'] == 'postreply')
 		$vbulletin->GPC['title'] = fetch_quote_title($postinfo['title'], $threadinfo['title']);
 	}
 
-	if (isset($vbulletin->options['vbcmsforumid']) AND $foruminfo['forumid'] == $vbulletin->options['vbcmsforumid'])
-	{
-		$expire_cache = array('cms_comments_change');
-
-		if ($threadinfo['threadid'])
-		{
-			$expire_cache[] = 'cms_comments_thread_' . intval($threadinfo['threadid']);
-		}
-
-		vB_Cache::instance()->event($expire_cache);
-		vB_Cache::instance()->event('cms_comments_change_' . $threadinfo['threadid']);
-		vB_Cache::instance()->cleanNow();
-	}
-
 	$newpost['title']          =& $vbulletin->GPC['title'];
 	$newpost['iconid']         =& $vbulletin->GPC['iconid'];
 	$newpost['parseurl']       = (($vbulletin->options['allowedbbcodes'] & ALLOW_BBCODE_URL) AND $foruminfo['allowbbcode'] AND $vbulletin->GPC['parseurl']);
@@ -427,6 +412,39 @@ if ($_POST['do'] == 'postreply')
 		$postinfo['specifiedpost'] = true;
 	}
 
+	// Scan post for [attach] tags
+	$attachid = array();
+	if ($forumperms & $vbulletin->bf_ugp_forumpermissions['canpostattachment'] AND $vbulletin->userinfo['userid'] AND !empty($vbulletin->userinfo['attachmentextensions']))
+	{
+		if (preg_match_all('#\[attach(?:=(right|left|config))?\](\d+)\[/attach\]#i', $newpost['message'], $matches) AND $matches[2])
+		{
+			foreach($matches[2] AS $key => $attachmentid)
+			{
+				$attachid[] = $attachmentid;
+			}
+		}
+	}
+
+	$cms_redirect = false;
+	$cms_comment_thread = false;
+
+	if ($vbulletin->GPC_exists['return_node'] AND $vbulletin->GPC['return_node'])
+	{
+		if (verify_threadNode($threadinfo['threadid'], $vbulletin->GPC['return_node']))
+		{
+			$cms_redirect = true;
+			$cms_comment_thread = true;
+		}
+		else // Something fishy - the threadid and nodeid dont match.
+		{
+			print_no_permission();
+		}
+	}
+	else if ($node = get_nodeFromThreadid($threadinfo['threadid']))
+	{
+		$cms_comment_thread = true;
+		$vbulletin->GPC['return_node'] = $node;
+	}	
 	build_new_post('reply', $foruminfo, $threadinfo, $postinfo, $newpost, $errors);
 
 	$multiquote_empty = $vbulletin->GPC['multiquoteempty']; // cleaned to nohtml above
@@ -472,7 +490,7 @@ if ($_POST['do'] == 'postreply')
 		if ($quote_postids)
 		{
 			fetch_quotable_posts($quote_postids, $threadinfo['threadid'], $unquoted_post_count, $quoted_post_ids);
-			
+
 			// handle MQ VBIV-388
 			$multiquote_empty = 'only';
 		}
@@ -481,16 +499,17 @@ if ($_POST['do'] == 'postreply')
 		{
 			require_once(DIR . '/packages/vbattach/attach.php');
 			$attach = new vB_Attach_Display_Content($vbulletin, 'vBForum_Post');
-			$postattach = $attach->fetch_postattach($posthash);
+			$postattach = $attach->fetch_postattach($posthash, 0, $postinfo['userid'], true, $attachid);
 		}
 
 		// ### PREVIEW POST ###
-		$postpreview = process_post_preview($newpost, 0, $postattach);
+		$postpreview = process_post_preview($newpost, 0, $postattach['bycontent'][0], $postattach['byattachment']);
 		$_REQUEST['do'] = 'newreply';
 		$newpost['message'] = htmlspecialchars_uni($newpost['message']);
 	}
 	else
 	{
+		// ### NOT PREVIEW - ACTUAL POST ###
 		if ($vbulletin->options['threadmarking'] AND $vbulletin->userinfo['userid'])
 		{
 			$threadview = max($threadinfo['threadread'], $threadinfo['forumread'], TIMENOW - ($vbulletin->options['markinglimit'] * 86400));
@@ -503,248 +522,362 @@ if ($_POST['do'] == 'postreply')
 				$threadview = $vbulletin->userinfo['lastvisit'];
 			}
 		}
-		// ### NOT PREVIEW - ACTUAL POST ###
+
+		$newpostid = $newpost['postid'];
+
+		if ($cms_comment_thread)
+		{
+			// Expire any CMS comments cache entries.
+			$expire_cache = array('cms_comments_change');
+			$expire_cache[] = 'cms_comments_change_' . $threadinfo['threadid'];
+			$expire_cache[] = 'cms_comments_add_' . $vbulletin->GPC['return_node'];
+
+			vB_Cache::instance()->eventPurge($expire_cache);
+			vB_Cache::instance()->cleanNow();
+
+			$cms_url = vBCms_Route_Content::getURL(array('node' => $vbulletin->GPC['return_node']));
+			$join = strpos($cms_url,'?') ? '&' : '?';
+			$cms_url .= "{$join}postid={$newpostid}#comments_{$newpostid}";
+			$cms_url = str_ireplace('&amp;', '&', $cms_url);
+		}
+
 		if ($vbulletin->GPC['ajax'])
 		{
-		// #############################################################################
-		// #############################################################################
-		// #############################################################################
-		require_once(DIR . '/includes/class_postbit.php');
-		require_once(DIR . '/includes/functions_bigthree.php');
-		require_once(DIR . '/includes/class_xml.php');
+			// #############################################################################
+			// #############################################################################
+			// #############################################################################
+			require_once(DIR . '/includes/class_postbit.php');
+			require_once(DIR . '/includes/class_xml.php');
 
-		$postcount = 0;
-		$thread =& $threadinfo;
-		$forum =& $foruminfo;
+			$postcount = 0;
+			$thread =& $threadinfo;
+			$forum =& $foruminfo;
 
-		// work out if quickreply should be shown or not
-		if (
-			$vbulletin->options['quickreply']
-			AND
-			!$thread['isdeleted'] AND !is_browser('netscape') AND $vbulletin->userinfo['userid']
-			AND (
-				($vbulletin->userinfo['userid'] == $threadinfo['postuserid'] AND $forumperms & $vbulletin->bf_ugp_forumpermissions['canreplyown'])
-				OR
-				($vbulletin->userinfo['userid'] != $threadinfo['postuserid'] AND $forumperms & $vbulletin->bf_ugp_forumpermissions['canreplyothers'])
-			) AND
-			($thread['open'] OR can_moderate($threadinfo['forumid'], 'canopenclose'))
-		)
-		{
-			$show['quickreply'] = true;
-		}
-		else
-		{
-			$show['quickreply'] = false;
-			$show['wysiwyg'] = 0;
-			$quickreply = '';
-		}
+			if ($cms_redirect)
+			{	/* This is a CMS comment. We got here by posting from an article etc. */
+				$postbit_factory = new vB_Postbit_Factory();
+				$postbit_factory->registry =& $vbulletin;
+				$postbit_factory->forum =& $foruminfo;
+				$postbit_factory->thread =& $thread;
+				$postbit_factory->cache = array();
+				$postbit_factory->bbcode_parser = new vB_BbCodeParser($vbulletin, fetch_tag_list());
+				$postbit_factory->bbcode_parser->set_quote_template('vbcms_bbcode_quote');
 
-		if (!$forum['allowposting'])
-		{
-			$show['quickreply'] = false;
-		}
+				$xml = new vB_AJAX_XML_Builder($vbulletin, 'text/xml');
+				$xml->add_group('postbits');
 
-		$show['managepost'] = iif(can_moderate($threadinfo['forumid'], 'candeleteposts') OR can_moderate($threadinfo['forumid'], 'canremoveposts'), true, false);
-		$show['approvepost'] = (can_moderate($threadinfo['forumid'], 'canmoderateposts')) ? true : false;
-		$show['managethread'] = can_moderate($threadinfo['forumid'], 'canmanagethreads') ? true : false;
-		$show['inlinemod'] = ($show['managethread'] OR $show['managepost'] OR $show['approvepost']) ? true : false;
+				$postbit_obj = $postbit_factory->fetch_postbit('post');
+				$postbit_obj->set_template_prefix('vbcms_');
 
-		$show['multiquote_global'] = ($vbulletin->options['multiquote'] AND $vbulletin->userinfo['userid']);
-		if ($show['multiquote_global'])
-		{
-			$vbulletin->input->clean_array_gpc('c', array(
-				'vbulletin_multiquote' => TYPE_STR
-			));
+				($hook = vBulletinHook::fetch_hook('newreply_post_ajax')) ? eval($hook) : false;
 
-			// remove all posts from this thread from the cookie, but leave all the others
-			$quote_postids = explode(',', $vbulletin->GPC['vbulletin_multiquote']);
-			fetch_quotable_posts($quote_postids, $threadinfo['threadid'], $unquoted_post_count, $quoted_post_ids, 'only');
-
-			$remaining = array_diff($quote_postids, $quoted_post_ids);
-			setcookie('vbulletin_multiquote', implode(',', $remaining), 0, '/');
-		}
-
-		$hook_query_fields = $hook_query_joins = $hook_query_where = '';
-		($hook = vBulletinHook::fetch_hook('newreply_post_ajax')) ? eval($hook) : false;
-
-		$posts = $db->query_read("
-			SELECT
-				post.*, post.username AS postusername, post.ipaddress AS ip, IF(post.visible = 2, 1, 0) AS isdeleted,
-				user.*, userfield.*, usertextfield.*,
-				" . iif($forum['allowicons'], 'icon.title as icontitle, icon.iconpath,') . "
-				" . iif($vbulletin->options['avatarenabled'], 'avatar.avatarpath, NOT ISNULL(customavatar.userid) AS hascustomavatar, customavatar.dateline AS avatardateline,customavatar.width AS avwidth,customavatar.height AS avheight,') . "
-				" . iif($deljoin, 'deletionlog.userid AS del_userid, deletionlog.username AS del_username, deletionlog.reason AS del_reason,') . "
-				editlog.userid AS edit_userid, editlog.username AS edit_username, editlog.dateline AS edit_dateline,
-				editlog.reason AS edit_reason, editlog.hashistory,
-				postparsed.pagetext_html, postparsed.hasimages,
-				sigparsed.signatureparsed, sigparsed.hasimages AS sighasimages,
-				sigpic.userid AS sigpic, sigpic.dateline AS sigpicdateline, sigpic.width AS sigpicwidth, sigpic.height AS sigpicheight,
-				IF(displaygroupid=0, user.usergroupid, displaygroupid) AS displaygroupid, infractiongroupid
-				" . iif(!($permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canseehiddencustomfields']), $vbulletin->profilefiled['hidden']) . "
-				$hook_query_fields
-			FROM " . TABLE_PREFIX . "post AS post
-			LEFT JOIN " . TABLE_PREFIX . "user AS user ON(user.userid = post.userid)
-			LEFT JOIN " . TABLE_PREFIX . "userfield AS userfield ON(userfield.userid = user.userid)
-			LEFT JOIN " . TABLE_PREFIX . "usertextfield AS usertextfield ON(usertextfield.userid = user.userid)
-			" . iif($forum['allowicons'], "LEFT JOIN " . TABLE_PREFIX . "icon AS icon ON(icon.iconid = post.iconid)") . "
-			" . iif($vbulletin->options['avatarenabled'], "LEFT JOIN " . TABLE_PREFIX . "avatar AS avatar ON(avatar.avatarid = user.avatarid) LEFT JOIN " . TABLE_PREFIX . "customavatar AS customavatar ON(customavatar.userid = user.userid)") . "
-				$deljoin
-			LEFT JOIN " . TABLE_PREFIX . "editlog AS editlog ON(editlog.postid = post.postid)
-			LEFT JOIN " . TABLE_PREFIX . "postparsed AS postparsed ON(postparsed.postid = post.postid AND postparsed.styleid = " . intval(STYLEID) . " AND postparsed.languageid = " . intval(LANGUAGEID) . ")
-			LEFT JOIN " . TABLE_PREFIX . "sigparsed AS sigparsed ON(sigparsed.userid = user.userid AND sigparsed.styleid = " . intval(STYLEID) . " AND sigparsed.languageid = " . intval(LANGUAGEID) . ")
-			LEFT JOIN " . TABLE_PREFIX . "sigpic AS sigpic ON(sigpic.userid = post.userid)
-			$hook_query_joins
-			WHERE post.threadid = $threadinfo[threadid] AND " . (
-				($lastviewed = $vbulletin->GPC['ajax_lastpost']) ?
-					"post.dateline > $lastviewed AND (post.visible = 1 OR post.postid = $newpost[postid])" :
-					"post.postid = $newpost[postid]"
-				) . "
-				$hook_query_where
-			ORDER BY dateline
-		");
-
-		$postcount_query = $db->query_first("
-			SELECT COUNT(*) AS count
-			FROM " . TABLE_PREFIX . "post AS post
-			WHERE threadid = $threadinfo[threadid]
-				AND visible = 1
-				AND dateline <= " . ($vbulletin->GPC['ajax_lastpost'] ? $vbulletin->GPC['ajax_lastpost'] : TIMENOW) . "
-				AND postid <> $newpost[postid]
-		");
-		$postcount = $postcount_query['count'];
-
-		// determine ignored users
-		$ignore = array();
-		if (trim($vbulletin->userinfo['ignorelist']))
-		{
-			$ignorelist = preg_split('/( )+/', trim($vbulletin->userinfo['ignorelist']), -1, PREG_SPLIT_NO_EMPTY);
-			foreach ($ignorelist AS $ignoreuserid)
-			{
-				$ignore["$ignoreuserid"] = 1;
-			}
-		}
-
-		$see_deleted = ($forumperms & $vbulletin->bf_ugp_forumpermissions['canseedelnotice'] OR can_moderate($threadinfo['forumid']));
-
-		$postbit_factory = new vB_Postbit_Factory();
-		$postbit_factory->registry =& $vbulletin;
-		$postbit_factory->forum =& $foruminfo;
-		$postbit_factory->thread =& $thread;
-		$postbit_factory->cache = array();
-		$postbit_factory->bbcode_parser = new vB_BbCodeParser($vbulletin, fetch_tag_list());
-
-		$xml = new vB_AJAX_XML_Builder($vbulletin, 'text/xml');
-		$xml->add_group('postbits');
-
-		while ($post = $db->fetch_array($posts))
-		{
-			if ($tachyuser = in_coventry($post['userid']) AND !can_moderate($thread['forumid']))
-			{
-				continue;
-			}
-
-			if ($tachyuser)
-			{
-				$fetchtype = 'post_global_ignore';
-			}
-			else if ($ignore["$post[userid]"])
-			{
-				$fetchtype = 'post_ignore';
-			}
-			else if ($post['visible'] == 2)
-			{
-				if (!$see_deleted)
+				if ($newpost['doublepost'])
 				{
-					continue;
+					$vbulletin->GPC['ajax_lastpost'] = 0;
 				}
-				$fetchtype = 'post_deleted';
-			}
-			else if ($post['visible'] == 0 AND !can_moderate($thread['forumid'], 'canmoderateposts'))
-			{
-				$fetchtype = 'auto_moderated';
+
+				$posts = $db->query_read("
+					SELECT
+						post.*, post.username AS postusername, post.ipaddress AS ip, IF(post.visible = 2, 1, 0) AS isdeleted,
+						user.*, userfield.*, usertextfield.*,
+						" . iif($vbulletin->options['avatarenabled'], 'avatar.avatarpath, NOT ISNULL(customavatar.userid) AS hascustomavatar, customavatar.dateline AS avatardateline,customavatar.width AS avwidth,customavatar.height AS avheight,') . "
+						" . iif($deljoin, 'deletionlog.userid AS del_userid, deletionlog.username AS del_username, deletionlog.reason AS del_reason,') . "
+						IF(displaygroupid=0, user.usergroupid, displaygroupid) AS displaygroupid, infractiongroupid
+						" . iif(!($permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canseehiddencustomfields']), $vbulletin->profilefiled['hidden']) . "
+					FROM " . TABLE_PREFIX . "post AS post
+					LEFT JOIN " . TABLE_PREFIX . "user AS user ON(user.userid = post.userid)
+					LEFT JOIN " . TABLE_PREFIX . "userfield AS userfield ON(userfield.userid = user.userid)
+					LEFT JOIN " . TABLE_PREFIX . "usertextfield AS usertextfield ON(usertextfield.userid = user.userid)
+					" . iif($vbulletin->options['avatarenabled'], "LEFT JOIN " . TABLE_PREFIX . "avatar AS avatar ON(avatar.avatarid = user.avatarid) LEFT JOIN " . TABLE_PREFIX . "customavatar AS customavatar ON(customavatar.userid = user.userid)") . "
+					WHERE post.threadid = $threadinfo[threadid] AND post.parentid != 0 AND " . (
+						($lastviewed = $vbulletin->GPC['ajax_lastpost']) ?
+							"post.dateline > $lastviewed AND (post.visible = 1 OR post.postid = $newpost[postid])" :
+							"post.postid = $newpost[postid]"
+						) . "
+					ORDER BY dateline
+				");
+
+				$cms_template = vB_Template::create('vbcms_comments_detail');
+
+				while ($post = $db->fetch_array($posts))
+				{
+					if ($vbulletin->options['avatarenabled']
+					AND $vbulletin->userinfo['showavatars']
+					AND !$post['hascustomavatar'] AND !$post['avatarid'])
+					{
+						$post['hascustomavatar'] = 1;
+						$post['avatarid'] = true;
+						$post['avatarurl'] = $post['avatarpath'] = vB_Template_Runtime::fetchStyleVar('imgdir_misc') . '/unknown.gif';
+						$post['avwidth'] = 60;
+						$post['avheight'] = 60;
+					}
+
+					if ($tachyuser = in_coventry($post['userid'])
+					AND !can_moderate($threadinfo['forumid']))
+					{
+						continue;
+					}
+
+					($hook = vBulletinHook::fetch_hook('showthread_postbit_create')) ? eval($hook) : false;
+
+					if ($newpost['doublepost'])
+					{
+						$xml->add_tag('updatepost', $newpost['postid']);
+					}
+					
+					$postcount++;
+					$this_postbit = process_replacement_vars($postbit_obj->construct_postbit($post));
+
+					$cms_template->register('postid', $post['postid'] );
+					$cms_template->register('postbit', $this_postbit);
+
+					$xml->add_tag('postbit', $cms_template->render(), array('postid' => $post['postid']));
+				}
 			}
 			else
 			{
-				$fetchtype = 'post';
+				// work out if quickreply should be shown or not
+				if (
+					$vbulletin->options['quickreply']
+					AND
+					!$thread['isdeleted'] AND !is_browser('netscape') AND $vbulletin->userinfo['userid']
+					AND (
+						($vbulletin->userinfo['userid'] == $threadinfo['postuserid'] AND $forumperms & $vbulletin->bf_ugp_forumpermissions['canreplyown'])
+						OR
+						($vbulletin->userinfo['userid'] != $threadinfo['postuserid'] AND $forumperms & $vbulletin->bf_ugp_forumpermissions['canreplyothers'])
+					) AND
+					($thread['open'] OR can_moderate($threadinfo['forumid'], 'canopenclose'))
+				)
+				{
+					$show['quickreply'] = true;
+				}
+				else
+				{
+					$show['quickreply'] = false;
+					$show['wysiwyg'] = 0;
+					$quickreply = '';
+				}
+
+				if (!$forum['allowposting'])
+				{
+					$show['quickreply'] = false;
+				}
+
+				$show['managepost'] = iif(can_moderate($threadinfo['forumid'], 'candeleteposts') OR can_moderate($threadinfo['forumid'], 'canremoveposts'), true, false);
+				$show['approvepost'] = (can_moderate($threadinfo['forumid'], 'canmoderateposts')) ? true : false;
+				$show['managethread'] = can_moderate($threadinfo['forumid'], 'canmanagethreads') ? true : false;
+				$show['inlinemod'] = ($show['managethread'] OR $show['managepost'] OR $show['approvepost']) ? true : false;
+
+				$show['multiquote_global'] = ($vbulletin->options['multiquote'] AND $vbulletin->userinfo['userid']);
+				if ($show['multiquote_global'])
+				{
+					$vbulletin->input->clean_array_gpc('c', array(
+						'vbulletin_multiquote' => TYPE_STR
+					));
+
+					// remove all posts from this thread from the cookie, but leave all the others
+					$quote_postids = explode(',', $vbulletin->GPC['vbulletin_multiquote']);
+					fetch_quotable_posts($quote_postids, $threadinfo['threadid'], $unquoted_post_count, $quoted_post_ids, 'only');
+
+					$remaining = array_diff($quote_postids, $quoted_post_ids);
+					setcookie('vbulletin_multiquote', implode(',', $remaining), 0, '/');
+				}
+
+				$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+				($hook = vBulletinHook::fetch_hook('newreply_post_ajax')) ? eval($hook) : false;
+
+				if ($newpost['doublepost'])
+				{
+					$vbulletin->GPC['ajax_lastpost'] = 0;
+				}
+
+				$posts = $db->query_read("
+					SELECT
+						post.*, post.username AS postusername, post.ipaddress AS ip, IF(post.visible = 2, 1, 0) AS isdeleted,
+						user.*, userfield.*, usertextfield.*,
+						" . iif($forum['allowicons'], 'icon.title as icontitle, icon.iconpath,') . "
+						" . iif($vbulletin->options['avatarenabled'], 'avatar.avatarpath, NOT ISNULL(customavatar.userid) AS hascustomavatar, customavatar.dateline AS avatardateline,customavatar.width AS avwidth,customavatar.height AS avheight,') . "
+						" . iif($deljoin, 'deletionlog.userid AS del_userid, deletionlog.username AS del_username, deletionlog.reason AS del_reason,') . "
+						editlog.userid AS edit_userid, editlog.username AS edit_username, editlog.dateline AS edit_dateline,
+						editlog.reason AS edit_reason, editlog.hashistory,
+						postparsed.pagetext_html, postparsed.hasimages,
+						sigparsed.signatureparsed, sigparsed.hasimages AS sighasimages,
+						sigpic.userid AS sigpic, sigpic.dateline AS sigpicdateline, sigpic.width AS sigpicwidth, sigpic.height AS sigpicheight,
+						IF(displaygroupid=0, user.usergroupid, displaygroupid) AS displaygroupid, infractiongroupid
+						" . iif(!($permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canseehiddencustomfields']), $vbulletin->profilefiled['hidden']) . "
+						$hook_query_fields
+					FROM " . TABLE_PREFIX . "post AS post
+					LEFT JOIN " . TABLE_PREFIX . "user AS user ON(user.userid = post.userid)
+					LEFT JOIN " . TABLE_PREFIX . "userfield AS userfield ON(userfield.userid = user.userid)
+					LEFT JOIN " . TABLE_PREFIX . "usertextfield AS usertextfield ON(usertextfield.userid = user.userid)
+					" . iif($forum['allowicons'], "LEFT JOIN " . TABLE_PREFIX . "icon AS icon ON(icon.iconid = post.iconid)") . "
+					" . iif($vbulletin->options['avatarenabled'], "LEFT JOIN " . TABLE_PREFIX . "avatar AS avatar ON(avatar.avatarid = user.avatarid) LEFT JOIN " . TABLE_PREFIX . "customavatar AS customavatar ON(customavatar.userid = user.userid)") . "
+						$deljoin
+					LEFT JOIN " . TABLE_PREFIX . "editlog AS editlog ON(editlog.postid = post.postid)
+					LEFT JOIN " . TABLE_PREFIX . "postparsed AS postparsed ON(postparsed.postid = post.postid AND postparsed.styleid = " . intval(STYLEID) . " AND postparsed.languageid = " . intval(LANGUAGEID) . ")
+					LEFT JOIN " . TABLE_PREFIX . "sigparsed AS sigparsed ON(sigparsed.userid = user.userid AND sigparsed.styleid = " . intval(STYLEID) . " AND sigparsed.languageid = " . intval(LANGUAGEID) . ")
+					LEFT JOIN " . TABLE_PREFIX . "sigpic AS sigpic ON(sigpic.userid = post.userid)
+					$hook_query_joins
+					WHERE post.threadid = $threadinfo[threadid] AND " . (
+						($lastviewed = $vbulletin->GPC['ajax_lastpost']) ?
+							"post.dateline > $lastviewed AND (post.visible = 1 OR post.postid = $newpost[postid])" :
+							"post.postid = $newpost[postid]"
+						) . "
+						$hook_query_where
+					ORDER BY dateline
+				");
+
+				$postcount_query = $db->query_first("
+					SELECT COUNT(*) AS count
+					FROM " . TABLE_PREFIX . "post AS post
+					WHERE threadid = $threadinfo[threadid]
+						AND visible = 1
+						AND dateline <= " . ($vbulletin->GPC['ajax_lastpost'] ? $vbulletin->GPC['ajax_lastpost'] : TIMENOW) . "
+						AND postid <> $newpost[postid]
+				");
+				$postcount = $postcount_query['count'];
+
+				// determine ignored users
+				$ignore = array();
+				if (trim($vbulletin->userinfo['ignorelist']))
+				{
+					$ignorelist = preg_split('/( )+/', trim($vbulletin->userinfo['ignorelist']), -1, PREG_SPLIT_NO_EMPTY);
+					foreach ($ignorelist AS $ignoreuserid)
+					{
+						$ignore["$ignoreuserid"] = 1;
+					}
+				}
+
+				$see_deleted = ($forumperms & $vbulletin->bf_ugp_forumpermissions['canseedelnotice'] OR can_moderate($threadinfo['forumid']));
+
+				$postbit_factory = new vB_Postbit_Factory();
+				$postbit_factory->registry =& $vbulletin;
+				$postbit_factory->forum =& $foruminfo;
+				$postbit_factory->thread =& $thread;
+				$postbit_factory->cache = array();
+				$postbit_factory->bbcode_parser = new vB_BbCodeParser($vbulletin, fetch_tag_list());
+
+				$xml = new vB_AJAX_XML_Builder($vbulletin, 'text/xml');
+				$xml->add_group('postbits');
+
+				while ($post = $db->fetch_array($posts))
+				{
+					if ($tachyuser = in_coventry($post['userid']) AND !can_moderate($thread['forumid']))
+					{
+						continue;
+					}
+
+					if ($tachyuser)
+					{
+						$fetchtype = 'post_global_ignore';
+					}
+					else if ($ignore["$post[userid]"])
+					{
+						$fetchtype = 'post_ignore';
+					}
+					else if ($post['visible'] == 2)
+					{
+						if (!$see_deleted)
+						{
+							continue;
+						}
+						$fetchtype = 'post_deleted';
+					}
+					else if ($post['visible'] == 0 AND !can_moderate($thread['forumid'], 'canmoderateposts'))
+					{
+						$fetchtype = 'auto_moderated';
+					}
+					else
+					{
+						$fetchtype = 'post';
+					}
+
+					if ($postorder)
+					{
+						$post['postcount'] = --$postcount;
+					}
+					else
+					{
+						$post['postcount'] = ++$postcount;
+					}
+
+					if ($forumperms & $vbulletin->bf_ugp_forumpermissions['canpostattachment'] AND $vbulletin->userinfo['userid'] AND !empty($vbulletin->userinfo['attachmentextensions']))
+					{
+						require_once(DIR . '/packages/vbattach/attach.php');
+						$attach = new vB_Attach_Display_Content($vbulletin, 'vBForum_Post');
+						$attachments = $attach->fetch_postattach(0, $post['postid'], $postinfo['userid'], true, $attachid);
+						$post['attachments'] = $attachments['byattachment'];
+						$post['allattachments'] = $attachments['bycontent'][$post['postid']];
+					}
+
+					($hook = vBulletinHook::fetch_hook('showthread_postbit_create')) ? eval($hook) : false;
+
+					if ($newpost['doublepost'])
+					{
+						$show['spacer'] = false; // Still needed ?
+						$xml->add_tag('updatepost', $newpost['postid']);
+					}
+
+					$postbit_obj =& $postbit_factory->fetch_postbit($fetchtype);
+
+					$xml->add_tag('postbit', process_replacement_vars($postbit_obj->construct_postbit($post)), array('postid' => $post['postid']));
+				}
 			}
+			// ajax posts always mark the thread as read because any missed posts are retrieved as well
+			mark_thread_read($threadinfo, $foruminfo, $vbulletin->userinfo['userid'], TIMENOW);
 
-			if ($postorder)
+			// if post is not moderated, attempt to publish this new reply to user's Facebook feed
+			if ($newpost['visible'] AND is_facebookenabled())
 			{
-				$post['postcount'] = --$postcount;
-			}
-			else
-			{
-				$post['postcount'] = ++$postcount;
-			}
-
-			if ($post['attach'])
-			{
-				require_once(DIR . '/packages/vbattach/attach.php');
-				$attach = new vB_Attach_Display_Content($vbulletin, 'vBForum_Post');
-				$post['attachments'] = $attach->fetch_postattach(0, $post['postid']);
-			}
-
-			($hook = vBulletinHook::fetch_hook('showthread_postbit_create')) ? eval($hook) : false;
-
-			$postbit_obj =& $postbit_factory->fetch_postbit($fetchtype);
-
-			$xml->add_tag('postbit', process_replacement_vars($postbit_obj->construct_postbit($post)), array('postid' => $post['postid']));
-		}
-
-		// ajax posts always mark the thread as read because any missed posts are retrieved as well
-		mark_thread_read($threadinfo, $foruminfo, $vbulletin->userinfo['userid'], TIMENOW);
-
-
-		// if post is not moderated, attempt to publish this new reply to user's Facebook feed
-		if ($newpost['visible'] AND is_facebookenabled())
-		{
-			// check if this is a cms comment post, and make the appropriate FB post if so
-			if (isset($vbulletin->options['vbcmsforumid']) AND $foruminfo['forumid'] == $vbulletin->options['vbcmsforumid'])
-			{
-				// only post fo facebook if we have a return node
-				if ($vbulletin->GPC_exists['return_node'] AND intval($vbulletin->GPC['return_node']))
+				// If this is a cms comment post, and make the appropriate FB post if it is.
+				if ($cms_comment_thread)
 				{
 					$url = vBCms_Route_Content::getURL(array('node' => $vbulletin->GPC['return_node']));
 					$url = str_ireplace('&amp;', '&', $url);
 					publishtofacebook_articlecomment($threadinfo['title'], $newpost['message'], create_full_url($url));
 				}
+				else // If not a cms comment, simply publish the new post to Facebook
+				{
+					if ($threadview < $threadinfo['lastpost'])
+					{
+						$fblink = fetch_seo_url('thread|js', $threadinfo, array('p' => $newpost['postid'], 'posted' => 1)) . "#post$newpost[postid]";
+					}
+					else
+					{
+						$fblink = fetch_seo_url('thread|js', $threadinfo, array('p' => $newpost['postid'])) . "#post$newpost[postid]";
+					}
+					publishtofacebook_newreply($threadinfo['title'], $newpost['message'], create_full_url($fblink));
+				}
 			}
 
-			// if not a cms comment post, simply publish the new post to Facebook
-			else
+			$xml->add_tag('time', TIMENOW);
+			$xml->add_tag('newpostid', $newpostid);
+			if ($cms_redirect)
 			{
-				if ($threadview < $threadinfo['lastpost'])
-				{
-					$fblink = fetch_seo_url('thread|js', $threadinfo, array('p' => $newpost['postid'], 'posted' => 1)) . "#post$newpost[postid]";
-				}
-				else
-				{
-					$fblink = fetch_seo_url('thread|js', $threadinfo, array('p' => $newpost['postid'])) . "#post$newpost[postid]";
-				}
-				publishtofacebook_newreply($threadinfo['title'], $newpost['message'], create_full_url($fblink));
+				$xml->add_tag('newrows',$postcount);
+				$xml->add_tag('newposturl', $cms_url);
 			}
-		}
+			$xml->close_group();
+			$xml->print_xml(true);
 
-		$xml->add_tag('time', TIMENOW);
-		$xml->close_group();
-		$xml->print_xml(true);
-
-		// #############################################################################
-		// #############################################################################
-		// #############################################################################
+			// #############################################################################
+			// #############################################################################
+			// #############################################################################
 		}
 		else
 		{
 			// if this is a CMS article comment, perform the redirect back to the article
-			if ($vbulletin->GPC_exists['return_node'] AND intval($vbulletin->GPC['return_node']))
+			if ($cms_comment_thread)
 			{
-				$url = vBCms_Route_Content::getURL(array('node' => $vbulletin->GPC['return_node']));
-				$vbulletin->url = str_ireplace('&amp;', '&', $url);
 				if (is_facebookenabled())
 				{
 					publishtofacebook_articlecomment($threadinfo['title'], $newpost['message'], create_full_url($vbulletin->url));
 				}
-				exec_header_redirect($url);
+
+				if ($cms_redirect)
+				{
+					exec_header_redirect($cms_url);
+				}
 			}
 
 			if ($vbulletin->GPC['multiquoteempty'])
@@ -801,13 +934,13 @@ if ($_POST['do'] == 'postreply')
 				}
 
 				($hook = vBulletinHook::fetch_hook('newreply_post_complete')) ? eval($hook) : false;
-				eval(print_standard_redirect('redirect_postthanks', true, $forceredirect));
+				print_standard_redirect('redirect_postthanks', true, $forceredirect);
 			}
 			else
 			{
 				$vbulletin->url = fetch_seo_url('forum', $foruminfo);
 				($hook = vBulletinHook::fetch_hook('newreply_post_complete')) ? eval($hook) : false;
-				eval(print_standard_redirect('redirect_postthanks_moderate', true, true));
+				print_standard_redirect('redirect_postthanks_moderate', true, true);
 			}
 		}
 
@@ -832,7 +965,7 @@ if ($_REQUEST['do'] == 'newreply')
 		$values = "values[t]=$threadinfo[threadid]";
 		require_once(DIR . '/packages/vbattach/attach.php');
 		$attach = new vB_Attach_Display_Content($vbulletin, 'vBForum_Post');
-		$attachmentoption = $attach->fetch_edit_attachments($posthash, $poststarttime, $postattach, 0, $values, $editorid, $attachcount);
+		$attachmentoption = $attach->fetch_edit_attachments($posthash, $poststarttime, $postattach['bycontent'][0], 0, $values, $editorid, $attachcount);
 		$contenttypeid = $attach->fetch_contenttypeid();
 	}
 	else
@@ -1139,12 +1272,30 @@ if ($_REQUEST['do'] == 'newreply')
 	$navbits = construct_navbits($navbits);
 	$navbar = render_navbar_template($navbits);
 
+	$show['signaturecheckbox'] = ($permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canusesignature'] AND $vbulletin->userinfo['signature']);
 	$show['parseurl'] = (($vbulletin->options['allowedbbcodes'] & ALLOW_BBCODE_URL) AND $foruminfo['allowbbcode']);
-	$show['misc_options'] = ($vbulletin->userinfo['signature'] != '' OR $show['parseurl'] OR !empty($disablesmiliesoption));
+	$show['misc_options'] = ($show['signaturecheckbox'] OR $show['parseurl'] OR !empty($disablesmiliesoption));
 	$show['additional_options'] = ($show['misc_options'] OR !empty($attachmentoption) OR $show['member'] OR $show['threadrating'] OR !empty($threadmanagement));
+	$show['lightbox'] = ($vbulletin->options['lightboxenabled'] AND $vbulletin->options['usepopups']);
 
 	// display publish to Facebook checkbox in quick editor?
-	if (is_facebookenabled())
+	$guestuser = array(
+		'userid'      => 0,
+		'usergroupid' => 0,
+	);
+	cache_permissions($guestuser);
+
+	if (
+		$guestuser['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview']
+			AND
+		$guestuser['forumpermissions']["$foruminfo[forumid]"] & $vbulletin->bf_ugp_forumpermissions['canview']
+			AND
+		$guestuser['forumpermissions']["$foruminfo[forumid]"] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']
+			AND
+		($guestuser['forumpermissions']["$foruminfo[forumid]"] & $vbulletin->bf_ugp_forumpermissions['canviewothers'] OR $threadinfo['postuserid'] == 0)
+			AND
+		is_facebookenabled()
+	)
 	{
 		$fbpublishcheckbox = construct_fbpublishcheckbox();
 	}
@@ -1192,7 +1343,6 @@ if ($_REQUEST['do'] == 'newreply')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44478 $
+|| # CVS: $RCSfile$ - $Revision: 62620 $
 || ####################################################################
 \*======================================================================*/

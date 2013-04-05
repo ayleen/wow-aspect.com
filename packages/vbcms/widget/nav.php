@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: nav.php 35056 2010-01-21 17:02:12Z ebrown $
+ * @version $Id: nav.php 58956 2012-02-11 01:31:19Z pmarsden $
  * @access public
  */
 class vBCms_Widget_Nav extends vBCms_Widget
@@ -380,17 +380,14 @@ class vBCms_Widget_Nav extends vBCms_Widget
 	 */
 	protected function getHash($widgetid)
 	{
-		$context = new vB_Context('widget' , array('widgetid' => $widgetid,
+		$context = new vB_Context("widget_$widgetid" , array('widgetid' => $widgetid,
 			'nodeid' => $this->content->getNodeId(), 'cancreate' => vB::$vbulletin->check_user_permission('vbcmspermissions', 'cancreatecontent') ));
 		return strval($context);
-
 	}
-
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 35056 $
+|| # SVN: $Revision: 58956 $
 || ####################################################################
 \*======================================================================*/

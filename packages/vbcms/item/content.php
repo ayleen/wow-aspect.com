@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,7 +19,7 @@
  * @todo Get inherited permissions.
  *
  * @author vBulletin Development Team
- * @version 4.1.5 Patch Level 1
+ * @version 4.2.0 Patch Level 3
  * @since 26th Nov, 2008
  * @copyright vBulletin Solutions Inc.
  */
@@ -70,6 +70,7 @@ class vBCms_Item_Content extends vB_Item_Content
 	protected $cached_data = false;
 
 	protected $query_hook = 'vbcms_content_querydata';
+
 	/*InfoFlags=====================================================================*/
 
 	/**
@@ -154,7 +155,6 @@ class vBCms_Item_Content extends vB_Item_Content
 		'publicpreview', 'comments_enabled',	'new',
 		/*INFO_DEPTH==================*/
 		'depth',
-
 		/*INFO_NODE===================*/
 		'username',	'title', 'html_title', 'description', 'nodeleft', 'noderight', 'showrating',
 		'showtitle', 'showuser', 'showpreviewonly', 'showupdated', 'showviewcount',
@@ -272,7 +272,6 @@ class vBCms_Item_Content extends vB_Item_Content
 	 * @var bool
 	 */
 	protected $setpublish;
-
 	/*INFO_DEPTH====================*/
 
 	/**
@@ -429,6 +428,7 @@ class vBCms_Item_Content extends vB_Item_Content
 	protected $ratingtotal;
 
 	protected $rating;
+
 
 	/**
 	 * Whether this node has it's own navigation menu.
@@ -738,7 +738,7 @@ class vBCms_Item_Content extends vB_Item_Content
 					node.userid, node.showtitle, node.showuser, node.showpreviewonly, node.lastupdated, node.showall, node.showrating,
 					node.showupdated, node.showviewcount, node.showpublishdate, node.settingsforboth, node.includechildren, node.editshowchildren,
 					parent.permissionsfrom as parentpermissions, node.publicpreview, node.comments_enabled, node.shownav,
-					node.hidden, node.nosearch " : '') .
+					node.hidden, node.nosearch, node.new " : '') .
 				($this->requireLoad(self::INFO_NODE) ?
 					", info.description, info.title, info.html_title, info.viewcount, info.creationdate, info.workflowdate, info.keywords,
 					info.workflowstatus, info.workflowcheckedout, info.workflowlevelid, info.associatedthreadid, info.creationdate, node.showrating,
@@ -1177,7 +1177,14 @@ class vBCms_Item_Content extends vB_Item_Content
 	 */
 	public function getCacheEvents()
 	{
-		return array('content_' . $this->contenttypeid . '_' . $this->nodeid);
+		$events = array('content_' . $this->contenttypeid . '_' . $this->nodeid);
+
+		if ($thread = $this->getAssociatedThreadId())
+		{
+			$events[] = "cms_comments_change_$thread";
+		}
+
+		return $events;
 	}
 
 
@@ -1588,6 +1595,16 @@ class vBCms_Item_Content extends vB_Item_Content
 	}
 
 
+	/** fetches the New status. New nodes haven't been edited & saved
+	*
+	* @return integer
+	*
+	* **/
+	public function getNew()
+	{
+		$this->Load();
+		return $this->new;
+	}
 
 	/**
 	 * Fetches the specific layout setting for this node.
@@ -2027,7 +2044,7 @@ class vBCms_Item_Content extends vB_Item_Content
 	 *
 	 * @return int
 	 */
-	public function getContentTypeId()
+	public function getContentTypeID()
 	{
 		$this->Load();
 
@@ -2537,6 +2554,7 @@ class vBCms_Item_Content extends vB_Item_Content
 		return $this->getStyleId();
 	}
 
+
 	/*** returns the flag for comments enabled
 	*
 	 * @return int
@@ -2586,16 +2604,20 @@ class vBCms_Item_Content extends vB_Item_Content
 	 ****/
 	public function getThisCategories()
 	{
-		if ($rst = vB::$vbulletin->db->query_read($sql = "SELECT
-			cat.category, cat.categoryid, cat.catleft, cat.catright, nodec.nodeid
-			FROM " . TABLE_PREFIX . "cms_category cat
-			LEFT JOIN " . TABLE_PREFIX . "cms_nodecategory nodec ON cat.categoryid = nodec.categoryid
-			  AND  nodec.nodeid = " . $this->nodeid . "
-			ORDER BY cat.catleft;"))
+		$dupemap = array();
+		$categories = array();
+
+		if ($rst = vB::$vbulletin->db->query_read($sql = "
+			SELECT cat.category, cat.categoryid, cat.catleft, cat.catright, nodec.nodeid, info.title AS section
+			FROM " . TABLE_PREFIX . "cms_category AS cat
+			LEFT JOIN " . TABLE_PREFIX . "cms_nodeinfo AS info ON cat.parentnode = info.nodeid
+			LEFT JOIN " . TABLE_PREFIX . "cms_nodecategory AS nodec ON cat.categoryid = nodec.categoryid AND nodec.nodeid = " . $this->nodeid . "
+			ORDER BY cat.catleft;
+			")
+		)
 		{
-			$ancestry = array('0' => array());
 			$array_index = 0;
-			$categories = array();
+			$ancestry = array('0' => array());
 			while($row = vB::$vbulletin->db->fetch_array($rst))
 			{
 				//Let's get the ancestry tree;
@@ -2613,13 +2635,30 @@ class vBCms_Item_Content extends vB_Item_Content
 					}
 				}
 				$parents[] = $row['category'];
+				$row['duplicate'] = 0;
+				$row['catlevel'] = sizeOf($parents);
 				$row['text'] = implode('>', $parents);
 				$row['checked'] = (isset($row['nodeid']) ? 'checked="checked"' : '');
 				$array_index++;
 				$ancestry[$array_index] = $row;
 				$categories[] = $row;
+				$dupemap[$row['category']][] = sizeOf($categories)-1;
 			}
 		}
+
+		// Flag duplicate names.
+		foreach($dupemap AS $data)
+		{
+			if (sizeOf($data) > 1)
+			{
+				foreach($data AS $cat)
+				{
+					$categories[$cat]['duplicate'] = 1;
+					$categories[$cat]['text'] = $categories[$cat]['section'].': '.$categories[$cat]['text'];
+				}					
+			}
+		}
+
 		return $categories;
 	}
 
@@ -2654,7 +2693,7 @@ class vBCms_Item_Content extends vB_Item_Content
 
 	}
 
-	/** Creates the publish editor at the top right of the edit section
+	/** Creates the publish/metadata editor at the top right of the edit section
 	 *
 	 * @return mixed
 	 *
@@ -2662,7 +2701,6 @@ class vBCms_Item_Content extends vB_Item_Content
 	public function getPublishEditor($submit_url, $formid, $showpreview = true, $showcomments = true,
 		$publicpreview = false, $comments_enabled = false, $pagination_links = 1)
 	{
-
 		if ($this->canPublish())
 		{
 			$pub_view = new vB_View('vbcms_edit_publisher');
@@ -2670,7 +2708,8 @@ class vBCms_Item_Content extends vB_Item_Content
 			$pub_view->setpublish = $this->setpublish;
 
 			// if this is an unpublished article then we display publish to facebook
-			if (is_facebookenabled() AND vB::$vbulletin->options['fbfeednewarticle'] AND !$this->setpublish)
+			if ($this->contenttypeid != vb_Types::instance()->getContentTypeID("vBCms_Section") 
+				AND is_facebookenabled() AND vB::$vbulletin->options['fbfeednewarticle'] AND !$this->setpublish)
 			{
 				// only display box if user is connectected to facebook
 				$pub_view->showfbpublishcheckbox = is_userfbconnected();
@@ -2720,7 +2759,7 @@ class vBCms_Item_Content extends vB_Item_Content
 			$pub_view->dateformat = vB::$vbulletin->options['dateformat'];
 			// get the appropriate date format string for the
 			// publish date calendar based on user's locale
-			$pub_view->calendardateformat = (!empty(vB::$vbulletin->userinfo['lang_dateoverride']) ? '%Y/%m/%d' : 'Y/m/d');
+			$pub_view->calendardateformat = (!empty(vB::$vbulletin->userinfo['lang_locale']) ? '%Y/%m/%d' : 'Y/m/d');
 			$pub_view->groups = $this->getReaderGroups();
 			$pub_view->parents = $this->getParentage();
 			$pub_view->submit_url = $submit_url;
@@ -2738,11 +2777,9 @@ class vBCms_Item_Content extends vB_Item_Content
 			$pub_view->showrating = $this->getShowRating();
 			$pub_view->hidden = $this->getHidden();
 			$pub_view->pagination_links = $pagination_links;
-			$pub_view->show_pagination_link =
-				($this->contenttypeid == vb_Types::instance()->getContentTypeID("vBCms_Section") ) ? 1 : 0;
+			$pub_view->show_pagination_link = ($this->contenttypeid == vb_Types::instance()->getContentTypeID("vBCms_Section") ) ? 1 : 0;
 			$pub_view->shownav = $this->getShowNav();
-			$pub_view->show_shownav =
-				($this->contenttypeid == vb_Types::instance()->getContentTypeID("vBCms_Section") ) ? 0 : 1;
+			$pub_view->show_shownav = ($this->contenttypeid == vb_Types::instance()->getContentTypeID("vBCms_Section") ) ? 0 : 1;
 			$pub_view->nosearch = $this->getNoSearch();
 
 			$sectionid = (1 == $this->nodeid) ? 1 : $this->parentnode;
@@ -2774,7 +2811,7 @@ class vBCms_Item_Content extends vB_Item_Content
 			$pub_view->show_categories = ($this->contenttypeid == $pub_view->sectiontypeid ? 0 : 1);
 
 			//get the nodes
-			$nodelist = vBCms_ContentManager::getSections(false, true, false);
+			$nodelist = vBCms_ContentManager::getSections(false, false, false);
 
 			if (! isset(vB::$vbulletin->userinfo['permissions']['cms']) )
 			{
@@ -2796,10 +2833,66 @@ class vBCms_Item_Content extends vB_Item_Content
 			$pub_view->nodelist = $nodelist;
 			$pub_view->showpreview = $showpreview;
 			$pub_view->showcomments = $showcomments;
+
+			//if this is an article being promoted, set the keepthread and movethread values.
+
+			if (!$this->getAssociatedThreadId() AND
+				method_exists($this, 'getPostId') AND ($this->getPostId() > 0))
+			{
+				$pub_view->showMoveThread = true;
+				$pub_view->keepthread = $this->getKeepThread();
+				$pub_view->movethread = $this->getMoveThread();
+			}
+			else
+			{
+				$pub_view->showMoveThread = false;
+				$pub_view->listnodes = false;
+				$pub_view->movethread = false;
+			}
+
+			if (method_exists($this, 'getAllComments'))
+			{
+				$pub_view->showAllComments = (method_exists($this, 'getPostId') AND ($this->getPostId() > 0));
+				$pub_view->allcomments = $this->getAllComments();
+			}
+			else
+			{
+				$pub_view->showAllComments = 0;
+				$pub_view->allcomments = 0;
+			}
+
 			$pub_view->publicpreview = $publicpreview;
 			$pub_view->hidden = $this->hidden;
 			$pub_view->comments_enabled = $comments_enabled;
 			$pub_view->show_sections = (1 != $this->nodeid);
+
+			($hook = vBulletinHook::fetch_hook('vbcms_content_publish_editor')) ? eval($hook) : false;
+
+			//Extra handling is needed if this was promoted from a post and is an article
+			$pub_view->render_sharethread = 0;
+
+			if (method_exists($this, 'getPostId') AND method_exists($this, 'getKeepThread')	AND $this->getPostId())
+			{
+				//If the thread hasn't been assigned we display the "Keep thread" option
+				if (!$this->getAssociatedThreadId())
+				{
+					$pub_view->canset_forumid = 1;
+				}
+				else
+				{
+					$pub_view->canset_forumid = 0;
+					$pub_view->associatedthreadid  = $this->getAssociatedThreadId();
+				}
+
+				$pub_view->allcomments = $this->getAllComments();
+				$pub_view->keepthread = $this->getKeepThread();
+				$pub_view->movethread = $this->getMoveThread();
+			}
+
+			if ($comments_enabled)
+			{
+				$pub_view->section_showcomments = 1;
+			}
 
 			return $pub_view;
 		}
@@ -2826,7 +2919,8 @@ class vBCms_Item_Content extends vB_Item_Content
 		}
 	}
 
-	/** Creates the publish editor across the top of the edit section
+
+	/** Creates the publish editor across the bottom of the edit section
 	 *
 	 * @return mixed
 	 *
@@ -2845,7 +2939,7 @@ class vBCms_Item_Content extends vB_Item_Content
 			$new_view = new vB_View('vbcms_content_edit_editbar');
 			$new_view->submit_url = $submit_url;
 			//If this is a new node, then view url is the home page.
-			
+
 			if (intval($this->new))
 			{
 				$segments = array('node' => vBCms_Item_Content::buildUrlSegment($this->getParentId(), $this->getParentURLSegment()), 'action' =>'view');
@@ -2909,13 +3003,14 @@ class vBCms_Item_Content extends vB_Item_Content
 	****/
 	public function getCategories()
 	{
+		global $vbphrase;
 		if (vb_Types::instance()->getContentTypeID("vBCms_Section") == $this->contenttypeid )
 		{
 			return array();
 		}
+
+		$clc = 0;
 		$categories = array();
-
-
 		if ($rst = vB::$vbulletin->db->query_read("SELECT category, cat.categoryid FROM "
 			. TABLE_PREFIX . "cms_nodecategory nc INNER JOIN "
 			. TABLE_PREFIX . "cms_category cat ON cat.categoryid = nc.categoryid
@@ -2923,25 +3018,21 @@ class vBCms_Item_Content extends vB_Item_Content
 		{
 			while($record = vB::$vbulletin->db->fetch_array($rst))
 			{
-				$route_info = $record['categoryid'] .
-					($record['category'] != '' ? '-' . $record['category'] : '');
-				$record['category_url'] = vB_Route::create('vBCms_Route_List',
-						"category/$route_info/1")->getCurrentURL();
-				$categories[] = $record;
+				$clc++;
+				$record['comma'] = $vbphrase['comma_space'];
+				$route_info = $record['categoryid'] . ($record['category'] != '' ? '-' . $record['category'] : '');
+				$record['category_url'] = vB_Route::create('vBCms_Route_List', "category/$route_info/1")->getCurrentURL();
+				$categories[$clc] = $record;
 			}
 		}
-		return $categories;
-	}
 
-	/**
-	* Returns the 'new' field value
-	*
-	* @return int
-	*/
-	public function getNew()
-	{
-		$this->Load();
-		return $this->new;
+		// Last element
+		if ($clc)
+		{
+			$categories[$clc]['comma'] = '';
+		}
+
+		return $categories;
 	}
 
 

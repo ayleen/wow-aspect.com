@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -381,6 +381,7 @@ class vBCms_Content_Article extends vBCms_Content
 	protected function populateViewContent(vB_View $view, $viewtype = self::VIEW_PAGE, $increment_count = true)
 	{
 		global $show;
+
 		$this->content->requireInfo(vBCms_Item_Content::INFO_BASIC);
 		$this->content->requireInfo(vBCms_Item_Content::INFO_CONTENT);
 		$this->content->requireInfo(vBCms_Item_Content::INFO_CONFIG);
@@ -420,13 +421,14 @@ class vBCms_Content_Article extends vBCms_Content
 			$join_char = strpos($target_url,'?') ? '&amp;' : '?';
 			if ($posts['postid'])
 			{
-				exec_header_redirect($target_url . $join_char . "commentid=" . $posts['postid'] . "#post$posts[postid]");
+				exec_header_redirect($target_url . $join_char . "postid=" . $posts['postid'] . "#comments_$posts[postid]");
 			}
 			else
 			{
-				exec_header_redirect($target_url . $join_char . "commentid=" . $threadinfo['lastpostid'] . "#post$threadinfo[lastpostid]");
+				exec_header_redirect($target_url . $join_char . "postid=" . $threadinfo['lastpostid'] . "#comments_$threadinfo[lastpostid]");
 			}
 		}
+
 		if ($_REQUEST['commentid'])
 		{
 			vB::$vbulletin->input->clean_array_gpc('r', array(
@@ -452,7 +454,7 @@ class vBCms_Content_Article extends vBCms_Content
 
 		if ($_REQUEST['do']== 'apply' OR $_REQUEST['do'] == 'update' OR $_REQUEST['do'] == 'movenode')
 		{
-			$this->SaveData($view);
+			$this->saveData($view);
 		}
 
 		($hook = vBulletinHook::fetch_hook('vbcms_article_populate_start')) ? eval($hook) : false;
@@ -492,7 +494,8 @@ class vBCms_Content_Article extends vBCms_Content
 		parent::populateViewContent($view, $viewtype);
 
 		$segments = array('node' => vBCms_Item_Content::buildUrlSegment($this->content->getNodeId(), $this->content->getUrl()), 'action' =>'view');
-		$view->page_url =  vBCms_Route_Content::getURL($segments);
+		$view->page_url =  vBCms_Route_Content::getURL($segments, ($this->parameters['page'] > 1 ? array($this->parameters['page']) : array()));
+
 		if ($this->editing)
 		{
 			$view->pagetext = $this->content->getPageText();
@@ -557,7 +560,7 @@ class vBCms_Content_Article extends vBCms_Content
 
 				//tagging code
 				require_once DIR . '/includes/class_taggablecontent.php';
-				$taggable = vB_Taggable_Content_Item::create(vB::$vbulletin, $this->content->getContentTypeId(),
+				$taggable = vB_Taggable_Content_Item::create(vB::$vbulletin, $this->content->getContentTypeID(),
 					$this->content->getContentId(), $this->content);
 				$view->tags = $taggable->fetch_rendered_tag_list();
 				$view->tag_count = $taggable->fetch_existing_tag_count();
@@ -620,8 +623,7 @@ class vBCms_Content_Article extends vBCms_Content
 				}
 				else if ($view->threadid)
 				{
-					$threadinfo = vB::$vbulletin->db->query_first("SELECT threadid, title FROM " .
-						TABLE_PREFIX . "thread where threadid = " . $view->threadid);
+					$threadinfo = fetch_threadinfo($view->threadid);
 
 					if ($threadinfo)
 					{
@@ -634,7 +636,7 @@ class vBCms_Content_Article extends vBCms_Content
 
 				$view->comment_count = $this->content->getReplyCount();
 				$join_char = strpos($view->page_url,'?') ? '&amp;' : '?';
-				$view->newcomment_url = $view->page_url . "#new_comment";
+				$view->newcomment_url = $view->page_url . "#comments_start";
 				$view->authorid = ($this->content->getUserId());
 				$view->authorname = ($this->content->getUsername());
 				$view->viewcount = ($this->content->getViewCount());
@@ -642,10 +644,13 @@ class vBCms_Content_Article extends vBCms_Content
 				$view->can_edit = ($this->content->canEdit() OR $this->content->canPublish()) ? 1 : 0;
 				$view->parentid = $this->content->getParentId();
 
-				$null = is_facebookenabled(); // Load fb functions
+				$fb_enabled = is_facebookenabled(); // Load FB.
 
 				// display the like button for this article?
-				$view->fblikebutton = construct_fblikebutton();
+				if ($this->content->getPublished())
+				{
+					$view->fblikebutton = construct_fblikebutton();
+				}
 
 				//check to see if there is an associated thread.
 				if ($associatedthreadid = $this->content->getAssociatedThreadId()
@@ -660,7 +665,7 @@ class vBCms_Content_Article extends vBCms_Content
 			{
 				if ($showpreviewonly)
 				{
-					$view->previewtext = $this->content->getPreviewText();
+					$view->previewtext = $this->content->getPreviewText(false, false);
 					$view->preview_chopped = 1;
 				}
 				else
@@ -684,7 +689,7 @@ class vBCms_Content_Article extends vBCms_Content
 				$view->promoted_blogid = $this->content->getBlogId();
 				$view->comment_count = $this->content->getReplyCount();
 				$join_char = strpos($view->page_url,'?') ? '&amp;' : '?';
-				$view->newcomment_url = $view->page_url . "#new_comment";
+				$view->newcomment_url = $view->page_url . "#comments_start";
 				$view->authorid = ($this->content->getUserId());
 				$view->authorname = ($this->content->getUsername());
 				$view->viewcount = ($this->content->getViewCount());
@@ -696,11 +701,9 @@ class vBCms_Content_Article extends vBCms_Content
 				$view->post_started = $this->content->getPostStarted();
 				$view->post_posted = $this->content->getPostPosted();
 
-
 				//We need to check rights. If this user doesn't have download rights we hide the image.
 				if ($this->content->canDownload())
 				{
-
 					if ($view->previewimage= $this->content->getPreviewImage())
 					{
 						$view->imagewidth= $this->content->getImageWidth();
@@ -716,11 +719,11 @@ class vBCms_Content_Article extends vBCms_Content
 					$view->previewimage = false;
 					$view->previewvideo = false;
 				}
-				
-				// VBIV-8308, Attempt to use thumbnail if preview is local attachment.
-				// If this fails then nothing is lost, we just use the original image.
-				if ($view->previewimage AND vB::$vbulletin->options['cms_preview_thumb'])
+
+				if ($view->previewimage)
 				{
+					$attachmentid = 0;
+
 					$apurlinfo = @parse_url($view->previewimage);
 
 					if ($apurlinfo['scheme'])
@@ -733,10 +736,40 @@ class vBCms_Content_Article extends vBCms_Content
 						}
 					}
 
-					if ($apurlinfo['path'] == 'attachment.php' 
-						AND substr($apurlinfo['query'],0,12)  == 'attachmentid')  
-					{ // Valid local attachment path.
-						$view->previewimage .= '&amp;thumb=1';
+					if ($apurlinfo['path'] == 'attachment.php' AND substr($apurlinfo['query'],0,12) == 'attachmentid')
+					{
+						$end = strpos($apurlinfo['query'],'&',13);
+						$end = ($end ? $end : strlen($apurlinfo['query']));
+						$attachmentid = intval(substr($apurlinfo['query'],13,$end-13));
+					}
+
+					if ($attachmentid)
+					{
+						require_once(DIR . '/packages/vbattach/attach.php');
+						$attach = new vB_Attach_Display_Content(vB::$vbulletin,'vBCms_Article');			
+						$content_attachments = $attach->fetch_postattach(0,$this->content->getNodeId());
+
+						$attachment = $content_attachments["$attachmentid"];
+
+						if ($settings = @unserialize($attachment['settings']))
+						{
+							$view->attachment_settings = array(
+								'title' => ($settings['title'] ? $settings['title'] : ''), 
+								'alt' => ($settings['description'] ? $settings['description'] : '')
+							);
+						}
+
+						// VBIV-8308, Attempt to use thumbnail if preview is local attachment.
+						// If this fails then nothing is lost, we just use the original image.
+						if (vB::$vbulletin->options['cms_preview_thumb']
+							AND vB::$vbulletin->options['attachthumbs']			// VBIV-12762
+							AND vB::$vbulletin->options['viewattachedimages']	// Thumbnails need to be enabled and in use.
+						)
+						{ // Valid local attachment path.
+							$view->previewimage .= '&amp;thumb=1';
+						}
+
+						$view->previewimage .= '&amp;stc=1'; //VBIV-9909
 					}
 				}
 
@@ -758,7 +791,7 @@ class vBCms_Content_Article extends vBCms_Content
 		if (intval($view->blogpostid))
 		{
 			$view->can_view_post =
-				(!($vbulletin->userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewothers'])) ?
+				(!(vB::$vbulletin->userinfo['permissions']['vbblog_general_permissions'] & vB::$vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewothers'])) ?
 				0 : 1 ;
 		}
 		else if (intval($view->postid))
@@ -807,7 +840,9 @@ class vBCms_Content_Article extends vBCms_Content
 		$view->contenttypeid = vB_Types::instance()->getContentTypeID("vBCms_Article");
 		$view->dateformat = vB::$vbulletin->options['dateformat'];
 		$view->showrating = $this->content->getShowRating();
+
 		($hook = vBulletinHook::fetch_hook('vbcms_article_populate_end')) ? eval($hook) : false;
+
 		$this->content->cacheNow();
 		return $view;
 	}
@@ -901,6 +936,9 @@ class vBCms_Content_Article extends vBCms_Content
 			'posthash'         => vB_Input::TYPE_NOHTML,
 			'poststarttime'    => vB_Input::TYPE_UINT,
 			'htmlstate'        => vB_Input::TYPE_NOHTML,
+			'keepthread'       => vB_Input::TYPE_UINT,
+			'allcomments'      => vB_Input::TYPE_UINT,
+			'movethread'      => vB_Input::TYPE_UINT,
 		));
 
 		($hook = vBulletinHook::fetch_hook('vbcms_article_save_start')) ? eval($hook) : false;
@@ -942,12 +980,12 @@ class vBCms_Content_Article extends vBCms_Content
 				$image_location = $i;
 				if ($size = @getimagesize($previewimage))
 				{
-					$dm->set('previewimage', $previewimage);
 					$dm->set('imagewidth', $size[0]);
 					$dm->set('imageheight', $size[1]);
-					$bbcodesearch[] = substr($pagetext, $i, $j + 6);
-					$found_image = true;
 				}
+				$dm->set('previewimage', $previewimage);
+				$bbcodesearch[] = substr($pagetext, $i, $j + 6);
+				$found_image = true;
 			}
 			// or populate the preview image field with [attachment] if we can find one
 			if (!$found_image)
@@ -1117,6 +1155,21 @@ class vBCms_Content_Article extends vBCms_Content
 			if (vB::$vbulletin->GPC_exists['setpublish'])
 			{
 				$dm->set('setpublish', vB::$vbulletin->GPC['setpublish']);
+
+				//if we just published, we should set the associated thread after the save.
+				if (vB::$vbulletin->GPC['setpublish'] AND !($this->content->getSetPublish()))
+				{
+					$associate_thread_now = true;
+				}
+			}
+		}
+		else
+		{
+			// No publish date exists, and we dont have publish
+			// permission, so we need to set a default date.
+			if (intval($this->content->getPublishDate()) == 0)
+			{
+				$dm->set('publishdate', TIMENOW);
 			}
 		}
 
@@ -1135,12 +1188,35 @@ class vBCms_Content_Article extends vBCms_Content
 			$dm->set('htmlstate', vB::$vbulletin->GPC['htmlstate']);
 		}
 
+		if (vB::$vbulletin->GPC_exists['allcomments'])
+		{
+			$dm->set('allcomments', vB::$vbulletin->GPC['allcomments']);
+			$curr_threadid = $this->getAssociatedThreadId();
+
+			if ($curr_threadid > 0)
+			{
+				vB_Cache::instance()->eventPurge('cms_comments_change_' . $curr_threadid);
+			}
+		}
+
+		if (vB::$vbulletin->GPC_exists['keepthread'] AND !$this->getAssociatedThreadId())
+		{
+			$dm->set('keepthread', vB::$vbulletin->GPC['keepthread']);
+		}
+
+		if (vB::$vbulletin->GPC_exists['movethread'] AND !$this->getAssociatedThreadId())
+		{
+			$dm->set('movethread', vB::$vbulletin->GPC['movethread']);
+		}
+
 		//We may have some processing to do for public preview. Let's see if comments
 		// are enabled. We never enable them for sections, and they might be turned off globally.
 		vB::$vbulletin->input->clean_array_gpc('r', array(
-			'publicpreview' => TYPE_UINT));
+			'publicpreview' => TYPE_UINT
+		));
 
 		$success = $dm->saveFromForm($this->content->getNodeId());
+
 		$this->changed = true;
 
 		if ($dm->hasErrors())
@@ -1159,6 +1235,34 @@ class vBCms_Content_Article extends vBCms_Content
 			clear_autosave_text('vBCms_Article', $this->content->getNew() ? 0 : $this->content->getNodeId(), 0, vB::$vbulletin->userinfo['userid']);
 			$view->status = new vB_Phrase('vbcms', 'content_saved');
 			$this->cleanContentCache();
+
+			// Thread association
+			if ($associate_thread_now)
+			{
+				//We might have a value for keepthread and movethread, or we could have a stored
+				//value. We need to pass those if applicable to the associatethread function
+				if ((vB::$vbulletin->GPC_exists['keepthread'] AND intval(vB::$vbulletin->GPC['keepthread']))
+					OR (!vB::$vbulletin->GPC_exists['keepthread'] AND $this->content->getKeepThread()))
+				{
+					$keepthread = true;
+				}
+				else
+				{
+					$keepthread = false;
+				}
+
+				if ((vB::$vbulletin->GPC_exists['movethread'] AND intval(vB::$vbulletin->GPC['movethread']))
+					OR (!vB::$vbulletin->GPC_exists['movethread'] AND $this->content->getMoveThread()))
+				{
+					$movethread = true;
+				}
+				else
+				{
+					$movethread = false;
+				}
+
+				$this->associateThread($keepthread, $movethread);
+			}
 
 			// Make sure the posthash is valid
 			if (md5(vB::$vbulletin->GPC['poststarttime'] . vB::$vbulletin->userinfo['userid'] . vB::$vbulletin->userinfo['salt']) == vB::$vbulletin->GPC['posthash'])
@@ -1187,19 +1291,24 @@ class vBCms_Content_Article extends vBCms_Content
 				publishtofacebook_newarticle($message, $this->content->getTitle(), $this->content->getPageText(), create_full_url($fblink));
 			}
 		}
+		
 		($hook = vBulletinHook::fetch_hook('vbcms_article_save_end')) ? eval($hook) : false;
 
 		//invalidate the navigation cache.
 		vB_Cache::instance()->event('sections_updated');
 		vB_Cache::instance()->event('articles_updated');
-		vB_Cache::instance()->event(array_merge($this->content->getCacheEvents(),
-			array($this->content->getContentCacheEvent())));
+		vB_Cache::instance()->event(array_merge($this->content->getCacheEvents(),array($this->content->getContentCacheEvent())));
+
 		//Make sure comment count will be updated when a comment is posted
 		if ($threadid = $this->content->getAssociatedThreadId())
 		{
-			vB_Cache::instance()->event("cms_comments_thread_$threadid");
+			vB_Cache::instance()->eventPurge("cms_comments_change_$threadid");
 		}
+
+		vB_Cache::instance()->eventPurge('cms_comments_change');
+		vB_Cache::instance()->eventPurge('cms_comments_add_' . $this->content->getNodeId());
 		vB_Cache::instance()->cleanNow();
+
 		$this->content->reset();
 		//reset the required information
 		$this->content->requireInfo(vBCms_Item_Content::INFO_BASIC);
@@ -1217,7 +1326,6 @@ class vBCms_Content_Article extends vBCms_Content
 			$this->content->cacheNow();
 		}
 	}
-
 
 	/**** This creates the edit user interface. It returns the edit view.
 	 * @param none
@@ -1259,7 +1367,7 @@ class vBCms_Content_Article extends vBCms_Content
 
 		if ($_REQUEST['do'] == 'apply' OR $_REQUEST['do'] == 'update')
 		{
-			$this->SaveData($view);
+			$this->saveData($view);
 		}
 
 
@@ -1272,7 +1380,7 @@ class vBCms_Content_Article extends vBCms_Content
 
 		global $show;
 
-		$show['img_bbcode'] = true;
+		$show['img_bbcode'] = $show['video_bbcode'] = true;
 		// Get smiliecache and bbcodecache
 		vB::$vbulletin->datastore->fetch(array('smiliecache','bbcodecache'));
 
@@ -1310,7 +1418,7 @@ class vBCms_Content_Article extends vBCms_Content
 
 			$attachmentoption = $attach->fetch_edit_attachments($posthash, $poststarttime, $postattach, $this->content->getNodeId(), $values, '', $attachcount);
 
-			$attachinfo = fetch_attachmentinfo($posthash, $poststarttime, $this->getContentTypeId(), array('f' => $this->content->getNodeId()));
+			$attachinfo = fetch_attachmentinfo($posthash, $poststarttime, $this->getContentTypeID(), array('f' => $this->content->getNodeId()));
 
 			// do not display smiley sidebar
 			vB::$vbulletin->options['smtotal'] = 0;
@@ -1339,7 +1447,7 @@ class vBCms_Content_Article extends vBCms_Content
 			$templater->register('attachmentoption', $attachmentoption);
 			$templater->register('posthash', $posthash);
 			$templater->register('poststarttime', $poststarttime);
-			$templater->register('contenttypeid', $this->getContentTypeId());
+			$templater->register('contenttypeid', $this->getContentTypeID());
 			$templater->register('values', $values);
 			$templater->register('contentid', $this->content->getNodeId());
 			$templater->register('insertinline ', 1);
@@ -1354,7 +1462,7 @@ class vBCms_Content_Article extends vBCms_Content
 		}
 		else
 		{
-			$view->previewtext = $this->content->getPreviewText();;
+			$view->previewtext = $this->content->getPreviewText(false, false);
 		}
 
 		$view->url = $this->content->getUrl();
@@ -1414,7 +1522,6 @@ class vBCms_Content_Article extends vBCms_Content
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28694 $
 || ####################################################################
 \*======================================================================*/

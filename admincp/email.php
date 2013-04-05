@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 32878 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62096 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('user', 'cpuser', 'messaging', 'cprofilefield', 'profilefield');
@@ -222,7 +222,7 @@ if ($_POST['do'] == 'dosendmail' OR $_POST['do'] == 'makelist')
 					if (!$vbulletin->GPC['test'])
 					{
 						echo $vbphrase['emailing'] . " \n";
-						vbmail($user['email'], $vbulletin->GPC['subject'], $sendmessage, true, $vbulletin->GPC['from']);
+						vbmail($user['email'], $vbulletin->GPC['subject'], $sendmessage, false, $vbulletin->GPC['from']);
 					}
 					else
 					{
@@ -345,8 +345,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 62096 $
 || ####################################################################
 \*======================================================================*/
 ?>

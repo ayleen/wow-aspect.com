@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -81,8 +81,6 @@ class vB_Search_Results
 	 */
 	public static function create_from_array($user, $result_array)
 	{
-		global $vbulletin;
-
 		$results = new vB_Search_Results();
 		$results->user = $user;
 		$results->criteria = vB_Search_Core::create_criteria(vB_Search_Core::SEARCH_ADVANCED);
@@ -124,7 +122,7 @@ class vB_Search_Results
 	{
 		global $vbulletin;
 		$db = $vbulletin->db;
-		$set = $db->query($q = "
+		$set = $db->query_read_slave("
 			SELECT searchlog.*
 			FROM " . TABLE_PREFIX . "searchlog AS searchlog
 			WHERE searchhash = '" . $db->escape_string($criteria->get_hash()) . "' AND
@@ -139,19 +137,7 @@ class vB_Search_Results
 
 		while ($row = $db->fetch_array($set))
 		{
-/*
-			if ($user->isGuest())
-			{
-//				if (IPADDRESS == $row['ipaddress'])
-//				{
-				return self::create_from_record($user, $row);
-//				}
-			}
-			else
-			{
-*/
-				return self::create_from_record($user, $row);
-//			}
+			return self::create_from_record($user, $row);
 		}
 
 		return null;
@@ -174,8 +160,10 @@ class vB_Search_Results
 			WHERE userid = " . intval($user->get_field('userid')) . " AND
 				searchlogid = " . intval($searchid) . " AND
 				completed = 1";
-
-		$row = $db->query_first($sql);
+				
+		// Prob best to leave this reading from master. The entry may only
+		// just have been created, and not replicated to the slave yet.
+		$row = $db->query_first($sql); 
 		return self::create_from_record($user, $row);
 	}
 
@@ -197,6 +185,7 @@ class vB_Search_Results
 		if (isset($row['results']) AND isset($row['criteria']))
 		{
 			$results = new vB_Search_Results();
+			$results->resulthash = md5($row['results']);
 
 			$data = unserialize($row['results']);
 			$results->results = $data[0];
@@ -254,31 +243,17 @@ class vB_Search_Results
 		// or the last result in the resultset, whichever we hit first.
 		$last = min($end, $this->confirmed, count($this->results) - 1);
 		$items = array();
-/*
-		for ($i = $start; $i <= $last; $i++)
-		{
-			list($contenttype, $id, $groupid) = $this->results[$i];
 
-			$type = vB_Search_Core::get_instance()->get_search_type_from_id($contenttype);
-			$item = $type->create_item($id);
-			if ($this->should_group($contenttype, $type))
-			{
-				$item = $item->get_group_item();
-			}
-
-			$items[] = $item;
-		}
-*/
 		$i = $start;
 		$remaining = $pagelength - count($items);
 		if (($remaining > 0 OR $this->confirmed < $end_window) AND $i < count($this->results))
 		{
-//			$chunk_start =  $this->confirmed + 1;
 			$chunk_start =  $i;
 
 			//get the count now since its going to change on us.
 			$last_index = count($this->results) - 1;
 			$requested_count = 20;
+			$this->realRecordsCount = count($this->results);
 			while (($remaining > 0 OR $this->confirmed < $end_window) AND $chunk_start <= $last_index)
 			{
 				list($chunk, $last_checked_index) = $this->confirm_next_chunk($chunk_start, $last_index,
@@ -474,8 +449,8 @@ class vB_Search_Results
 	 * @return unknown
 	 */
 	public function get_confirmed_count()
-	{
-		return $this->confirmed + 1;
+	{	
+		return $this->realRecordsCount;
 	}
 
 	//todo -- look at moving the resultset to some kind of unified cache.
@@ -487,10 +462,15 @@ class vB_Search_Results
 	{
 		global $vbulletin;
 		$result_data = serialize(array($this->results, $this->confirmed, $this->groups_seen, $this->groups_rejected));
-		$vbulletin->db->query_write($q = "
-			UPDATE " . TABLE_PREFIX . "searchlog
-			SET results = '" . $vbulletin->db->escape_string($result_data) . "'
-			WHERE searchlogid = " . intval($this->searchid));
+
+		if (md5($result_data) != $this->resulthash)
+		{
+			$vbulletin->db->query_write($q = "
+				UPDATE " . TABLE_PREFIX . "searchlog
+				SET results = '" . $vbulletin->db->escape_string($result_data) . "'
+				WHERE searchlogid = " . intval($this->searchid)
+			);
+		}
 	}
 
 	private function log_search()
@@ -574,11 +554,11 @@ class vB_Search_Results
 	private $confirmed = -1;
 	private $groups_seen;
 	private $groups_rejected;
+	private $realRecordsCount = 0;
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

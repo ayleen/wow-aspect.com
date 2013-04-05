@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -324,7 +324,7 @@ abstract class vBCms_DM_Content extends vB_DM
 	 */
 	protected function deleteSearchContent()
 	{
-		if (!$type_info = vB_Search_Core::get_instance()->get_indexed_types($this->item->getContentTypeId()))
+		if (!$type_info = vB_Search_Core::get_instance()->get_indexed_types($this->item->getContentTypeID()))
 		{
 			//$this->item->getId() (returns the contentid) reflects the value prior to saving anything.
 			//this means that on first save it will be 0 because the content record hasn't been set yet.
@@ -335,7 +335,6 @@ abstract class vBCms_DM_Content extends vB_DM
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 28749 $
 || ####################################################################
 \*======================================================================*/

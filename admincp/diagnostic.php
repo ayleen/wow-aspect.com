@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 38953 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 61296 $');
 define('NOZIP', 1);
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
@@ -370,11 +370,11 @@ if ($_POST['do'] == 'doversion')
 	if ($handle)
 	{
 		$md5_sums_array = array();
-		$md5_sum_versions = array('vbulletin' => '4.1.5 Patch Level 1');
+		$md5_sum_versions = array('vbulletin' => '4.2.0 Patch Level 3');
 		$file_software_assoc = array();
 		$scanned_md5_files = array();
 		$ignored_files = array('/includes/config.php', '/includes/config.php.new', '/install/install.php', '/includes/version_vbulletin.php');
-		$ignored_dirs = array('/cpstyles/', '/includes/datastore');
+		$ignored_dirs = array('/cpstyles/', '/includes/datastore','/clientscript/libraries','/clientscript/yui/history/assets');
 
 		while ($file = readdir($handle))
 		{
@@ -728,8 +728,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 38953 $
+|| # CVS: $RCSfile$ - $Revision: 61296 $
 || ####################################################################
 \*======================================================================*/
 ?>

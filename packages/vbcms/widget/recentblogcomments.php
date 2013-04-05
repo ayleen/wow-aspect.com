@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 44566 $
- * @since $Date: 2011-06-16 11:20:07 -0700 (Thu, 16 Jun 2011) $
+ * @version $Revision: 58956 $
+ * @since $Date: 2012-02-10 17:31:19 -0800 (Fri, 10 Feb 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Widget_RecentBlogComments extends vBCms_Widget
@@ -599,7 +599,7 @@ class vBCms_Widget_RecentBlogComments extends vBCms_Widget
 			//get the avatar
 			if (vB::$vbulletin->options['avatarenabled'])
 			{
-				$blogcomment['avatar'] = fetch_avatar_from_record($blogcomment);
+				$blogcomment['avatar'] = fetch_avatar_from_record($blogcomment, true);
 			}
 			else
 			{
@@ -659,7 +659,7 @@ class vBCms_Widget_RecentBlogComments extends vBCms_Widget
 	 */
 	protected function getHash()
 	{
-		$context = new vB_Context('widget' ,
+		$context = new vB_Context('widget_' . $this->widget->getId() ,
 		array(
 			'widgetid' => $this->widget->getId(),
 			'permissions' => vB::$vbulletin->userinfo['permissions']['vbblog_general_permissions'])
@@ -667,13 +667,10 @@ class vBCms_Widget_RecentBlogComments extends vBCms_Widget
 
 		return strval($context);
 	}
-
-
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 44566 $
+|| # SVN: $Revision: 58956 $
 || ####################################################################
 \*======================================================================*/

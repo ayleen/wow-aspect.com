@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -37,7 +37,6 @@ $actiontemplates = array();
 require_once('./global.php');
 require_once(DIR . '/includes/functions_misc.php'); // for fetch_phrase
 require_once(DIR . '/includes/class_reportitem.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -64,8 +63,6 @@ $vbulletin->input->clean_array_gpc('r', array(
 if ($vbulletin->GPC['return_node'])
 {
 	$report_type = 'article_comment';
-	vB_Bootstrap_Framework::init();
-
 	$content = new vBCms_Item_Content_Article($vbulletin->GPC['return_node']);
 
 	$reportobj = new vB_ReportItem_ArticleComment($vbulletin);
@@ -78,6 +75,10 @@ if ($vbulletin->GPC['return_node'])
 	{
 		print_no_permission();
 	}
+
+	define('CMS_SCRIPT', true);
+	vB_View::registerTemplater(vB_View::OT_XHTML, new vB_Templater_vB());
+	vBCms_NavBar::prepareNavBar($content);
 }
 else
 {
@@ -141,8 +142,8 @@ if ($_REQUEST['do'] == 'report')
 		$home_url = vB::$vbulletin->options['site_tab_url']
 			. (stripos('?',  vB::$vbulletin->options['site_tab_url']) === false ? '?' : '&')
 			. "s=" . vB::$vbulletin->session->vars['sessionhash'];
-		$navbits[$home_url] = vB_Phrase::fetchPhrase('vbcms', 'vbcms_title');
 
+		$navbits[$home_url] = $vbphrase['vbcms_title'];
 		$breadcrumbs = $content->getBreadcrumbInfo();
 		foreach ($breadcrumbs AS $breadcrumb)
 		{
@@ -154,6 +155,7 @@ if ($_REQUEST['do'] == 'report')
 	}
 	else
 	{
+		$navbits[fetch_seo_url('forumhome', array())] = $vbphrase['forum'];
 		$parentlist = array_reverse(explode(',', $foruminfo['parentlist']));
 		foreach ($parentlist AS $forumID)
 		{
@@ -201,13 +203,12 @@ if ($_POST['do'] == 'sendemail')
 
 	$reportobj->do_report($vbulletin->GPC['reason'], $postinfo);
 
-	eval(print_standard_redirect('redirect_reportthanks'));
+	print_standard_redirect('redirect_reportthanks');  
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 38638 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

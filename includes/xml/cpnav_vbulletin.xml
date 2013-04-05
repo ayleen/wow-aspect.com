@@ -14,6 +14,11 @@
 			<link>options.php?do=searchtype</link>
 		</navoption>
 
+		<navoption permissions="canadminstyles" displayorder="25">
+			<phrase>navigation_manager</phrase>
+			<link>navigation.php</link>
+		</navoption>
+
 		<navoption displayorder="30">
 			<phrase>human_verification_manager</phrase>
 			<link>verify.php</link>
@@ -26,6 +31,11 @@
 
 		<navoption debug="1" link="help.php?do=manage&amp;script=NOSCRIPT" displayorder="50">
 			<phrase>admin_help_manager</phrase>
+		</navoption>
+
+		<navoption permissions="canadminmaintain" displayorder="90">
+			<phrase>run_upgrade</phrase>
+			<link>../install/upgrade.php</link>
 		</navoption>
 
 	</navgroup>
@@ -578,7 +588,7 @@
 
 		<navoption displayorder="10">
 			<phrase>verticalresponse</phrase>
-			<link>http://anonym.to/?www.verticalresponse.com/vbulletin/</link>
+			<link>http://www.verticalresponse.com/vbulletin/</link>
 		</navoption>
 
 		<navoption displayorder="20">
@@ -805,6 +815,16 @@
 	</navgroup>
 
 	<navgroup phrase="maintenance" permissions="canadminmaintain" hr="true" displayorder="250">
+
+		<navoption displayorder="10">
+			<phrase>clear_system_cache</phrase>
+			<link>misc.php?do=clear_cache</link>
+		</navoption>
+
+		<navoption displayorder="15">
+			<phrase>clear_autosave</phrase>
+			<link>misc.php?do=clearauto</link>
+		</navoption>
 
 		<navoption displayorder="20">
 			<phrase>repair_optimize_tables</phrase>

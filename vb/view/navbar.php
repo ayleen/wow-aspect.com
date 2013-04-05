@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -61,18 +61,57 @@ class vB_View_NavBar extends vB_View
 			'notices' => $notices,
 			'foruminfo' => $foruminfo,
 			'notifications_menubits' => $notifications_menubits,
-			'ad_location' => $ad_location
+			'ad_location' => $ad_location,
+			'bbmenu' => vB::$vbulletin->options['bbmenu'],
+			'navigation' => $this->getNavigation(),
 		);
 
 		$this->_properties = array_merge($this->_properties, $globals);
+	}
 
-		$this->_properties['bbmenu'] = vB::$vbulletin->options['bbmenu'];
+	/**
+	 * Renders the navigation tabs & links.
+	*/
+	protected function getNavigation()
+	{
+		global $vbulletin;
+
+		$root = '';
+		$root_tab = $roots['vbtab_forum'];
+
+		$tabs = build_navigation_menudata();
+		$roots = get_navigation_roots(build_navigation_list());
+
+		$request_tab = intval($_REQUEST['tabid']);
+		$script_tab = get_navigation_tab_script();
+
+		$hook_tabid = $tabid = 0; 
+		($hook = vBulletinHook::fetch_hook('set_navigation_tab_vbview')) ? eval($hook) : false;
+
+		if ($root)
+		{
+			$tabid = $roots[$root];
+		}
+
+		/* Tab setting logic, using above choices. Preference order
+		is (low > high) root > script > hookroot > hookid > request */
+		$current_tab = $script_tab ? $script_tab : $root_tab;
+		$current_tab = $tabid ? $tabid : $current_tab;
+		$current_tab = $hook_tabid ? $hook_tabid : $current_tab;
+		$current_tab = $request_tab ? $request_tab : $current_tab;
+
+		$tabid = set_navigation_tab($current_tab, $tabs);
+
+		$view = new vB_View('navbar_tabs');
+		$view->tabs = $tabs;
+		$view->selected = $tabid;
+
+		return $view->render();
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28709 $
 || ####################################################################
 \*======================================================================*/

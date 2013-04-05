@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright 2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright 2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -39,8 +39,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 40577 $
- * @since $Date: 2010-11-15 14:57:02 -0800 (Mon, 15 Nov 2010) $
+ * @version $Revision: 60418 $
+ * @since $Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 abstract class vB_Item extends vB_Model
@@ -379,7 +379,7 @@ abstract class vB_Item extends vB_Model
 	 */
 	protected function getCacheEvents()
 	{
-		return array(get_class($this) . '.' . $this->itemid);
+		return array(get_class($this) . '_' . $this->itemid);
 	}
 
 
@@ -419,7 +419,6 @@ abstract class vB_Item extends vB_Model
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 40577 $
+|| # SVN: $Revision: 60418 $
 || ####################################################################
 \*======================================================================*/

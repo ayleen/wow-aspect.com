@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -225,7 +225,7 @@ abstract class vB_Cache
 	* a lot of the information we requested last time we were on that page, let's
 	* store the cached information.
 	***/
-	public function saveCacheInfo($cacheid)
+	public function saveCacheInfo($cacheid = 'MetaData')
 	{
 		//If the minimum time hasn't passed, then don't update
 		if ($this->meta_info['last_update'] AND
@@ -285,7 +285,7 @@ abstract class vB_Cache
 	/** If we used saveCacheInfo to save data,
 	* this will get it back.
 	****/
-	public function restoreCacheInfo($cacheid)
+	public function restoreCacheInfo($cacheid = 'MetaData')
 	{
 		//Only do this once.
 		if ($this->meta_loaded)
@@ -470,6 +470,21 @@ abstract class vB_Cache
 
 
 	/**
+	 * Purges cache objects based on an event.
+	 * An event handling vB_CacheObserver must be attached to handle cache events.
+	 *
+	 * @param string | array $event				- The name of the event
+	 */
+	public function eventPurge($events)
+	{
+		// Notify observers of purge event
+		$this->notifyEventPurge($events);
+
+		return $this;
+	}
+
+
+	/**
 	 * Locks a cache entry.
 	 * This is done to prevent a cache slam where concurrent connections attempt to
 	 * rebuild an expired cache entry.  While a cache entry is locked, it should be
@@ -614,6 +629,20 @@ abstract class vB_Cache
 		foreach ($this->observers AS $observer)
 		{
 			$observer->event($events);
+		}
+	}
+
+
+	/**
+	 * Notifies observers of an event purge.
+	 *
+	 * @param string | array $event				- Id of the event
+	 */
+	protected function notifyEventPurge($events)
+	{
+		foreach ($this->observers AS $observer)
+		{
+			$observer->eventPurge($events);
 		}
 	}
 
@@ -772,7 +801,14 @@ class vB_CacheObject
 	 */
 	public function getKey()
 	{
-		return $this->key;
+		if ($this->key)
+		{
+			return $this->key;
+		}
+		else
+		{
+			return 'Default_Key';
+		}
 	}
 
 
@@ -853,7 +889,6 @@ class vB_CacheObject
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 29401 $
 || ####################################################################
 \*======================================================================*/

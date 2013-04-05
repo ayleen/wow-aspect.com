@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -160,6 +160,7 @@ else
 	$mimetype = unserialize($filedatainfo['mimetype']);
 }
 
+header('Pragma:'); // VBIV-8269 
 header('Cache-control: max-age=31536000, private');
 header('Expires: ' . gmdate("D, d M Y H:i:s", TIMENOW + 31536000) . ' GMT');
 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $filedatainfo['dateline']) . ' GMT');
@@ -273,7 +274,7 @@ flush();
 
 function fetch_blank_image()
 {
-	$filedata = base64_decode('R0lGODlhAQABAIAAAMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==');
+	$filedata = vb_base64_decode('R0lGODlhAQABAIAAAMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==');
 	$filesize = strlen($filedata);
 	header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');             // Date in the past
 	header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT'); // always modified
@@ -288,8 +289,7 @@ function fetch_blank_image()
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44868 $
+|| # CVS: $RCSfile$ - $Revision: 47204 $
 || ####################################################################
 \*======================================================================*/
 ?>

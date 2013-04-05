@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 37624 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62098 $');
 define('DEFAULT_FILENAME', 'vbulletin-language.xml');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
@@ -88,6 +88,7 @@ if ($_POST['do'] == 'download')
 		'just_phrases' => TYPE_BOOL,
 		'product'      => TYPE_STR,
 		'custom'       => TYPE_BOOL,
+		'charset'      => TYPE_NOHTML,
 	));
 
 	if (empty($vbulletin->GPC['filename']))
@@ -100,18 +101,9 @@ if ($_POST['do'] == 'download')
 		@set_time_limit(1200);
 	}
 
-	//inits classloader -- required to make vB_Cache work
-	require_once(DIR . '/includes/class_bootstrap_framework.php');
-	vB_Bootstrap_Framework::init();
-
 	try
 	{
-		$doc = get_language_export_xml (
-			$vbulletin->GPC['dolanguageid'], 
-			$vbulletin->GPC['product'], 
-			$vbulletin->GPC['custom'], 
-			$vbulletin->GPC['just_phrases']
-		);	
+		$doc = get_language_export_xml($vbulletin->GPC['dolanguageid'], $vbulletin->GPC['product'], $vbulletin->GPC['custom'], $vbulletin->GPC['just_phrases'], $vbulletin->GPC['charset'] ? $vbulletin->GPC['charset'] : 'ISO-8859-1');	
 	}
 	catch (vB_Exception_AdminStopMessage $e)
 	{
@@ -258,6 +250,7 @@ if ($_POST['do'] == 'upload')
 		'title'        => TYPE_STR,
 		'serverfile'   => TYPE_STR,
 		'anyversion'   => TYPE_BOOL,
+		'readcharset'  => TYPE_BOOL,
 	));
 
 	$vbulletin->input->clean_array_gpc('f', array(
@@ -283,7 +276,7 @@ if ($_POST['do'] == 'upload')
 		print_stop_message('no_file_uploaded_and_no_local_file_found');
 	}
 
-	xml_import_language($xml, $vbulletin->GPC['dolanguageid'], $vbulletin->GPC['title'], $vbulletin->GPC['anyversion']);
+	xml_import_language($xml, $vbulletin->GPC['dolanguageid'], $vbulletin->GPC['title'], $vbulletin->GPC['anyversion'], true, true, $vbulletin->GPC['readcharset']);
 
 	build_language_datastore();
 
@@ -296,14 +289,74 @@ if ($_POST['do'] == 'upload')
 if ($_REQUEST['do'] == 'files')
 {
 	require_once(DIR . '/includes/functions_misc.php');
-	$languages = fetch_language_titles_array('', 1);
-
+	$alllanguages = fetch_languages_array();
+	$languages = array();
+	$charsets = array(
+		'ISO-8859-1' => 'ISO-8859-1'
+	);
+	$jscharsets = array(
+		'-1' => 'ISO-8859-1'
+	);
+	foreach ($alllanguages AS $languageid => $language)
+	{
+		$jscharsets[$languageid] = strtoupper($language['charset']);
+		$languages[$languageid] = $language['title'];
+		if ($languageid == $vbulletin->GPC['dolanguageid'])
+		{
+			$charset = strtoupper($language['charset']);
+			if ($charset != 'ISO-8859-1')
+			{
+				$charsets[$charset] = $charset;
+			}
+		}
+	}
+	?>
+	<script type="text/javascript">
+	<!--
+	function js_set_charset(formobj, languageid)
+	{
+		var charsets = {
+		<?php
+		$output = '';
+		foreach ($jscharsets AS $languageid => $charset)
+		{
+			$output .= "'$languageid' : '$charset',\r\n";
+		}
+		echo rtrim($output, "\r\n,") . "\r\n";
+		?>
+		};
+		var charsetobj = formobj.charset;
+		var charset = charsets[languageid];
+		if (charset == charsetobj.options[0].value) // 'ISO-8859-1' which is always in options[0]
+		{	// Remove second charset item from list since this language is 'ISO-8859-1'
+			if (charsetobj.options.length == 2)
+			{
+				charsetobj.remove(1);
+			}
+		}
+		else
+		{
+			if (charsetobj.options.length == 1)
+			{	// Add an option!
+				var option = document.createElement("option");
+				charsetobj.add(option, null);
+			}
+			// Change the option, maybe to the same thing but that doesn't matter
+			charsetobj.options[1].value = charset;
+			charsetobj.options[1].text = charset;
+		}
+	}
+	// -->
+	</script>
+	<?php	
+	
 	// download form
 	print_form_header('language', 'download', 0, 1, 'downloadform" target="download');
 	print_table_header($vbphrase['download']);
-	print_label_row($vbphrase['language'], '<select name="dolanguageid" tabindex="1" class="bginput">' . iif($vbulletin->debug, '<option value="-1">' . MASTER_LANGUAGE . '</option>') . construct_select_options($languages, $vbulletin->GPC['dolanguageid']) . '</select>', '', 'top', 'languageid');
+	print_label_row($vbphrase['language'], '<select name="dolanguageid" tabindex="1" class="bginput" onchange="js_set_charset(this.form, this.value)">' . ($vbulletin->debug ? '<option value="-1">' . MASTER_LANGUAGE . '</option>' : '') . construct_select_options($languages, $vbulletin->GPC['dolanguageid']) . '</select>', '', 'top', 'languageid');
 	print_select_row($vbphrase['product'], 'product', fetch_product_list());
 	print_input_row($vbphrase['filename'], 'filename', DEFAULT_FILENAME);
+	print_select_row($vbphrase['charset'], 'charset', $charsets);
 	print_yes_no_row($vbphrase['include_custom_phrases'], 'custom', 0);
 	print_yes_no_row($vbphrase['just_fetch_phrases'], 'just_phrases', 0);
 	print_submit_row($vbphrase['download']);
@@ -331,6 +384,7 @@ if ($_REQUEST['do'] == 'files')
 	print_label_row($vbphrase['overwrite_language_dfn'], '<select name="dolanguageid" tabindex="1" class="bginput"><option value="0">(' . $vbphrase['create_new_language'] . ')</option>' . construct_select_options($languages) . '</select>', '', 'top', 'olanguageid');
 	print_input_row($vbphrase['title_for_uploaded_language'], 'title');
 	print_yes_no_row($vbphrase['ignore_language_version'], 'anyversion', 0);
+	print_yes_no_row($vbphrase['read_charset_from_file'], 'readcharset', 1);
 	print_submit_row($vbphrase['import']);
 
 }
@@ -967,8 +1021,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 37624 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

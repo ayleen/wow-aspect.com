@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -26,7 +26,7 @@ if (!isset($GLOBALS['vbulletin']->db))
 */
 function fetch_ordered_categories($userid = 0, $force = false, $admin = true)
 {
-	global $vbulletin;
+	global $vbulletin, $vbphrase;
 
 	if (isset($vbulletin->vbblog['categorycache']["$userid"]) AND !$force)
 	{
@@ -58,6 +58,17 @@ function fetch_ordered_categories($userid = 0, $force = false, $admin = true)
 
 	while ($cat = $vbulletin->db->fetch_array($cats))
 	{
+		if (!$cat['userid'])	// Global category, translations from from $vbphrase
+		{
+			if ($vbphrase['category' . $cat['blogcategoryid'] . '_title'])
+			{
+				$cat['title'] = $vbphrase['category' . $cat['blogcategoryid'] . '_title'];
+			}
+			if ($vbphrase['category' . $cat['blogcategoryid'] . '_desc'])
+			{
+				$cat['description'] = $vbphrase['category' . $cat['blogcategoryid'] . '_desc'];
+			}
+		}
 		$vbulletin->vbblog['icategorycache']["$userid"]["$cat[parentid]"]["$cat[blogcategoryid]"] = $cat['blogcategoryid'];
 		$categorydata["$cat[blogcategoryid]"] = $cat;
 	}
@@ -110,7 +121,7 @@ function fetch_category_order($userid, $parentid = 0, $depth = 0)
 */
 function construct_category_checkbox(&$categories, $userinfo, $type = 'global')
 {
-	global $vbulletin;
+	global $vbulletin, $vbphrase;
 
 	if (!$userinfo['permissions'])
 	{
@@ -345,7 +356,6 @@ function fetch_category_child_list($maincategoryid, $parentid, $userid)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 27303 $
 || ####################################################################
 \*======================================================================*/

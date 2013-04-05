@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -118,10 +118,7 @@ if ($_REQUEST['do'] == 'im')
 
 	if ($type == 'icq')
 	{
-		// ICQ's API for paging doesn't seem to work right now, but they have a URL that does
-		$vbulletin->url = 'http://www.icq.com/people/webmsg.ph' . 'p?to=' . urlencode($userinfo['icq'])
-			. '&from=' . urlencode(unhtmlspecialchars($vbulletin->userinfo['username']))
-			. '&fromemail=' . urlencode($vbulletin->userinfo['email']);
+		$vbulletin->url = 'http://www.icq.com/people/' . urlencode($userinfo['icq']);
 		exec_header_redirect($vbulletin->url);
 		exit;
 	}
@@ -129,7 +126,6 @@ if ($_REQUEST['do'] == 'im')
 	// shouldn't be a problem hard-coding this text, as they are all commercial names
 	$typetext = array(
 		'msn'   => 'MSN',
-		'icq'   => 'ICQ',
 		'aim'   => 'AIM',
 		'yahoo' => 'Yahoo!',
 		'skype' => 'Skype'
@@ -326,11 +322,11 @@ if ($_POST['do'] == 'docontactus')
 
 		($hook = vBulletinHook::fetch_hook('sendmessage_docontactus_complete')) ? eval($hook) : false;
 
-		$url =& $vbulletin->url;
+		$url =& $vBulletin->url;
 		eval(fetch_email_phrases('contactus', $languageid));
 		vbmail($destemail, $subject, $message, false, $vbulletin->GPC['email'], '', $name);
 
-		eval(print_standard_redirect('redirect_sentfeedback', true, true));
+		print_standard_redirect('redirect_sentfeedback', true, true);  
 	}
 	// there are errors!
 	else
@@ -425,15 +421,8 @@ if ($_REQUEST['do'] == 'contactus')
 	}
 
 	// generate navbar
-	if ($permissions['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview'])
-	{
-		$navbits = construct_navbits(array('' => $vbphrase['contact_us']));
-		$navbar = render_navbar_template($navbits);
-	}
-	else
-	{
-		$navbar = '';
-	}
+	$navbits = construct_navbits(array('' => $vbphrase['contact_us']));
+	$navbar = render_navbar_template($navbits);
 
 	($hook = vBulletinHook::fetch_hook('sendmessage_contactus_complete')) ? eval($hook) : false;
 
@@ -597,7 +586,7 @@ if ($_POST['do'] == 'dosendtofriend')
 	($hook = vBulletinHook::fetch_hook('sendmessage_dosendtofriend_complete')) ? eval($hook) : false;
 
 	$sendtoname = htmlspecialchars_uni($sendtoname);
-	eval(print_standard_redirect('redirect_sentemail'));
+	print_standard_redirect(array('redirect_sentemail',$sendtoname));  
 
 }
 
@@ -720,14 +709,13 @@ if ($_POST['do'] == 'domailmember')
 		// parse this next line with eval:
 		$sendtoname = $userinfo['username'];
 
-		eval(print_standard_redirect('redirect_sentemail'));
+		print_standard_redirect(array('redirect_sentemail',$sendtoname));
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45788 $
+|| # CVS: $RCSfile$ - $Revision: 58373 $
 || ####################################################################
 \*======================================================================*/
 ?>

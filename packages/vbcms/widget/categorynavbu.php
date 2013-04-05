@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: categorynavbu.php 37602 2010-06-18 18:37:15Z ksours $
+ * @version $Id: categorynavbu.php 49202 2011-08-22 21:15:07Z michael.lavaveshkul $
  * @access public
  */
 class vBCms_Widget_CategoryNavBU extends vBCms_Widget_CategoryNav
@@ -81,7 +81,7 @@ class vBCms_Widget_CategoryNavBU extends vBCms_Widget_CategoryNav
 
 		// Create view
 		$view = new vBCms_View_Widget($config['template_name']);
-		$this->sectionid = $this->content->getContentTypeId() == vb_Types::instance()->getContentTypeID("vBCms_Section") ?
+		$this->sectionid = $this->content->getContentTypeID() == vb_Types::instance()->getContentTypeID("vBCms_Section") ?
 			$this->content->getNodeId() : $this->content->getParentId();
 		$cache_key = $this->getHash($this->widget->getId(), $this->sectionid);
 
@@ -164,7 +164,6 @@ class vBCms_Widget_CategoryNavBU extends vBCms_Widget_CategoryNav
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 37602 $
+|| # SVN: $Revision: 49202 $
 || ####################################################################
 \*======================================================================*/

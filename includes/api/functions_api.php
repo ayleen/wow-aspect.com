@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ï¿½2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -35,9 +35,8 @@ function loadAPI($scriptname, $do = '', $version = 0, $updatedo = false)
 	{
 		$version = $VB_API_REQUESTS['api_version'];
 	}
-
+	
 	$scriptname = cleanAPIName($scriptname);
-
 	// Setup new API
 	$internalscriptname = $scriptname;
 	if ($updatedo)
@@ -48,14 +47,30 @@ function loadAPI($scriptname, $do = '', $version = 0, $updatedo = false)
 	$do = cleanAPIName($do);
 	$version = intval($version);
 	$access = false;
-	// Check if the api method has been defined in versions
-	for ($i = 1; $i <= $version; $i++)
+	
+// If a v6 or greater file exists, just load it as it is a rollup of previous versions
+	for ($i = $version; $i >= 6; $i--)
 	{
 		$api_filename = CWD_API . '/' . $i . '/' . $scriptname . (($do AND !VB_API_CMS)?'_' . $do:'') . '.php';
 		if (file_exists($api_filename))
 		{
 			$access = true;
-			require_once $api_filename;
+			require_once($api_filename);
+			break;
+		}
+	}		
+	
+	// Available files to load must be v5 or lower, load them all
+	if (!$access)
+	{
+		for ($i = 1; $i <= $version; $i++)
+		{
+			$api_filename = CWD_API . '/' . $i . '/' . $scriptname . (($do AND !VB_API_CMS)?'_' . $do:'') . '.php';
+			if (file_exists($api_filename))
+			{
+				$access = true;
+				require_once($api_filename);
+			}
 		}
 	}
 
@@ -82,19 +97,40 @@ function loadAPI($scriptname, $do = '', $version = 0, $updatedo = false)
 function loadCommonWhiteList($version = 0)
 {
 	global $VB_API_WHITELIST_COMMON, $VB_API_REQUESTS;
+	//error_log("--- path = " . CWD_API,3,"/var/www/html/facebook/error/errors.txt");
 	if (!$version)
 	{
 		$version = $VB_API_REQUESTS['api_version'];
 	}
-
-	for ($i = 1; $i <= $version; $i++)
+	
+	// Why scan for these files when we know what files are there and this is easy to maintain?
+	// To add a v7 whitelist, make this array:
+	// $whitelistfiles = array(7,6,5);
+	// Descending Order!
+	$whitelistfiles = array(6,5);
+	
+	if ($version < 5)
 	{
-		$filename = CWD_API . '/commonwhitelist_' . $i . '.php';
-		if (file_exists($filename))
+		// for versions < 5 always load commonwhitelist_1.php
+		require_once(CWD_API . '/commonwhitelist_1.php');
+		if ($version >= 2)
 		{
-			require $filename;
+			// for versions < 5 and >= 2, always load commonwhitelist_2.php
+			require_once(CWD_API . '/commonwhitelist_2.php');
 		}
 	}
+	else	// load newest file that is <= to our $version, these version contain all changes from previous versions
+	{
+		foreach ($whitelistfiles AS $_version)
+		{
+			if ($_version <= $version)
+			{
+				require_once(CWD_API . "/commonwhitelist_{$_version}.php");
+				break;
+			}
+		}
+	}
+	
 	return $VB_API_WHITELIST_COMMON;
 }
 
@@ -145,7 +181,6 @@ function build_message_plain($message)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 34655 $
 || ####################################################################
 \*======================================================================*/

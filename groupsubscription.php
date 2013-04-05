@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -290,7 +290,7 @@ if ($_POST['do'] == 'delete')
 		AND userid = " . $vbulletin->userinfo['userid']
 	);
 
-	eval(print_standard_redirect('subupdate'));
+	print_standard_redirect('subupdate');  
 }
 
 // ########################## Update Subscription ###################################
@@ -304,7 +304,7 @@ if ($_POST['do'] == 'noemail' OR $_POST['do'] == 'instantemail')
 		AND userid = " . $vbulletin->userinfo['userid']
 	);
 
-	eval(print_standard_redirect('subupdate'));
+	print_standard_redirect('subupdate');  
 }
 
 // ###############################################################
@@ -348,12 +348,11 @@ if ($_POST['do'] == 'updategroup')
 		}
 	}
 
-	eval(print_standard_redirect('subupdate'));
+	print_standard_redirect('subupdate');  
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 26399 $
 || ####################################################################
 \*======================================================================*/

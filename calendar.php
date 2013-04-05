@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -121,10 +121,6 @@ $actiontemplates['none'] =& $actiontemplates['displayweek'];
 // ########################## REQUIRE BACK-END ############################
 require_once('./global.php');
 require_once(DIR . '/includes/functions_calendar.php');
-
-// bootstrap framework
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // ########################################################################
 // ######################### START MAIN SCRIPT ############################
@@ -298,6 +294,8 @@ $calendarid =& $calendarinfo['calendarid'];
 $calview = htmlspecialchars_uni(fetch_bbarray_cookie('calendar', 'calview' . $calendarinfo['calendarid']));
 $calmonth = intval(fetch_bbarray_cookie('calendar', 'calmonth'));
 $calyear = intval(fetch_bbarray_cookie('calendar', 'calyear'));
+
+$show['neweventlink'] = ($vbulletin->userinfo['calendarpermissions'][$calendarid] & $vbulletin->bf_ugp_calendarpermissions['canpostevent']) ? true : false;
 
 if (empty($_REQUEST['do']))
 {
@@ -998,7 +996,7 @@ if ($_REQUEST['do'] == 'manage')
 				$eventdata->delete();
 
 				$vbulletin->url = 'calendar.php?' . $vbulletin->session->vars['sessionurl'] . "c=$calendarinfo[calendarid]";
-				eval(print_standard_redirect('redirect_calendardeleteevent'));
+				print_standard_redirect('redirect_calendardeleteevent');  
 			}
 		}
 		break;
@@ -1076,7 +1074,7 @@ if ($_REQUEST['do'] == 'manage')
 				$eventdata->save();
 
 				$vbulletin->url = 'calendar.php?' . $vbulletin->session->vars['sessionurl'] . 'c=' . $vbulletin->GPC['newcalendarid'];
-				eval(print_standard_redirect('redirect_calendarmoveevent'));
+				print_standard_redirect('redirect_calendarmoveevent');  
 			}
 		}
 		break;
@@ -1535,11 +1533,13 @@ if ($_POST['do'] == 'edit')
 
 	$calrules['allowbbcode'] = $calendarinfo['allowbbcode'];
 	$calrules['allowimages'] = $calendarinfo['allowimgcode'];
+	$calrules['allowvideos'] = $calendarinfo['allowvideocode'];
 	$calrules['allowhtml'] = $calendarinfo['allowhtml'];
 	$calrules['allowsmilies'] = $calendarinfo['allowsmilies'];
 
 	$bbcodeon = !empty($calrules['allowbbcode']) ? $vbphrase['on'] : $vbphrase['off'];
 	$imgcodeon = !empty($calrules['allowimages']) ? $vbphrase['on'] : $vbphrase['off'];
+	$videocodeon = !empty($calrules['allowvideos']) ? $vbphrase['on'] : $vbphrase['off'];
 	$htmlcodeon = !empty($calrules['allowhtml']) ? $vbphrase['on'] : $vbphrase['off'];
 	$smilieson = !empty($calrules['allowsmilies']) ? $vbphrase['on'] : $vbphrase['off'];
 
@@ -2016,11 +2016,13 @@ if ($_REQUEST['do'] == 'add')
 
 	$calrules['allowbbcode'] = $calendarinfo['allowbbcode'];
 	$calrules['allowimages'] = $calendarinfo['allowimgcode'];
+	$calrules['allowvideos'] = $calendarinfo['allowvideocode'];
 	$calrules['allowhtml'] = $calendarinfo['allowhtml'];
 	$calrules['allowsmilies'] = $calendarinfo['allowsmilies'];
 
 	$bbcodeon = !empty($calrules['allowbbcode']) ? $vbphrase['on'] : $vbphrase['off'];
 	$imgcodeon = !empty($calrules['allowimages']) ? $vbphrase['on'] : $vbphrase['off'];
+	$videocodeon = !empty($calrules['allowvideos']) ? $vbphrase['on'] : $vbphrase['off'];
 	$htmlcodeon = !empty($calrules['allowhtml']) ? $vbphrase['on'] : $vbphrase['off'];
 	$smilieson = !empty($calrules['allowsmilies']) ? $vbphrase['on'] : $vbphrase['off'];
 
@@ -2263,7 +2265,7 @@ if ($_POST['do'] == 'update')
 			$eventdata->delete();
 
 			$vbulletin->url = 'calendar.php?' . $vbulletin->session->vars['sessionurl_q'] . "c=$calendarinfo[calendarid]";
-			eval(print_standard_redirect('redirect_calendardeleteevent'));
+			print_standard_redirect('redirect_calendardeleteevent');  
 		}
 		else
 		{
@@ -2375,12 +2377,12 @@ if ($_POST['do'] == 'update')
 		if ($visible)
 		{
 			$vbulletin->url = 'calendar.php?' . $vbulletin->session->vars['sessionurl'] . "do=getinfo&amp;e=$eventid&amp;day=" . $eventdata->info['occurdate'];
-			eval(print_standard_redirect('redirect_calendaraddevent'));
+			print_standard_redirect('redirect_calendaraddevent');  
 		}
 		else
 		{
 			$vbulletin->url = 'calendar.php?' . $vbulletin->session->vars['sessionurl'] . "c=$calendarinfo[calendarid]";
-			eval(print_standard_redirect('redirect_calendarmoderated', true, true));
+			print_standard_redirect('redirect_calendarmoderated', true, true);  
 		}
 	}
 	else
@@ -2394,7 +2396,7 @@ if ($_POST['do'] == 'update')
 		($hook = vBulletinHook::fetch_hook('calendar_update_complete')) ? eval($hook) : false;
 
 		$vbulletin->url = 'calendar.php?' . $vbulletin->session->vars['sessionurl'] . "do=getinfo&amp;e=$eventinfo[eventid]&amp;day=" . $eventdata->info['occurdate'];
-		eval(print_standard_redirect('redirect_calendarupdateevent'));
+		print_standard_redirect('redirect_calendarupdateevent');  
 	}
 
 }
@@ -2425,7 +2427,7 @@ if ($_REQUEST['do'] == 'deletereminder')
 	");
 
 	$vbulletin->url = 'calendar.php?' . $vbulletin->session->vars['sessionurl'] . "do=getinfo&amp;e=$eventinfo[eventid]";
-	eval(print_standard_redirect('redirect_subsremove_event', true, true));
+	print_standard_redirect('redirect_subsremove_event', true, true);  
 
 }
 
@@ -2475,7 +2477,7 @@ if ($_POST['do'] == 'dostuff')
 				WHERE subscribeeventid IN (-1$ids)
 					AND userid = " . $vbulletin->userinfo['userid']
 			);
-			eval(print_standard_redirect('redirect_reminderdeleted'));
+			print_standard_redirect('redirect_reminderdeleted');  
 		}
 		else
 		{
@@ -2488,7 +2490,7 @@ if ($_POST['do'] == 'dostuff')
 						AND userid = " . $vbulletin->userinfo['userid']
 				);
 			}
-			eval(print_standard_redirect('redirect_reminderupdated'));
+			print_standard_redirect('redirect_reminderupdated');  
 		}
 	}
 }
@@ -2726,7 +2728,7 @@ if ($_POST['do'] == 'doaddreminder')
 	");
 
 	$vbulletin->url = 'calendar.php?' . $vbulletin->session->vars['sessionurl'] . "do=getinfo&amp;e=$eventinfo[eventid]";
-	eval(print_standard_redirect('redirect_subsadd_event'));
+	print_standard_redirect('redirect_subsadd_event');  
 }
 
 
@@ -2778,8 +2780,7 @@ eval(standard_error(fetch_error('invalidid', $idname, $vbulletin->options['conta
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 43599 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

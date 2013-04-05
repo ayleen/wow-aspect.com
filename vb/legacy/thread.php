@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ï¿½2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -69,6 +69,15 @@ class vB_Legacy_Thread extends vB_Legacy_Dataobject
 			unset($threadinfo['readtime']);
 		}
 
+		if (array_key_exists('lastposttime', $threadinfo))
+		{
+			$thread->lastpost[$current_user->getField('userid')] = $threadinfo['lastposttime'];
+			unset($threadinfo['lastposttime']);
+		}
+
+		// Need to fake userid to get last poster avatar. 
+		$threadinfo['userid'] = $threadinfo['lastposterid'];
+		
 		$thread->set_record($threadinfo);
 		return $thread;
 	}
@@ -102,8 +111,10 @@ class vB_Legacy_Thread extends vB_Legacy_Dataobject
 		$joins = array();
 		$where = array();
 
-		$select[] = "thread.*";
-		$where[] = "thread.threadid IN (" . implode(',', array_map('intval', $ids)) . ")";
+		$threadids = implode(',', array_map('intval', $ids));
+
+ 		$select[] = "thread.*";
+		$where[] = "thread.threadid IN ($threadids)";
 
 		// always add the thread preview field to the results, unless it is disabled.
 		if($vbulletin->options['threadpreview'] > 0)
@@ -138,7 +149,37 @@ class vB_Legacy_Thread extends vB_Legacy_Dataobject
 			}
 		}
 
-		$set = $vbulletin->db->query($q = "
+		if ($vbulletin->options['avatarenabled'])
+		{
+			$select[] = 'avatar.avatarpath, NOT ISNULL(customavatar.userid) AS hascustomavatar, user.avatarrevision,
+						customavatar.dateline AS avatardateline, customavatar.width AS width, customavatar.height AS height,
+						customavatar.height_thumb AS height_thumb, customavatar.width_thumb AS width_thumb, customavatar.filedata_thumb,
+						first_user.avatarrevision AS first_avatarrevision, first_avatar.avatarpath AS first_avatarpath,
+						NOT ISNULL(first_customavatar.userid) AS first_hascustomavatar, first_customavatar.dateline AS first_avatardateline,
+						first_customavatar.width AS first_width, first_customavatar.height AS first_height, first_customavatar.height_thumb
+						AS first_height_thumb, first_customavatar.width_thumb AS first_width_thumb, first_customavatar.filedata_thumb AS
+						first_filedata_thumb';
+			$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'user AS user ON (user.userid = thread.lastposterid)';
+			$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'avatar AS avatar ON (avatar.avatarid = user.avatarid)';
+			$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'customavatar AS customavatar ON (customavatar.userid = user.userid)';
+			$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'user AS first_user ON (first_user.userid = thread.postuserid)';
+			$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'avatar AS first_avatar ON (first_avatar.avatarid = first_user.avatarid)';
+			$joins[] = 'LEFT JOIN ' . TABLE_PREFIX . 'customavatar AS first_customavatar ON (first_customavatar.userid = first_user.userid)';
+		}
+
+		if ($vbulletin->options['showdots'])
+		{
+			$select[] = "lastpost.lastposttime";
+			$joins['lastpost'] = "LEFT JOIN (
+				SELECT threadid, MAX(dateline) AS lastposttime
+				FROM " . TABLE_PREFIX . "post
+				WHERE threadid IN ($threadids)
+					AND userid = " . intval($current_user->getField('userid')) . "
+				GROUP BY threadid
+			) AS lastpost ON (lastpost.threadid = thread.threadid)";
+		}
+ 
+		$set = $vbulletin->db->query_read_slave("
 			SELECT " . implode(",", $select) . "
 			FROM " . TABLE_PREFIX . "thread AS thread
 				" . implode("\n", $joins) . "
@@ -189,6 +230,36 @@ class vB_Legacy_Thread extends vB_Legacy_Dataobject
 		return ($this->get_field('iconid') OR $this->get_field('pollid') OR $vbulletin->options['showdeficon']);
 	}
 
+	/**
+	 * Get the dateline of the last post made in the thread by the user
+	 *
+	 * @param vB_Legacy_User
+	 * @return int|NULL The date the last post was made, null if not set
+	 */
+	public function get_lastpost($user)
+	{
+		if (!vB::$vbulletin->options['showdots'] OR $user->isGuest())
+		{
+			return 0;
+		}
+
+		$userid = $user->getField('userid');
+
+		if (!array_key_exists($userid, $this->lastpost))
+		{
+			$lastpost = vB::$vbulletin->db->query_first_slave("
+				SELECT MAX(dateline)
+				FROM " . TABLE_PREFIX . "post
+				WHERE threadid = " . intval($this->get_field('threadid')) . "
+					AND userid = " . intval($user->get_field('userid'))
+			);
+
+			$this->lastpost[$userid] = ($lastpost ? $lastpost['dateline'] : 0);
+		}
+
+		return $this->lastpost[$userid];
+	}
+
 	//*********************************************************************************
 	// Related data
 
@@ -226,7 +297,7 @@ class vB_Legacy_Thread extends vB_Legacy_Dataobject
 		$userid = $user->getField('userid');
 		if (!array_key_exists($userid, $this->lastread))
 		{
-			$lastread = $vbulletin->db->query_first("
+			$lastread = $vbulletin->db->query_first_slave("
 				SELECT readtime
 				FROM " . TABLE_PREFIX . "threadread
 				WHERE threadid = " . intval($this->get_field('threadid')) . " AND
@@ -248,7 +319,7 @@ class vB_Legacy_Thread extends vB_Legacy_Dataobject
 			return $blank;
 		}
 
-		$log = $vbulletin->db->query_first("
+		$log = $vbulletin->db->query_first_slave("
 			SELECT deletionlog.userid, deletionlog.username, deletionlog.reason
 			FROM " . TABLE_PREFIX . "deletionlog as deletionlog
 			WHERE deletionlog.primaryid = " . intval($this->get_field('threadid')) . " AND
@@ -284,7 +355,7 @@ class vB_Legacy_Thread extends vB_Legacy_Dataobject
 
 		if (!isset($this->subscribed[$user->getField('userid')]))
 		{
-			$subscribed = $vbulletin->db->query_first("
+			$subscribed = $vbulletin->db->query_first_slave("
 				SELECT subscribethreadid
 				FROM " . TABLE_PREFIX . "subscribethread
 				WHERE canview = 1 AND threadid = " . intval($this->get_field('threadid')) . " AND
@@ -397,13 +468,13 @@ class vB_Legacy_Thread extends vB_Legacy_Dataobject
 		$threadman = & datamanager_init('Thread', $vbulletin, ERRTYPE_STANDARD, 'threadpost');
 		$threadman->set_existing($this->record);
 
-		$threadman->delete($this->get_forum()->get_field['replycount'], $is_hard_delete,
+		$forum = $this->get_forum();
+		
+		$threadman->delete($forum->get_field['replycount'], $is_hard_delete,
 			array('userid' => $user->get_field('userid'), 'username' => $user->get_field('username'),
 				'reason' => $reason, 'keepattachments' => $keepattachments));
 		unset($threadman);
 
-		$forum = $this->get_forum();
-		
 		if ($forum->get_field('lastthreadid') != $this->get_field('threadid'))
 		{
 			$forum->decrement_threadcount();
@@ -422,11 +493,11 @@ class vB_Legacy_Thread extends vB_Legacy_Dataobject
 	private $forum = null;
 	private $subscribed = array();
 	private $lastread = array();
+	private $lastpost = array();
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

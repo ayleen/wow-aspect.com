@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -117,6 +117,7 @@ class vb_Search_Resultsview
 
 		//perform render
 		$searchbits = '';
+		$show['below_unread'] = 0;
 		foreach ($page as $item)
 		{
 			$searchbits .= $item->render($this->results->get_user(), $this->results->get_criteria());
@@ -205,7 +206,9 @@ class vb_Search_Resultsview
 		$pagenav = construct_window_page_nav($pagenumber, $this->window, $perpage,
 			$this->results->get_confirmed_count(),	$base);
 
-		$this->template->register('navbar', render_navbar_template(construct_navbits($navbits)));
+		$navbits = construct_navbits($navbits);
+		$navbar = render_navbar_template($navbits);
+		$this->template->register('navbar', $navbar);
 		$this->template->register('base', $base);
 		$startat = ($pagenumber-1) * $perpage;
 		$this->template->register('first', $startat + 1);
@@ -247,7 +250,6 @@ class vb_Search_Resultsview
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

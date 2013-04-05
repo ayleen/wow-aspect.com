@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -52,7 +52,11 @@ class vBBlog_Search_Type_BlogComment extends vB_Search_Type
 			}
 		}
 
-		return array('list' => $list, 'groups_rejected' => array());
+		$retval = array('list' => $list, 'groups_rejected' => array());
+
+		($hook = vBulletinHook::fetch_hook('search_validated_list')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	/**
@@ -91,7 +95,11 @@ class vBBlog_Search_Type_BlogComment extends vB_Search_Type
 
 		$this->setPrefs($template, $prefs, $prefsettings);
 		vB_Search_Searchtools::searchIntroRegisterHumanVerify($template);
-		return $template->render();	}
+
+		($hook = vBulletinHook::fetch_hook('search_listui_complete')) ? eval($hook) : false;
+
+		return $template->render();	
+	}
 
 
 	public function get_display_name()
@@ -118,9 +126,13 @@ class vBBlog_Search_Type_BlogComment extends vB_Search_Type
 	 */
 	public function additional_pref_defaults()
 	{
-		return array (
-			'sortby'			=> 'dateline'
+		$retval = array (
+			'sortby'	=> 'dateline'
 		);
+
+		($hook = vBulletinHook::fetch_hook('search_pref_defaults')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	protected $package = "vBBlog";
@@ -131,7 +143,6 @@ class vBBlog_Search_Type_BlogComment extends vB_Search_Type
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

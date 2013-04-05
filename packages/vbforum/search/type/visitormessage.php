@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -46,7 +46,12 @@ class vBForum_Search_Type_VisitorMessage extends vB_Search_Type
 				$list[$id] = $item;
 			}
 		}
-		return array('list' => $list, 'groups_rejected' => array());
+		
+		$retval = array('list' => $list, 'groups_rejected' => array());
+
+		($hook = vBulletinHook::fetch_hook('search_validated_list')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	public function is_enabled()
@@ -78,6 +83,8 @@ class vBForum_Search_Type_VisitorMessage extends vB_Search_Type
 				$this->mod_rights[$key] = ($this->mod_rights[$key] OR (bool) $priv);
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_prepare_render')) ? eval($hook) : false;
 	}
 
 	// ###################### Start additional_header_text ######################
@@ -119,8 +126,7 @@ class vBForum_Search_Type_VisitorMessage extends vB_Search_Type
 	 * 	grouping option(s).
 	 * @return $html: complete html for the search elements
 	 */
-	public function listUi($prefs = null, $contenttypeid = null, $registers = null,
-		$template_name = null)
+	public function listUi($prefs = null, $contenttypeid = null, $registers = null,	$template_name = null)
 	{
 		global $vbulletin, $vbphrase;
 
@@ -154,6 +160,9 @@ class vBForum_Search_Type_VisitorMessage extends vB_Search_Type
 				$template->register($key, htmlspecialchars_uni($value));
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_listui_complete')) ? eval($hook) : false;
+
 		return $template->render();
 	}
 
@@ -265,15 +274,19 @@ class vBForum_Search_Type_VisitorMessage extends vB_Search_Type
  */
 	public function additional_pref_defaults()
 	{
-		return array(
+		$retval = array(
 			'query'         => '',
 			'exactname'     => 0,
-			'searchuser'     => '',
-			'nocache'    => 0,
+			'searchuser'    => '',
+			'nocache'       => 0,
 			'searchdate'    => 0,
 			'beforeafter'   => 'after',
 			'sortby'		=> 'dateline'
 		);
+
+		($hook = vBulletinHook::fetch_hook('search_pref_defaults')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	protected $package = "vBForum";
@@ -284,7 +297,6 @@ class vBForum_Search_Type_VisitorMessage extends vB_Search_Type
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 29897 $
 || ####################################################################
 \*======================================================================*/

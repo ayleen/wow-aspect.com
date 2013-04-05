@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright �2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright �2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 36207 $
- * @since $Date: 2010-04-06 14:09:42 -0700 (Tue, 06 Apr 2010) $
+ * @version $Revision: 58956 $
+ * @since $Date: 2012-02-10 17:31:19 -0800 (Fri, 10 Feb 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Widget_Rss extends vBCms_Widget
@@ -165,7 +165,7 @@ class vBCms_Widget_Rss extends vBCms_Widget
 									: 'vbcms_widget_rss_page';
 
 		// Sanitize max items
-		$config['max_items'] = max(min($config['max_items'], 20), 1);
+		$config['max_items'] = max(min($config['max_items'], 100), 1);
 
 		// Load RSS
 		$rss = array();
@@ -237,15 +237,13 @@ class vBCms_Widget_Rss extends vBCms_Widget
 			$charset = vB::$vbulletin->userinfo['lang_charset'];
 		}
 
-		$context = new vB_Context('widget' , array('widgetid' => $widgetid, 'charset' => $charset));
+		$context = new vB_Context("widget_$widgetid" , array('widgetid' => $widgetid, 'charset' => $charset));
 		return strval($context);
 	}
-
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 36207 $
+|| # SVN: $Revision: 58956 $
 || ####################################################################
 \*======================================================================*/

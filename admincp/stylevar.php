@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,7 +15,7 @@ error_reporting(E_ALL & ~E_NOTICE);
 @set_time_limit(0);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 42666 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62562 $');
 define('NOZIP', true);
 
 @ini_set('display_errors', true);
@@ -59,11 +59,11 @@ if (empty($vbulletin->GPC['dostyleid']))
 	$vbulletin->GPC['dostyleid'] = ($vbulletin->debug ? -1 : $vbulletin->options['styleid']);
 }
 
-if ($vbulletin->GPC['dostyleid'] == -1)
+if ($vbulletin->GPC['dostyleid'] == -1 OR $vbulletin->GPC['dostyleid'] == -2)
 {
 	$styleinfo = array(
-		'styleid' => -1,
-		'title'   => 'MASTER STYLE'
+		'styleid' => $vbulletin->GPC['dostyleid'],
+		'title'   => ($vbulletin->GPC['dostyleid'] == -1) ? $vbphrase['master_style'] : $vbphrase['mobile_master_style'],
 	);
 }
 else
@@ -87,7 +87,7 @@ if (in_array($_REQUEST['do'], $skip_wrappers))
 print_cp_header($vbphrase['stylevareditor']);
 
 
-function construct_stylevar_form($title, $stylevarid, $values, $styleid)
+function construct_stylevar_form($title, $stylevarid, $values, $styleid, $masterstyleid)
 {
 	global $vbulletin, $stylecache;
 
@@ -98,7 +98,7 @@ function construct_stylevar_form($title, $stylevarid, $values, $styleid)
 	if (isset($values[$stylevarid][$styleid]))
 	{
 		// customized or master
-		if ($styleid == -1)
+		if ($styleid == -1 OR $styleid == -2)
 		{
 			// master
 			$hide_revert = true;
@@ -110,7 +110,7 @@ function construct_stylevar_form($title, $stylevarid, $values, $styleid)
 		while (!isset($values[$stylevarid][$styleid]))
 		{
 			$styleid = $stylecache[$styleid]['parentid'];
-			if (!isset($stylecache[$styleid]) AND $styleid != -1)
+			if (!isset($stylecache[$styleid]) AND $styleid != -1 AND $styleid != -2)
 			{
 				trigger_error('Invalid style in tree: ' . $styleid, E_USER_ERROR);
 				break;
@@ -134,12 +134,13 @@ function construct_stylevar_form($title, $stylevarid, $values, $styleid)
 	$svinstance->set_definition($stylevar);
 	$svinstance->set_value(unserialize($stylevar['value']));	// remember, our value in db is ALWAYS serialized!
 
-	if ($stylevar['stylevarstyleid'] == -1)
+	if ($stylevar['stylevarstyleid'] == -1 OR $stylevar['stylevarstyleid'] == -2)
 	{
 		$svinstance->set_inherited(0);
 	}
 	else if ($stylevar['stylevarstyleid'] == $vbulletin->GPC['dostyleid'])
 	{
+		// This -1 is just used to a set a Master Color so no -2 adaptation is required
 		$svinstance->set_inherited(-1);
 	}
 	else
@@ -147,7 +148,7 @@ function construct_stylevar_form($title, $stylevarid, $values, $styleid)
 		$svinstance->set_inherited(1);
 	}
 
-	$editor = $svinstance->print_editor();
+	$editor = $svinstance->print_editor($masterstyleid);
 	return $editor;
 }
 
@@ -171,12 +172,13 @@ if ($_REQUEST['do'] == 'dfnadd' OR $_REQUEST['do'] == 'dfnedit')
 
 		if (!empty($stylevar))
 		{
+			$addon = ($vbulletin->GPC['dostyleid'] == -2) ? '_mobile' : '';
 			// select friendly name for current language
 			$svname_result = $db->query_first("
 				SELECT text
 				FROM " . TABLE_PREFIX . "phrase
 				WHERE
-					varname = 'stylevar_" . $db->escape_string($vbulletin->GPC['stylevarid']) . "_name'
+					varname = 'stylevar_" . $db->escape_string($vbulletin->GPC['stylevarid']) . "_name{$addon}'
 			");
 
 			if (!empty($svname_result))
@@ -189,7 +191,7 @@ if ($_REQUEST['do'] == 'dfnadd' OR $_REQUEST['do'] == 'dfnedit')
 				SELECT text
 				FROM " . TABLE_PREFIX . "phrase
 				WHERE
-					varname = 'stylevar_" . $db->escape_string($vbulletin->GPC['stylevarid']) . "_description'
+					varname = 'stylevar_" . $db->escape_string($vbulletin->GPC['stylevarid']) . "_description{$addon}'
 			");
 
 			if (!empty($svdesc_result))
@@ -208,6 +210,7 @@ if ($_REQUEST['do'] == 'dfnadd' OR $_REQUEST['do'] == 'dfnedit')
 	print_input_row($vbphrase['stylevarid'], 'stylevarid', $stylevar['stylevarid']);
 	print_input_row($vbphrase['friendly_name'], 'svfriendlyname', $stylevar['friendlyname']);
 	print_input_row($vbphrase['description'], 'svdescription', $stylevar['description']);
+	construct_hidden_code('dostyleid', $vbulletin->GPC['dostyleid']);
 	// keys match with enum entry that we have, value should be mapped to a vbphrase
 	$svtypesarray = array(
 		$vbphrase['simple_types'] => array(
@@ -262,27 +265,11 @@ if ($_POST['do'] == 'dfn_dosave')
 		'svdescription'  => TYPE_NOHTML,
 		'svdatatype'     => TYPE_STR,
 		'svvalidation'   => TYPE_STR,
-		'svunit'         => TYPE_STR,
 		'oldsvid'        => TYPE_STR,
 	));
 
-	// MEMO: we are always working with styleid -1 for the definitions as of right now, some time later,
+	// MEMO: we are always working with styleid -1 or -2 for the definitions as of right now, some time later,
 	// this should be removed so the dostyleid is properly respected.
-	$vbulletin->GPC['dostyleid'] = -1;
-
-	if (!$vbulletin->GPC['oldsvid'])
-	{
-		$stylevar_dfn = $db->query_first("
-			SELECT * FROM " .  TABLE_PREFIX . "stylevardfn
-			WHERE
-				stylevarid = '" . $db->escape_string($vbulletin->GPC['stylevarid']) . "'
-		");
-
-		if (!empty($stylevar_dfn))
-		{
-			print_stop_message('stylevar_x_already_exists', $vbulletin->GPC['stylevarid']);
-		}
-	}
 
 	// stylevars can only begin with a-z or _ as defined by the CSS spec
 	if (!preg_match('#^[_a-z][a-z0-9_]*$#i', $vbulletin->GPC['stylevarid']))
@@ -303,139 +290,186 @@ if ($_POST['do'] == 'dfn_dosave')
 		$vbulletin->GPC['svdatatype'] = 'string';
 	}
 
-	$validunits = array('', '%', 'px', 'pt', 'em', 'ex', 'pc', 'in', 'cm', 'mm');
-	if (!in_array($vbulletin->GPC['svunit'], $validunits) OR $vbulletin->GPC['svdatatype'] != "numeric")
+	$oldsvid = $db->escape_string($vbulletin->GPC['oldsvid']);
+	$stylevarid = $db->escape_string($vbulletin->GPC['stylevarid']);
+	$productid = $db->escape_string($vbulletin->GPC['product']);
+
+	$savetype = ( $oldsvid ? ( $oldsvid == $stylevarid ? 'update' : 'change' ) : 'new' );
+
+	if ($savetype == 'new')
 	{
-		// invalid unit, or does not require unit, strip it
-		$vbulletin->GPC['svunit'] = '';
+		$stylevar_dfn = $db->query_first("
+			SELECT product 
+			FROM " .  TABLE_PREFIX . "stylevardfn
+			WHERE
+				stylevarid = '$stylevarid'
+					AND
+				styleid = {$vbulletin->GPC['dostyleid']}
+		");
+
+		if (!empty($stylevar_dfn))
+		{
+			print_stop_message('stylevar_x_already_exists', $stylevarid);
+		}
 	}
-
-	// time to store it
-	$svdfndata = datamanager_init('StyleVarDefn', $vbulletin, ERRTYPE_CP, 'stylevar');
-
-	if ($vbulletin->GPC['oldsvid'])
+	else
 	{
-		$existing = array('stylevarid' => $vbulletin->GPC['oldsvid']);
-		$svdfndata->set_existing($existing);
-
+		// Get old productid for later export update
 		if (defined('DEV_AUTOEXPORT') AND DEV_AUTOEXPORT)
 		{
 			$stylevar_dfn = $db->query_first("
-				SELECT product FROM " .  TABLE_PREFIX . "stylevardfn
+				SELECT product, value
+				FROM " .  TABLE_PREFIX . "stylevardfn AS stylevardfn
+				LEFT JOIN " .  TABLE_PREFIX . "stylevar AS stylevar ON (stylevar.stylevarid = stylevardfn.stylevarid AND stylevar.styleid = stylevardfn.styleid)
 				WHERE
-					stylevarid = '" . $db->escape_string($vbulletin->GPC['oldsvid']) . "'
+					stylevar.stylevarid = '$oldsvid'
+						AND
+					stylevardfn.styleid = {$vbulletin->GPC['dostyleid']}
 			");
 		}
+
+		$svdata = unserialize($stylevar_dfn['value']);
 	}
 
-	$svdfndata->set('product', $vbulletin->GPC['product']);
-	$svdfndata->set('stylevargroup', $vbulletin->GPC['svgroup']);
-	$svdfndata->set('stylevarid', $vbulletin->GPC['stylevarid']);
+	// Stylevar Definition
+	$svdfndata = datamanager_init('StyleVarDefn', $vbulletin, ERRTYPE_CP, 'stylevar');
+
+	$svdfndata->set('stylevarid', $stylevarid);
 	$svdfndata->set('styleid', $vbulletin->GPC['dostyleid']);
-
-	$svdfndata->set('parentid', 0);			// change this later to match the parent style
-	$svdfndata->set('parentlist', '0,-1');	// change this later to match the parent list
+	$svdfndata->set('parentid', 0); // Gets reset to -1 by DM validation
+	$svdfndata->set('parentlist', '0,' . $vbulletin->GPC['dostyleid']); // change this later to match the parent list
+	$svdfndata->set('stylevargroup', $vbulletin->GPC['svgroup']);
+	$svdfndata->set('product', $productid);
 	$svdfndata->set('datatype', $vbulletin->GPC['svdatatype']);
-
-	// check regular expression
 	if (!empty($vbulletin->GPC['svvalidation']))
-	{
+	{	// check regular expression ( This isnt used for anything, why bother .... )
 		if (preg_match('#' . str_replace('#', '\#', $vbulletin->GPC['svvalidation']) . '#siU', '') === false)
 		{
 			print_stop_message('regular_expression_is_invalid');
 		}
 		$svdfndata->set('validation', $vbulletin->GPC['svvalidation']);
 	}
-	$svdfndata->set('units', $vbulletin->GPC['svunit']);
+	$svdfndata->set('failsafe', ''); 
+	$svdfndata->set('units', ''); // Not used, but verified.
 	$svdfndata->set('uneditable', false);
-	$svdfndata->save();
 
-	$dfnid = $vbulletin->GPC['stylevarid'];
+	$svdfndata->save(true, false, false, $savetype != 'new');
 
-	// insert the friendly name into phrase
-	$vbulletin->db->query_write("
-		REPLACE INTO " . TABLE_PREFIX . "phrase
-			(languageid, varname, text, product, fieldname, username, dateline, version)
-		VALUES (
-			-1,
-			'stylevar_{$dfnid}_name',
-			'" . $vbulletin->db->escape_string($vbulletin->GPC['svfriendlyname']) . "',
-			'" . $vbulletin->db->escape_string($vbulletin->GPC['product']) . "',
-			'style',
-			'" . $vbulletin->db->escape_string($vbulletin->userinfo['username']) . "',
-			" . TIMENOW . ",
-			'" . $vbulletin->db->escape_string($vbulletin->options['templateversion']) . "'
-		)
-	");
-
-	// insert the description into phrase
-	$vbulletin->db->query_write("
-		REPLACE INTO " . TABLE_PREFIX . "phrase
-			(languageid, varname, text, product, fieldname, username, dateline, version)
-		VALUES (
-			-1,
-			'stylevar_{$dfnid}_description',
-			'" . $vbulletin->db->escape_string($vbulletin->GPC['svdescription']) . "',
-			'" . $vbulletin->db->escape_string($vbulletin->GPC['product']) . "',
-			'style',
-			'" . $vbulletin->db->escape_string($vbulletin->userinfo['username']) . "',
-			" . TIMENOW . ",
-			'" . $vbulletin->db->escape_string($vbulletin->options['templateversion']) . "'
-		)
-	");
-
-	// rebuild languages
-	require_once(DIR . '/includes/adminfunctions_language.php');
-	build_language(-1);
-
-	// a null value, so no need to customize or anything
+	// Stylevar Data
 	$stylevardata = datamanager_init('StyleVar', $vbulletin, ERRTYPE_CP, 'stylevar');
-	if ($vbulletin->GPC['oldsvid'])
-	{
-		$existing = array('stylevarid' => $vbulletin->GPC['oldsvid']);
-		$stylevardata->set_existing($existing);
-	}
-	$stylevardata->set('stylevarid', $vbulletin->GPC['stylevarid']);
-	$stylevardata->set('styleid', $vbulletin->GPC['dostyleid']);
-	$stylevardata->build();
-	$stylevardata->save();
 
-	if (defined('DEV_AUTOEXPORT') AND DEV_AUTOEXPORT)
+	$stylevardata->set('stylevarid', $stylevarid);
+	$stylevardata->set('styleid', $vbulletin->GPC['dostyleid']);
+	if ($savetype != 'new');
+	{
+		$stylevardata->set('value', $svdata);
+	}
+	$stylevardata->set('dateline', TIMENOW);
+	$stylevardata->set('username', $vbulletin->userinfo['username']);
+
+	$stylevardata->save(true, true, $savetype != 'new');
+
+	$addon = ($vbulletin->GPC['dostyleid'] == -2) ? '_mobile' : '';
+	$mastertype = ($vbulletin->GPC['dostyleid'] == -2) ? 'standard' : 'mobile';
+	// Insert the friendly name into phrase
+	$vbulletin->db->query_write("
+		REPLACE INTO " . TABLE_PREFIX . "phrase
+			(languageid, varname, text, product, fieldname, username, dateline, version)
+		VALUES (
+			-1,
+			'stylevar_{$stylevarid}_name{$addon}',
+			'" . $vbulletin->db->escape_string($vbulletin->GPC['svfriendlyname']) . "',
+			'$productid',
+			'style',
+			'" . $vbulletin->db->escape_string($vbulletin->userinfo['username']) . "',
+			" . TIMENOW . ",
+			'" . $vbulletin->db->escape_string($vbulletin->options['templateversion']) . "'
+		),
+		(
+			-1,
+			'stylevar_{$stylevarid}_description{$addon}',
+			'" . $vbulletin->db->escape_string($vbulletin->GPC['svdescription']) . "',
+			'$productid',
+			'style',
+			'" . $vbulletin->db->escape_string($vbulletin->userinfo['username']) . "',
+			" . TIMENOW . ",
+			'" . $vbulletin->db->escape_string($vbulletin->options['templateversion']) . "'
+		)		
+	");
+
+
+	// Move any translations to the correct product.
+	// If the stylevar has changed name this will miss them, but they will get caught later
+	$vbulletin->db->query_write("
+		UPDATE " . TABLE_PREFIX . "phrase
+		SET
+			product = '$productid'
+		WHERE
+			(
+				varname = 'stylevar_{$stylevarid}_name{$addon}' 
+					OR
+				varname = 'stylevar_{$stylevarid}_description{$addon}')
+			AND
+				languageid > 0
+	");
+
+	if (defined('DEV_AUTOEXPORT') AND DEV_AUTOEXPORT AND $vbulletin->GPC['styleid'] == -1)
 	{
 		require_once(DIR . '/includes/functions_filesystemxml.php');
-		autoexport_write_style_and_language($vbulletin->GPC['dostyleid'],
-			array($stylevar_dfn['product'], $vbulletin->GPC['product']));
+		autoexport_write_style_and_language($vbulletin->GPC['dostyleid'], array($stylevar_dfn['product'], $vbulletin->GPC['product']));
 	}
 
 	define('CP_REDIRECT', 'stylevar.php?do=fetchstylevareditor&dostyleid=' . $vbulletin->GPC['dostyleid'] . '&stylevarid[]=' . $vbulletin->GPC['stylevarid']);
-	print_stop_message('saved_stylevardfn_x_successfully', $vbulletin->GPC['stylevarid']);
+
+	if ($savetype != 'change')
+	{
+		// Rebuild languages if we are exiting now.
+		require_once(DIR . '/includes/adminfunctions_language.php');
+		build_language();
+
+		print_stop_message('saved_stylevardfn_x_successfully', $stylevarid);
+	}
+
+	// Update any translations to the new stylevar name & product
+	$vbulletin->db->query_write("
+		UPDATE " . TABLE_PREFIX . "phrase
+		SET varname = 'stylevar_{$stylevarid}_name{$addon}', product = '$productid'
+		WHERE varname = 'stylevar_{$oldsvid}_name{$addon}' AND languageid > 0
+	");
+
+	$vbulletin->db->query_write("
+		UPDATE " . TABLE_PREFIX . "phrase
+		SET varname = 'stylevar_{$stylevarid}_description{$addon}', product = '$productid'
+		WHERE varname = 'stylevar_{$oldsvid}_description{$addon}' AND languageid > 0
+	");
+
+	// Update any custom values to the new stylevar name
+	$vbulletin->db->query_write("
+		UPDATE " . TABLE_PREFIX . "stylevar AS stylevar, " . TABLE_PREFIX . "style AS style
+		SET stylevar.stylevarid = '$stylevarid'
+		WHERE
+			style.styleid = stylevar.styleid
+				AND
+			stylevar.stylevarid = '$oldsvid'
+				AND
+			style.styleid > 0
+				AND
+			style.type = '{$mastertype}'
+	");
+
+	// Delete old stylevar (Re-use code below)
+	$_POST['do'] = 'dosvdelete';
+	$_POST['stylevarid'] = $oldsvid;
 }
-
 // ########################################################################
-if ($_REQUEST['do'] == 'confirmrevert')
-{
-	// confirm whether or not user wants to revert that particular stylevar
-	$vbulletin->input->clean_array_gpc('r', array(
-		'stylevarid' => TYPE_STR,
-		'rootstyle'  => TYPE_INT,
-	));
-
-	$hidden = array();
-	$hidden['dostyleid'] = $vbulletin->GPC['dostyleid'];
-
-	print_delete_confirmation('stylevar', $vbulletin->GPC['stylevarid'], 'stylevar', 'dorevert', 'stylevar',
-		$hidden, $vbphrase['please_be_aware_stylevar_is_inherited'], $vbulletin->GPC['rootstyle']);
-}
-
-// ########################################################################
-if ($_POST['do'] == 'dorevert')
+if ($_POST['do'] == 'dorevert' OR $_POST['do'] == 'dosvdelete')
 {
 	$vbulletin->input->clean_array_gpc('p', array(
 		'stylevarid' => TYPE_STR,
 		'dostyleid'  => TYPE_INT
 	));
 
-	if ($vbulletin->GPC['dostyleid'] == -1)
+	if ($vbulletin->GPC['dostyleid'] == -1 OR $vbulletin->GPC['dostyleid'] == -2)
 	{
 		//Changing this to grab the dfn information.  We only grab this for the product
 		//which isn't stored in the stylevar table in the first place.  Not strickly speaking
@@ -445,18 +479,24 @@ if ($_POST['do'] == 'dorevert')
 			FROM " . TABLE_PREFIX . "stylevardfn
 			WHERE
 				stylevarid = '" . $vbulletin->db->escape_string($vbulletin->GPC['stylevarid']) . "'
+					AND
+				styleid = {$vbulletin->GPC['dostyleid']}
 		");
 
 		$db->query_write("
 			DELETE FROM " . TABLE_PREFIX . "stylevar
 			WHERE
 				stylevarid = '" . $vbulletin->db->escape_string($vbulletin->GPC['stylevarid']) . "'
+					AND
+				styleid = {$vbulletin->GPC['dostyleid']}
 		");
 
 		$db->query_write("
 			DELETE FROM " . TABLE_PREFIX . "stylevardfn
 			WHERE
 				stylevarid = '" . $db->escape_string($vbulletin->GPC['stylevarid']) . "'
+					AND
+				styleid = {$vbulletin->GPC['dostyleid']}
 		");
 
 		if (!$stylevarinfo['product'])
@@ -468,10 +508,11 @@ if ($_POST['do'] == 'dorevert')
 			$product = array($stylevarinfo['product']);
 		}
 
+		$addon = ($vbulletin->GPC['dostyleid'] == -2) ? '_mobile' : '';
 		$db->query_write("
 			DELETE FROM " . TABLE_PREFIX . "phrase
 			WHERE
-				varname IN ('stylevar_" . $vbulletin->db->escape_string($vbulletin->GPC['stylevarid']) . "_name', 'stylevar_" . $vbulletin->db->escape_string($vbulletin->GPC['stylevarid']) . "_description')
+				varname IN ('stylevar_" . $vbulletin->db->escape_string($vbulletin->GPC['stylevarid']) . "_name{$addon}', 'stylevar_" . $vbulletin->db->escape_string($vbulletin->GPC['stylevarid']) . "_description{$addon}')
 					AND
 				fieldname = 'style'
 					AND
@@ -480,15 +521,21 @@ if ($_POST['do'] == 'dorevert')
 
 		// rebuild languages
 		require_once(DIR . '/includes/adminfunctions_language.php');
-		build_language(-1);
+		build_language();
 
-		if (defined('DEV_AUTOEXPORT') AND DEV_AUTOEXPORT)
+		if (defined('DEV_AUTOEXPORT') AND DEV_AUTOEXPORT AND $vbulletin->GPC['dostyleid'] == -1)
 		{
 			require_once(DIR . '/includes/functions_filesystemxml.php');
 			autoexport_write_style($vbulletin->GPC['dostyleid'], $stylevarinfo['product']);
 		}
 
 		print_rebuild_style($vbulletin->GPC['dostyleid']);
+
+		if ($_POST['do'] == 'dosvdelete')
+		{ // We were called from dfn_dosave
+			print_stop_message('saved_stylevardfn_x_successfully', $stylevarid);
+		}
+
 		define('CP_REDIRECT', 'stylevar.php?dostyleid=' . $vbulletin->GPC['dostyleid']);
 		print_stop_message('reverted_stylevar_x_successfully', $vbulletin->GPC['stylevarid']);
 	}
@@ -506,6 +553,22 @@ if ($_POST['do'] == 'dorevert')
 		define('CP_REDIRECT', 'stylevar.php?dostyleid=' . $vbulletin->GPC['dostyleid'] . '&do=fetchstylevareditor&stylevarid[]=' . $vbulletin->GPC['stylevarid']);
 		print_stop_message('reverted_stylevar_x_successfully', $vbulletin->GPC['stylevarid']);
 	}
+}
+
+// ########################################################################
+if ($_REQUEST['do'] == 'confirmrevert')
+{
+	// confirm whether or not user wants to revert that particular stylevar
+	$vbulletin->input->clean_array_gpc('r', array(
+		'stylevarid' => TYPE_STR,
+		'rootstyle'  => TYPE_INT,
+	));
+
+	$hidden = array();
+	$hidden['dostyleid'] = $vbulletin->GPC['dostyleid'];
+
+	print_delete_confirmation('stylevar', $vbulletin->GPC['stylevarid'], 'stylevar', 'dorevert', 'stylevar',
+		$hidden, $vbphrase['please_be_aware_stylevar_is_inherited'], $vbulletin->GPC['rootstyle']);
 }
 
 // ########################################################################
@@ -555,13 +618,34 @@ if ($_POST['do'] == 'savestylevar')
 	$stylevarids = array_keys($vbulletin->GPC['stylevar']);
 	$stylevarids_sql = "'" . implode("', '", array_map(array(&$db, 'escape_string'), $stylevarids)) . "'";
 
+	if ($vbulletin->GPC['dostyleid'] == -1 OR $vbulletin->GPC['dostyleid'] == -2)
+	{
+		$mastertype = ($vbulletin->GPC['dostyleid'] == -1) ? 'standard' : 'mobile';
+		$masterstyleid = $vbulletin->GPC['dostyleid'];
+	}
+	else
+	{
+		$style = $db->query_first("
+			SELECT type
+			FROM " . TABLE_PREFIX . "style
+			WHERE styleid = {$vbulletin->GPC['dostyleid']}
+		");
+		$mastertype = $style['type'];
+		$masterstyleid = ($style['type'] == 'standard') ? -1 : -2;
+	}	
+	
 	// get the existing stylevar values
 	$stylevars_result = $db->query_read("
-		SELECT stylevardfn.*, stylevar.styleid AS stylevarstyleid, stylevar.value
+		SELECT
+			stylevardfn.*, stylevar.styleid AS stylevarstyleid, stylevar.value
 		FROM " . TABLE_PREFIX . "stylevardfn AS stylevardfn
 		LEFT JOIN " . TABLE_PREFIX . "stylevar AS stylevar ON(stylevardfn.stylevarid = stylevar.stylevarid)
-		WHERE stylevardfn.stylevarid IN (" . $stylevarids_sql . ")
-		ORDER BY stylevardfn.stylevargroup, stylevardfn.stylevarid
+		WHERE
+			stylevardfn.stylevarid IN (" . $stylevarids_sql . ")
+				AND
+			stylevardfn.styleid = {$masterstyleid}
+		ORDER BY
+			stylevardfn.stylevargroup, stylevardfn.stylevarid
 	");
 
 	$stylevars = array();
@@ -570,9 +654,6 @@ if ($_POST['do'] == 'savestylevar')
 		$stylevars[$sv['stylevarid']][$sv['stylevarstyleid']] = $sv;
 	}
 	$vbulletin->db->free_result($stylevars_result);
-
-	print_form_header('stylevar', 'savestylevar');
-	construct_hidden_code('dostyleid', $vbulletin->GPC['dostyleid']);
 
 	// check if the stylevar was changed
 	$updated_stylevars = array();
@@ -592,7 +673,7 @@ if ($_POST['do'] == 'savestylevar')
 				$styleid = $stylecache[$styleid]['parentid'];
 				if (!isset($stylecache[$styleid]))
 				{
-					$styleid = -1;
+					$styleid = $masterstyleid;
 					break;
 				}
 			}
@@ -635,7 +716,11 @@ if ($_POST['do'] == 'savestylevar')
 		else
 		{
 			// convert original value to string for fair comparison
-			$original_value = current($original_value);
+			$original_value = '';
+			if (is_array($original_value))
+			{
+				$original_value = current($original_value);
+			}
 		}
 
 		// if value has changed, mark for saving
@@ -665,9 +750,12 @@ if ($_POST['do'] == 'savestylevar')
 		}
 
 		$existing_dfns = $db->query_read("
-			SELECT * FROM " . TABLE_PREFIX . "stylevardfn
+			SELECT *
+			FROM " . TABLE_PREFIX . "stylevardfn
 			WHERE
 				stylevarid IN (" . $stylevarid_list . ")
+					AND
+				styleid = {$masterstyleid}
 		");
 
 		$dfns = array();
@@ -787,7 +875,7 @@ if ($_POST['do'] == 'savestylevar')
 			$svinstance->save();
 		}
 
-		if (defined('DEV_AUTOEXPORT') AND DEV_AUTOEXPORT)
+		if (defined('DEV_AUTOEXPORT') AND DEV_AUTOEXPORT AND $mastertype == 'standard')
 		{
 			//we might have done something strange and selected stylvars from different products.
 			$products = array();
@@ -833,12 +921,25 @@ if ($_REQUEST['do'] == 'fetchstylevareditor')
 	}
 
 	$stylevarids_sql = "'" . implode("', '", array_map(array(&$db, 'escape_string'), $stylevarids)) . "'";
+	
+	if ($vbulletin->GPC['dostyleid'] == -1 OR $vbulletin->GPC['dostyleid'] == -2)
+	{
+		$masterstyleid = $vbulletin->GPC['dostyleid'];
+	}
+	else
+	{
+		$style = $db->query_first("SELECT type FROM " . TABLE_PREFIX . "style WHERE styleid = {$vbulletin->GPC['dostyleid']}");
+		$masterstyleid = ($style['type'] == 'standard' ? -1 : -2);
+	}
 
 	$stylevars_result = $db->query_read("
 		SELECT stylevardfn.*, stylevar.styleid AS stylevarstyleid, stylevar.value
 		FROM " . TABLE_PREFIX . "stylevardfn AS stylevardfn
 		LEFT JOIN " . TABLE_PREFIX . "stylevar AS stylevar ON(stylevardfn.stylevarid = stylevar.stylevarid)
-		WHERE stylevardfn.stylevarid IN (" . $stylevarids_sql . ")
+		WHERE
+			stylevardfn.stylevarid IN (" . $stylevarids_sql . ")
+				AND
+			stylevardfn.styleid = {$masterstyleid}
 		ORDER BY stylevardfn.stylevargroup, stylevardfn.stylevarid
 	");
 
@@ -858,7 +959,7 @@ if ($_REQUEST['do'] == 'fetchstylevareditor')
 
 		foreach($stylevargroup AS $stylevarid => $stylevar_style)
 		{
-			$editor .= construct_stylevar_form($stylevarid, $stylevarid, $stylevargroup, $vbulletin->GPC['dostyleid']);
+			$editor .= construct_stylevar_form($stylevarid, $stylevarid, $stylevargroup, $vbulletin->GPC['dostyleid'], $masterstyleid);
 		}
 	}
 
@@ -878,7 +979,7 @@ if ($_REQUEST['do'] == 'fetchstylevareditor')
 if ($_POST['do'] == 'doconvertvb3tovb4')
 {
 	$style = $db->query_first("
-		SELECT styleid
+		SELECT *
 		FROM " . TABLE_PREFIX . "style
 		WHERE styleid = " . intval($vbulletin->GPC['dostyleid'])
 	);
@@ -902,7 +1003,7 @@ if ($_POST['do'] == 'doconvertvb3tovb4')
 	$stylevarmap->set_option('skip_image_paths', true);
 	$stylevarmap->set_option('revert_templates', true);
 
-	$stylevarmap->convert($style['styleid']);
+	$stylevarmap->convert($style);
 }
 
 // ########################################################################
@@ -1263,9 +1364,6 @@ YAHOO.util.Event.on(window, "load", init);
 //-->
 </script>
 <style type="text/css">
-.container {
-	background:#DDDDDD;
-}
 .leftcontrol {
 	width:325px;
 }
@@ -1289,7 +1387,6 @@ YAHOO.util.Event.on(window, "load", init);
 #edit_scroller {
 	width:100%;
 	min-height:573px;
-	overflow:auto;
 	border:inset 2px;
 	background:white;
 }
@@ -1342,6 +1439,8 @@ input[type="text"] {
 .color input[type="button"] {
 	background-color:#09F;
 	width:25px;
+	clear:both;
+ 	float:none;
 }
 
 .font-size input[type="text"],
@@ -1381,14 +1480,14 @@ input[type="text"] {
 	echo $prepend;
 	// table wrapper
 	echo '
-		<table width="100%" align="center" class="container">
+		<table width="100%" align="center" class="tborder" border="0" cellpadding="4" cellspacing="1">
 			<tr>
-				<th colspan="2">
-					' . $vbphrase['stylevareditor'] . ' - ' . $styleinfo['title'] . '
+				<th colspan="2" class="tcat">
+					<b>' . $vbphrase['stylevareditor'] . ' - ' . $styleinfo['title'] . '</b>
 				</th>
 			</tr>
 			<tr valign="top">
-				<td>
+				<td class="alt2">
 	';
 	// show the search field and the checkboxes
 	//TODO redisplay var checkbox when Friendly names are working.  "display:none" allows the element
@@ -1447,11 +1546,11 @@ input[type="text"] {
 						vBulletin_init();
 					</script>
 	';
-	if ($vbulletin->debug AND ($vbulletin->GPC['dostyleid'] == -1))
+	if ($vbulletin->debug AND ($vbulletin->GPC['dostyleid'] == -1 OR $vbulletin->GPC['dostyleid'] == -2))
 	{
 		// show the add stylevardfn button
 		echo '
-					<input type="button" value="' . $vbphrase['add_new_stylevar'] . '" onclick="location.href=\'stylevar.php?do=dfnadd\'" />
+					<input type="button" value="' . $vbphrase['add_new_stylevar'] . '" onclick="location.href=\'stylevar.php?do=dfnadd&dostyleid=' . $vbulletin->GPC['dostyleid'] . '\'" />
 					<input type="button" value="' . $vbphrase['delete_stylevar'] . '" onclick="handle_stylevar_delete()" />
 		';
 	}
@@ -1472,7 +1571,7 @@ input[type="text"] {
 					</tr>
 					</table>
 				</td>
-				<td width="100%">
+				<td width="100%" class="alt2">
 	';
 	// show the editor pane
 	echo '
@@ -1495,11 +1594,17 @@ input[type="text"] {
 // do revert all StyleVars in a style
 if ($_POST['do'] == 'dorevertall')
 {
-	if ($vbulletin->GPC['dostyleid'] != -1 AND $style = $db->query_first("SELECT styleid, parentid, parentlist, title FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']))
+	if (
+		$vbulletin->GPC['dostyleid'] != -1
+			AND
+		$vbulletin->GPC['dostyleid'] != -2
+			AND
+		$style = $db->query_first("SELECT type, styleid, parentid, parentlist, title FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid'])
+	)
 	{
 		if (!$style['parentlist'])
 		{
-			$style['parentlist'] = '-1';
+			$style['parentlist'] = ($style['type'] == 'mobile') ? -2 : -1;
 		}
 
 		$stylevars = $db->query_read("
@@ -1542,11 +1647,16 @@ if ($_POST['do'] == 'dorevertall')
 // revert all StyleVars in a style
 if ($_REQUEST['do'] == 'revertall')
 {
-	if ($vbulletin->GPC['dostyleid'] != -1 AND $style = $db->query_first("SELECT styleid, title, parentlist FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']))
+	if (
+		$vbulletin->GPC['dostyleid'] != -1
+			AND
+		$vbulletin->GPC['dostyleid'] != -2
+			AND
+		$style = $db->query_first("SELECT type, styleid, title, parentlist FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']))
 	{
 		if (!$style['parentlist'])
 		{
-			$style['parentlist'] = '-1';
+			$style['parentlist'] = ($style['type'] == 'mobile') ? -2 : -1;
 		}
 
 		$stylevars = $db->query_read("
@@ -1592,7 +1702,6 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 42666 $
+|| # CVS: $RCSfile$ - $Revision: 62562 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 39159 $
- * @since $Date: 2010-09-22 09:42:11 -0700 (Wed, 22 Sep 2010) $
+ * @version $Revision: 58956 $
+ * @since $Date: 2012-02-10 17:31:19 -0800 (Fri, 10 Feb 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 
@@ -223,17 +223,15 @@ class vBCms_Widget_ExecPhp extends vBCms_Widget
 	 */
 	protected function getHash($widgetid)
 	{
-		$context = new vB_Context('widget' , array( 'widgetid' =>$widgetid,
+		$context = new vB_Context("widget_$widgetid" , array( 'widgetid' =>$widgetid,
 			'userid' => vB::$vbulletin->userinfo['userid'],
 			'sessionurl' => vB::$vbulletin->session->vars['sessionurl']));
 		return strval($context);
-
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 39159 $
+|| # SVN: $Revision: 58956 $
 || ####################################################################
 \*======================================================================*/

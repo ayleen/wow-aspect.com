@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -32,10 +32,10 @@ $globaltemplates = array(
 	'reputation',
 	'reputation_adjust',
 	'reputation_ajax',
+	'reputation_ajaxdisplay',
 	'reputation_reasonbits',
 	'reputation_yourpost',
 	'reputationbit',
-	'postbit_reputation',
 );
 
 // pre-cache templates used by specific actions
@@ -109,13 +109,23 @@ if ($_POST['do'] == 'addreputation')
 		$vbulletin->GPC['reason'] = convert_urlencoded_unicode($vbulletin->GPC['reason']);
 	}
 
+	if (!($foruminfo['options'] & $vbulletin->bf_misc_forumoptions['canreputation']))
+	{
+		print_no_permission();
+	}
+
 	if ($userid == $vbulletin->userinfo['userid'])
 	{
 		eval(standard_error(fetch_error('reputationownpost')));
 	}
 
 	$score = fetch_reppower($vbulletin->userinfo, $permissions, $vbulletin->GPC['reputation']);
-	if ($score < 0 AND empty($vbulletin->GPC['reason']))
+
+	if ($score < 0 AND $vbulletin->options['neednegreason'] AND empty($vbulletin->GPC['reason']))
+	{
+		eval(standard_error(fetch_error('reputationreason')));
+	}
+	else if ($score >= 0 AND $vbulletin->options['needposreason'] AND empty($vbulletin->GPC['reason']))
 	{
 		eval(standard_error(fetch_error('reputationreason')));
 	}
@@ -166,6 +176,7 @@ if ($_POST['do'] == 'addreputation')
 		}
 	}
 
+	$userinfo['newrepcount'] += 1;
 	$userinfo['reputation'] += $score;
 
 	// Determine this user's reputationlevelid.
@@ -181,6 +192,7 @@ if ($_POST['do'] == 'addreputation')
 	$userdata =& datamanager_init('User', $vbulletin, ERRTYPE_STANDARD);
 	$userdata->set_existing($userinfo);
 	$userdata->set('reputation', $userinfo['reputation']);
+	$userdata->set('newrepcount', $userinfo['newrepcount']);
 	$userdata->set('reputationlevelid', intval($reputationlevel['reputationlevelid']));
 
 	($hook = vBulletinHook::fetch_hook('reputation_add_process')) ? eval($hook) : false;
@@ -214,7 +226,7 @@ if ($_POST['do'] == 'addreputation')
 	if (!$vbulletin->GPC['ajax'])
 	{
 		$vbulletin->url = fetch_seo_url('thread', $threadinfo, array('p' => $postid)) . "#post$postid";
-		eval(print_standard_redirect($redirect_phrase));
+		print_standard_redirect($redirect_phrase);  
 		// redirect or close window here
 	}
 	else
@@ -223,13 +235,18 @@ if ($_POST['do'] == 'addreputation')
 		$post = $userinfo;
 		$repdisplay = fetch_reputation_image($post, $userinfo['permissions']);
 
+		$templater = vB_Template::create('reputation_ajaxdisplay');
+			$templater->register('reputationdisplay', $post['reputationdisplay']);
+		$reputationdisplay = $templater->render();
+
 		require_once(DIR . '/includes/class_xml.php');
 		require_once(DIR . '/includes/functions_misc.php');
 		$xml = new vB_AJAX_XML_Builder($vbulletin, 'text/xml');
 		$xml->add_tag('reputation', process_replacement_vars(fetch_phrase($redirect_phrase, 'frontredirect', 'redirect_')), array(
 			'reppower'   => fetch_reppower($userinfo, $userinfo['permissions']),
-			'repdisplay' => process_replacement_vars($post['reputationdisplay']),
+			'repdisplay' => process_replacement_vars($reputationdisplay),
 			'userid'     => $userinfo['userid'],
+			'level'     => $post['level'],
 		));
 		$xml->print_xml();
 	}
@@ -446,7 +463,6 @@ else
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 62096 $
 || ####################################################################
 \*======================================================================*/

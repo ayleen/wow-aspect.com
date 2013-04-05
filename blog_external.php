@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000–2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000–2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -252,9 +252,9 @@ else
 }
 $rssicon = create_full_url(vB_Template_Runtime::fetchStyleVar('imgdir_misc') . '/rss.jpg');
 
+$headers[] = 'Pragma:'; // VBIV-8269 
 $headers[] = 'Cache-control: max-age=' . $expires;
 $headers[] = 'Expires: ' . gmdate("D, d M Y H:i:s", $expires) . ' GMT';
-//$headers[] = 'Last-Modified: ' . gmdate('D, d M Y H:i:s', $lastmodified) . ' GMT';
 $headers[] = 'ETag: "' . $cachehash . '"';
 $headers[] = 'Content-Type: text/xml' . (vB_Template_Runtime::fetchStyleVar('charset') != '' ? '; charset=' .  vB_Template_Runtime::fetchStyleVar('charset') : '');
 
@@ -381,8 +381,7 @@ echo $output;
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 44868 $
+|| # SVN: $Revision: 47204 $
 || ####################################################################
 \*======================================================================*/
 ?>

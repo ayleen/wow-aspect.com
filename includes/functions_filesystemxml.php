@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -13,6 +13,8 @@
 require_once(DIR . '/includes/adminfunctions_template.php');
 require_once(DIR . '/includes/class_core.php');
 require_once(DIR . '/includes/functions.php');
+
+bootstrap_framework();
 
 /**
 * Outputs the XML templates to the file system from a specified product
@@ -195,12 +197,6 @@ function autoexport_route_update($id, $product, $vb_func)
 {
 	if ($id == -1)
 	{	
-		//inits classloader -- required to make vB_Cache work
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();	
-//		$timer = vB_Timer::get('timer');
-//		$timer->start();
-
 		if (is_array($product))
 		{
 			//makes sure that if we are passed a list of products
@@ -239,9 +235,6 @@ function autoexport_route_update($id, $product, $vb_func)
 				autoexport_write_product($product);
 			}
 		}
-
-		
-//		var_dump($timer->stop());
 	}
 }
 
@@ -333,8 +326,7 @@ function autoexport_write_file_with_backup($file, $xml)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 37624 $
+|| # CVS: $RCSfile$ - $Revision: 62099 $
 || ####################################################################
 \*======================================================================*/
 ?>

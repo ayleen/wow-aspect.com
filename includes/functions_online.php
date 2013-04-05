@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -38,7 +38,7 @@ function fetch_user_location_array($userinfo)
 // ###################### Start showonline #######################
 function construct_online_bit($userinfo, $doall = 0)
 {
-	global $vbulletin, $vbphrase, $ipclass, $show;
+	global $vbulletin, $vbphrase, $show;
 	global $wol_album, $wol_attachment, $wol_calendar, $wol_event, $wol_inf, $wol_pm, $wol_post,
 		$wol_search, $wol_socialgroup, $wol_thread, $wol_user;
 	static $count;
@@ -182,19 +182,36 @@ function construct_online_bit($userinfo, $doall = 0)
 		{
 			try
 			{
-				if (!defined('VB_FRAMEWORK'))
-				{
-					require_once(DIR . '/includes/class_bootstrap_framework.php');
-					vB_Bootstrap_Framework::init();
-				}
-
 				list($route_path, $phrasegroup, $phrasekey, $title) = $location;
 				$route_path = urldecode($route_path);
 				$title = urldecode($title);
+
+				list($type) = explode('_', vB_Router::getRouteClassFromPath($route_path));
+
+				$class = $type . '_Permissions';
 				$route = vB_Router::createRoute($route_path);
+				$nodeid = intval($route->getRoutePath());
 
 				$userinfo['action'] = new vB_Phrase($phrasegroup, $phrasekey);
-				$userinfo['where'] = '<a href="' . $route->getCurrentUrl() . '">' . htmlspecialchars_uni($title) . '</a>';
+
+				if (class_exists($class))
+				{
+					$perms = new $class;
+					$canview = $perms->canView($nodeid);
+				}
+				else
+				{
+					$canview = true; // Default to allowed
+				}
+
+				if ($canview)
+				{
+					$userinfo['where'] = '<a href="' . $route->getCurrentUrl() . '">' . htmlspecialchars_uni($title) . '</a>';
+				}
+				else
+				{
+					$userinfo['where'] = '';
+				}
 
 				if (vB::$vbulletin->session->vars['sessionhash'])
 				{
@@ -211,6 +228,19 @@ function construct_online_bit($userinfo, $doall = 0)
 	{
 		switch($userinfo['activity'])
 		{
+			case 'api':
+				if ($vbulletin->userinfo['permissions']['wolpermissions'] & $vbulletin->bf_ugp_wolpermissions['canwhosonlinebad'])
+				{
+					$userinfo['action'] = $vbphrase['calling_api'];
+					$userinfo['where'] =  $userinfo['api'];
+				}
+				else
+				{
+					$userinfo['action'] = $vbphrase['viewing_index'];
+					$userinfo['where'] = '<a href="' . fetch_seo_url('forumhome', array()) . '">' .
+						$vbulletin->options['bbtitle'] . '</a>';
+				}
+				break;
 			case 'visitormessage_posting':
 				$userinfo['action'] = $vbphrase['posting_visitor_message'];
 				break;
@@ -227,6 +257,10 @@ function construct_online_bit($userinfo, $doall = 0)
 			case 'visitormessage_reporting':
 				$userinfo['action'] = $vbphrase['reporting_visitor_message'];
 				break;
+
+			case 'activitystream':
+				$userinfo['action'] = $vbphrase['viewing_activity_stream'];
+				break;			
 
 			case 'posthistory':
 				$userinfo['action'] = $vbphrase['viewing_post_history'];
@@ -351,7 +385,7 @@ function construct_online_bit($userinfo, $doall = 0)
 				break;
 			case 'index':
 				$userinfo['action'] = $vbphrase['viewing_index'];
-				$userinfo['where'] = '<a href="' . fetch_seo_url('forumhome', array()) . '">' . 
+				$userinfo['where'] = '<a href="' . fetch_seo_url('forumhome', array()) . '">' .
 					$vbulletin->options['bbtitle'] . '</a>';
 				break;
 			case 'online':
@@ -1190,14 +1224,14 @@ function construct_online_bit($userinfo, $doall = 0)
 			case 'picture_inlinemod':
 				$userinfo['action'] = '<b><i>' . $vbphrase['moderating'] . '</i></b>';
 				break;
-				
+
 			case 'viewing_cms_content':
 				require_once(DIR . '/includes/functions_login.php');
 				$userinfo['action'] = $vbphrase['viewing_cms_content']  ;
 				$userinfo['location'] = fetch_replaced_session_url(stripslashes($userinfo['location']));
 				$userinfo['where'] = "<a href=\"$userinfo[location]\">$userinfo[location]</a>";
 				break;
-				
+
 			case 'viewing_cms_list':
 				require_once(DIR . '/includes/functions_login.php');
 				$userinfo['action'] =$vbphrase['viewing_cms_list'] ;
@@ -1222,7 +1256,7 @@ function construct_online_bit($userinfo, $doall = 0)
 					{
 						// We were unable to parse the location
 						$userinfo['action'] = $vbphrase['viewing_index'];
-						$userinfo['where'] = '<a href="' . fetch_seo_url('forumhome', array()) . '">' . 
+						$userinfo['where'] = '<a href="' . fetch_seo_url('forumhome', array()) . '">' .
 							$vbulletin->options['bbtitle'] . "</a>";
 					}
 				}
@@ -1232,7 +1266,7 @@ function construct_online_bit($userinfo, $doall = 0)
 	if ($userinfo['badlocation'] == 1)
 	{ // User received 'no permissions screen'
 		if (
-			$vbulletin->userinfo['permissions']['wolpermissions'] & $vbulletin->bf_ugp_wolpermissions['canwhosonlinebad'] OR 
+			$vbulletin->userinfo['permissions']['wolpermissions'] & $vbulletin->bf_ugp_wolpermissions['canwhosonlinebad'] OR
 			$userinfo['userid'] == $vbulletin->userinfo['userid']
 		)
 		{
@@ -1241,7 +1275,7 @@ function construct_online_bit($userinfo, $doall = 0)
 		else
 		{
 			$userinfo['action'] = $vbphrase['viewing_index'];
-			$userinfo['where'] = '<a href="' . fetch_seo_url('forumhome', array()) . '">' . 
+			$userinfo['where'] = '<a href="' . fetch_seo_url('forumhome', array()) . '">' .
 				$vbulletin->options['bbtitle'] . "</a>";
 		}
 	}
@@ -1258,7 +1292,7 @@ function construct_online_bit($userinfo, $doall = 0)
 		else
 		{
 			$userinfo['action'] = $vbphrase['viewing_index'];
-			$userinfo['where'] = '<a href="' . fetch_seo_url('forumhome', array()) . '">' . 
+			$userinfo['where'] = '<a href="' . fetch_seo_url('forumhome', array()) . '">' .
 				$vbulletin->options['bbtitle'] . "</a>";
 		}
 	}
@@ -1299,19 +1333,15 @@ function construct_online_bit($userinfo, $doall = 0)
 			$show['spider'] = false;
 		}
 
+		$userinfo['spidertype'] = $spidertype;
 		$show['reallocation'] = iif($userinfo['location'], true, false);
 		$show['subscribed'] = iif($wol_thread["$threadid"]['issubscribed'] AND $seetitle, true, false);
 		$show['where'] = iif($userinfo['where'], true, false);
 
 		$userinfo['location'] = htmlspecialchars($userinfo['location']);
-		
-		$templater = vB_Template::create('whosonlinebit');
-			$templater->register('count', $count);
-			$templater->register('ipclass', $ipclass);
-			$templater->register('spidertype', $spidertype);
-			$templater->register('userinfo', $userinfo);
-		$onlinebits = $templater->render();
-		return $onlinebits;
+
+		$userinfo['show'] = $show;
+		return $userinfo;
 	}
 	else
 	{
@@ -1502,9 +1532,40 @@ function process_online_location($userinfo, $doall = 0)
 		$socialgroupids .= ',' . $userinfo['socialgroupid'];
 	}
 
+	// Process api.php
+	if ($filename == 'api.php')
+	{
+		if ($values['api_m'])
+		{
+			// Usually api method name is filename_doname
+			list($apifilename, $do) = explode('_', $values['api_m']);
+			if (strpos($apifilename, 'cms.') !== false)
+			{
+				// cms
+				if ($apifilename == 'cms.content' )
+				{
+					$userinfo['activity'] = 'viewing_cms_content';
+					return $userinfo;
+				}
+				else if ($filename == 'cms.list' )
+				{
+					$userinfo['activity'] = 'viewing_cms_list';
+					return $userinfo;
+				}
+			}
+			$filename = str_replace('.', '_', $apifilename) . '.php';
+			$values['do'] = $do;
+		}
+	}
+
 // ################################################## Showthread
 	switch($filename)
 	{
+	case 'api.php':
+		// User is calling internal api methods
+		$userinfo['activity'] = 'api';
+		$userinfo['api'] = $values['api_m'];
+		break;
 	case 'login.php':
 		if (in_array($values['do'], array('lostpw', 'emailpassword', 'resetpassword')))
 		{
@@ -2037,6 +2098,10 @@ function process_online_location($userinfo, $doall = 0)
 		$userinfo['activity'] = 'spider';
 		break;
 
+	case 'activity.php':
+		$userinfo['activity'] = 'activitystream';
+		break;
+
 	case 'posthistory.php':
 		$userinfo['activity'] = 'posthistory';
 		break;
@@ -2459,8 +2524,7 @@ function sanitize_perpage($perpage, $max, $default = 25)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44644 $
+|| # CVS: $RCSfile$ - $Revision: 62636 $
 || ####################################################################
 \*======================================================================*/
 ?>

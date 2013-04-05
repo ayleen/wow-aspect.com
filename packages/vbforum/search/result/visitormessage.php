@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -60,7 +60,7 @@ class vBForum_Search_Result_VisitorMessage extends vB_Search_Result
 				ifnull(profileblockprivacy.requirement, 0) AS requirement " .
 			($vbulletin->options['avatarenabled'] ? ", avatar.avatarpath,
 			customavatar.userid AS hascustomavatar, customavatar.dateline AS avatardateline,
-			customavatar.width AS avwidth,customavatar.height AS avheight" : "") . "
+			customavatar.width AS avwidth,customavatar.height AS avheight, user.avatarrevision" : "") . "
 			FROM ". TABLE_PREFIX . "visitormessage AS visitormessage JOIN	" . 
 				TABLE_PREFIX . "user AS user ON visitormessage.userid = user.userid LEFT JOIN " .
 				TABLE_PREFIX . "profileblockprivacy AS profileblockprivacy ON visitormessage.userid = profileblockprivacy.userid AND 
@@ -80,7 +80,17 @@ class vBForum_Search_Result_VisitorMessage extends vB_Search_Result
 			$items[$row['vmid']] = $item;
 		}
 
-		return $items;
+		$ordered_items = array();
+		foreach($ids AS $item_key)
+		{
+			if(isset($items[$item_key]))
+			{
+				$ordered_items[$item_key] = $items[$item_key];
+				unset($items[$item_key]);
+			}
+		}
+
+		return $ordered_items;
 	}
 
 
@@ -194,9 +204,8 @@ class vBForum_Search_Result_VisitorMessage extends vB_Search_Result
 	 */
 	public function render($current_user, $criteria, $template_name = '')
 	{
-		global $vbulletin;
 		require_once DIR . '/includes/functions_user.php';
-		
+
 		if (!strlen($template_name)) {
 			$template_name = 'search_results_visitormessage';
 		}
@@ -218,15 +227,13 @@ class vBForum_Search_Result_VisitorMessage extends vB_Search_Result
 		$template->register('from', $this->message['postusername']);
 		$template->register('fromid', $from);
 		$template->register('toid', $to);
-		$template->register('sent', vbdate($vbulletin->options['dateformat']. ' '
-			. $vbulletin->options['timeformat'], $this->message['dateline']));
-		$template->register('dateline', $this->message['dateline']);
-		$template->register('dateformat', $vbulletin->options['dateformat']);
-		$template->register('timeformat', $vbulletin->options['timeformat']);
+
+		$template->register('sentdate', vbdate(vB::$vbulletin->options['dateformat'], $this->message['dateline'], true));
+		$template->register('senttime', vbdate(vB::$vbulletin->options['timeformat'], $this->message['dateline']));
 
 		if (vB::$vbulletin->options['avatarenabled'])
 		{
-			$template->register('avatar', fetch_avatar_from_record($this->message));
+			$template->register('avatar', fetch_avatar_from_record($this->message, true, 'postuserid'));
 		}
 		return $template->render();
 	}
@@ -249,7 +256,6 @@ class vBForum_Search_Result_VisitorMessage extends vB_Search_Result
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 30597 $
 || ####################################################################
 \*======================================================================*/

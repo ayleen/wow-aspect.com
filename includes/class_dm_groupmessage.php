@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -21,8 +21,8 @@ require_once(DIR . '/vb/search/indexcontroller/queue.php');
 * Class to do data save/delete operations for profile messages
 *
 * @package	vBulletin
-* @version	$Revision: 32878 $
-* @date		$Date: 2009-10-28 11:38:49 -0700 (Wed, 28 Oct 2009) $
+* @version	$Revision: 62619 $
+* @date		$Date: 2012-05-15 16:54:47 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_GroupMessage extends vB_DataManager
 {
@@ -231,19 +231,15 @@ class vB_DataManager_GroupMessage extends vB_DataManager
 
 			if ($this->info['hard_delete'])
 			{
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "deletionlog WHERE primaryid = $gmid AND type = 'groupmessage'
-				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "groupmessage WHERE gmid = $gmid
-				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "moderation WHERE primaryid = $gmid AND type = 'groupmessage'
-				");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "deletionlog WHERE primaryid = $gmid AND type = 'groupmessage'");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "groupmessage WHERE gmid = $gmid");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "moderation WHERE primaryid = $gmid AND type = 'groupmessage'");
 				vb_Search_Indexcontroller_Queue::indexQueue('vBForum', 'SocialGroupMessage', 'delete', $gmid);
 
+				$activity = new vB_ActivityStream_Manage('socialgroup', 'groupmessage');
+				$activity->set('contentid', $gmid);			
+				$activity->delete();
+				
 				// Logging?
 			}
 			else
@@ -342,7 +338,14 @@ class vB_DataManager_GroupMessage extends vB_DataManager
 					$dataman->set('moderation', 'moderation + 1', false);
 				}
 				$dataman->save();
-				unset($dataman);
+				unset($dataman);		
+				
+				$activity = new vB_ActivityStream_Manage('socialgroup', 'groupmessage');
+				$activity->set('contentid', $gmid);
+				$activity->set('userid', $this->fetch_field('postuserid'));
+				$activity->set('dateline', $this->fetch_field('dateline'));
+				$activity->set('action', 'create');
+				$activity->save();					
 			}
 		}
 
@@ -542,8 +545,7 @@ class vB_DataManager_GroupMessage extends vB_DataManager
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 62619 $
 || ####################################################################
 \*======================================================================*/
 ?>

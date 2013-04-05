@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -52,8 +52,8 @@ define('VURL_STATE_BODY',     3);
 * This class handles sending and returning data to remote urls via cURL and fsockopen
 *
 * @package 		vBulletin
-* @version		$Revision: 40651 $
-* @date 		$Date: 2010-11-16 16:23:46 -0800 (Tue, 16 Nov 2010) $
+* @version		$Revision: 46587 $
+* @date 		$Date: 2011-07-28 09:58:44 -0700 (Thu, 28 Jul 2011) $
 *
 */
 class vB_vURL
@@ -371,7 +371,6 @@ class vB_vURL
 			{
 				return false;
 			}
-
 		}
 
 		@unlink($this->tmpfile);
@@ -479,6 +478,28 @@ class vB_vURL
 		}
 		return $this->exec();
 	}
+
+	/**
+	 * Tests the transports for ssl support.
+	 *
+	 * @return	bool	Success
+	 *
+	 */
+	function test_ssl()
+	{
+		$ssl_support = false;
+		foreach (array_keys($this->transports) AS $tname)
+		{
+			$transport =& $this->transports[$tname];
+			if ($transport->test_ssl())
+			{
+				$ssl_support = true;
+				break;
+			}
+		}
+
+		return $ssl_support;
+	}
 }
 
 class vB_vURL_cURL
@@ -551,6 +572,24 @@ class vB_vURL_cURL
 			trigger_error('Direct Instantiation of ' . __CLASS__ . ' prohibited.', E_USER_ERROR);
 		}
 		$this->vurl =& $vurl_registry;
+	}
+
+	/**
+	 * Tests cURL for ssl support.
+	 *
+	 * @return	bool	Success
+	 *
+	 */
+	function test_ssl()
+	{
+		if (!function_exists('curl_init') OR ($ch = curl_init()) === false)
+		{
+			return false;
+		}
+		curl_close($ch);
+
+		$curlinfo = curl_version();
+		return !empty($curlinfo['ssl_version']);
 	}
 
 	/**
@@ -823,6 +862,17 @@ class vB_vURL_fsockopen
 			trigger_error('Direct Instantiation of ' . __CLASS__ . ' prohibited.', E_USER_ERROR);
 		}
 		$this->vurl =& $vurl_registry;
+	}
+
+	/**
+	 * Tests sockets for ssl support.
+	 *
+	 * @return	bool	Success
+	 *
+	 */
+	function test_ssl()
+	{
+		return function_exists('openssl_open');
 	}
 
 	/**
@@ -1120,8 +1170,7 @@ class vB_vURL_fsockopen
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40651 $
+|| # CVS: $RCSfile$ - $Revision: 46587 $
 || ####################################################################
 \*======================================================================*/
 ?>

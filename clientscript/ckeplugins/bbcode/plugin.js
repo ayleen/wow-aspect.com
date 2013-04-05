@@ -62,6 +62,7 @@
 	
 	function unescapeResponse(response)
 	{
+		/*
 		try
 		{
 			response = decodeURI(response);
@@ -70,6 +71,7 @@
 		{
 			// decode failed for some reason
 		}
+		*/
 		
 		var matches = response.match(/&#([0-9]+);/g);
 		if (matches)
@@ -121,6 +123,11 @@
 					parsetype: PHP.htmlspecialchars(this.editor.config.parsetype),
 					securitytoken: this.editor.config.vbulletin.securitytoken
 				};
+				if (vB_Editor[this.editor.editorid] && vB_Editor[this.editor.editorid].textarea.form && typeof vB_Editor[this.editor.editorid].textarea.form['options[allowbbcode]'] != 'undefined')
+				{
+					postData['allowbbcode'] = vB_Editor[this.editor.editorid].textarea.form['options[allowbbcode]'].checked;
+				}		
+				
 				//if there's extra info for the AJAX call VBIV-12041
 				if (this.editor.config.ajax_extra)
 				{
@@ -131,7 +138,7 @@
 				}
 				
 				var responseXML = CKEDITOR.vbajax.open({
-					url: 'ajax.php',
+					url: fetch_ajax_url('ajax.php'),
 					type: 'POST',
 					data: postData,
 					async: false,

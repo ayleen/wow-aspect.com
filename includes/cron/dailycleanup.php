@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -93,14 +93,43 @@ while ($user = $vbulletin->db->fetch_array($rebuild_db))
 	}
 }
 
+if ($vbulletin->options['contentread_cleandays'])
+{
+	$clean_date = TIMENOW - ($vbulletin->options['contentread_cleandays'] * 86400);
+	
+	$vbulletin->db->query_write("
+		DELETE contentread, ipdata
+		FROM " . TABLE_PREFIX . "contentread AS contentread
+		INNER JOIN " . TABLE_PREFIX . "ipdata AS ipdata USING (ipid)
+		WHERE contentread.dateline < $clean_date
+	");
+}
+
+// Remove expired activity
+if ($vbulletin->options['as_expire'])
+{
+	$value = intval($vbulletin->options['as_expire']);
+	if (!$value)
+	{
+		$value = 3;
+	}
+	if ($value > 180)
+	{
+		$value = 180;
+	}
+	$vbulletin->db->query_write("
+		DELETE FROM " . TABLE_PREFIX . "activitystream
+		WHERE dateline < " . (TIMENOW - ($value * 60 * 60 * 24))
+	);
+}
+
 ($hook = vBulletinHook::fetch_hook('cron_script_cleanup_daily')) ? eval($hook) : false;
 
 log_cron_action('', $nextitem, 1);
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 41161 $
+|| # CVS: $RCSfile$ - $Revision: 62620 $
 || ####################################################################
 \*======================================================================*/
 ?>

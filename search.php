@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -24,7 +24,8 @@ $phrasegroups = array('search', 'inlinemod', 'prefix', 'socialgroups', 'prefix',
 // get special data templates from the datastore
 $specialtemplates = array(
 	'iconcache',
-	'searchcloud'
+	'searchcloud',
+	'routes'
 );
 
 // pre-cache templates used by all actions
@@ -36,6 +37,7 @@ $globaltemplates = array(
 	'search_results_postbit', // result from search posts
 	'search_results_postbit_lastvisit',
 	'search_results_forum',
+	'search_results_visitormessage',
 	'search_results_socialgroup_discussion',
 	'search_results_socialgroup_message',
 	'search_threadbit',
@@ -44,7 +46,6 @@ $globaltemplates = array(
 	'pagenav_window',
 	'threadbit', // result from search threads
 	'threadbit_deleted', // result from deleted search threads
-	'threadbit_lastvisit',
 	'threadbit_announcement',
 	'newreply_reviewbit_ignore',
 	'threadadmin_imod_menu_thread',
@@ -181,7 +182,7 @@ if ($vbulletin->GPC_exists['contenttypeid'])
 if ($vbulletin->GPC_exists['contenttypeid'] and !(is_array($vbulletin->GPC['contenttypeid'])))
 {
 	//handle string forms of content types
-	$vbulletin->GPC['contenttypeid'] = vB_Types::instance()->getContentTypeId($vbulletin->GPC['contenttypeid']);
+	$vbulletin->GPC['contenttypeid'] = vB_Types::instance()->getContentTypeID($vbulletin->GPC['contenttypeid']);
 	$search_type = $search_core->get_search_type_from_id($vbulletin->GPC['contenttypeid']);
 }
 else
@@ -371,7 +372,7 @@ if ($_REQUEST['do'] == 'process')
 	{
 		$show['searchid'] = $results->get_searchid();
 	}
-	eval(print_standard_redirect('search'));
+	print_standard_redirect('search');  
 	exit;
 }
 
@@ -454,7 +455,9 @@ if ($_REQUEST['do'] == 'getnew' OR $_REQUEST['do'] == 'getdaily')
 		$type = 'vBForum_Post';
 	}
 
-	$type = vB_Types::instance()->getContentTypeId($type);
+	($hook = vBulletinHook::fetch_hook('search_getnew_start')) ? eval($hook) : false;
+
+	$type = vB_Types::instance()->getContentTypeID($type);
 	if (!$type)
 	{
 		//todo, do we need a seperate error for this?
@@ -464,7 +467,7 @@ if ($_REQUEST['do'] == 'getnew' OR $_REQUEST['do'] == 'getdaily')
 	//hack, we have a getnew controller for events, but they are not actually
 	//indexed.  For now we need to skip the search backlink for events because
 	//there isn't anywhere for them to go.
-	if ($type <> vB_Types::instance()->getContentTypeId('vBForum_Event'))
+	if ($type <> vB_Types::instance()->getContentTypeID('vBForum_Event'))
 	{
 		$searchterms['searchdate'] = $_REQUEST['do'] == 'getnew' ? 'lastvisit' : 1;
 		$searchterms['contenttypeid'] = $type;
@@ -482,6 +485,9 @@ if ($_REQUEST['do'] == 'getnew' OR $_REQUEST['do'] == 'getdaily')
 	set_newitem_forums($criteria);
 	set_newitem_date($criteria, $current_user, $_REQUEST['do']);
 	set_getnew_sort($criteria, $vbulletin->GPC['sortby']);
+
+
+	($hook = vBulletinHook::fetch_hook('search_getnew_process')) ? eval($hook) : false;
 
 	//check for any errors
 	$errors = $criteria->get_errors();
@@ -541,7 +547,10 @@ if ($_REQUEST['do'] == 'getnew' OR $_REQUEST['do'] == 'getdaily')
 	{
 		$show['searchid'] = $results->get_searchid();
 	}
-	eval(print_standard_redirect('search'));
+
+	($hook = vBulletinHook::fetch_hook('search_getnew_complete')) ? eval($hook) : false;
+
+	print_standard_redirect('search');  
 	exit;
 }
 
@@ -622,7 +631,7 @@ if ($_REQUEST['do'] == 'finduser')
 	{
 		$show['searchid'] = $results->get_searchid();
 	}
-	eval(print_standard_redirect('search'));
+	print_standard_redirect('search');  
 }
 
 // #############################################################################
@@ -672,7 +681,7 @@ if ($_POST['do'] == 'doprefs')
 	$clearprefs = !$vbulletin->GPC['saveprefs'];
 	if (!$vbulletin->GPC['ajax'])
 	{
-		eval(print_standard_redirect($clearprefs ? 'search_preferencescleared' : 'search_preferencessaved', true, true));
+		print_standard_redirect($clearprefs ? 'search_preferencescleared' : 'search_preferencessaved', true, true);  
 	}
 	else
 	{
@@ -867,8 +876,10 @@ function do_intro($user, $globals, $navbits, $search_type, $errors = array(), $s
 	//finish off search
 	($hook = vBulletinHook::fetch_hook('search_complete')) ? eval($hook) : false;
 
+	$navbits = construct_navbits($navbits);
+	$navbar = render_navbar_template($navbits);
 	$template->register('show', $show);
-	$template->register('navbar', render_navbar_template(construct_navbits($navbits)));
+	$template->register('navbar', $navbar);
 	$template->register_page_templates();
 
 	print_output($template->render());
@@ -989,7 +1000,7 @@ function check_save_prefs($current_user, $typeid = vB_Search_Core::TYPE_COMMON)
 		$typeid = vB_Search_Core::TYPE_COMMON;
 	}
 
-	if ($vbulletin->GPC_exists['saveprefs'] and $vbulletin->GPC['saveprefs'])
+	if ($vbulletin->GPC_exists['saveprefs'] AND $vbulletin->GPC['saveprefs'])
 	{
 		$stored_prefs = $current_user->getSearchPrefs();
 
@@ -997,7 +1008,7 @@ function check_save_prefs($current_user, $typeid = vB_Search_Core::TYPE_COMMON)
 		{
 			if (isset($vbulletin->GPC[$key]))
 			{
-				$prefs[$key] = $vbulletin->GPC[$key];
+				$prefs[$key] = convert_urlencoded_unicode($vbulletin->GPC[$key]);
 			}
 		}
 		$stored_prefs[$typeid] = $prefs;
@@ -1211,7 +1222,6 @@ function set_getnew_sort($criteria, $sort)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45738 $
+|| # CVS: $RCSfile$ - $Revision: 60957 $
 || ####################################################################
 \*======================================================================*/

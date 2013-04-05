@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -21,12 +21,20 @@ require_once(DIR . '/includes/class_bbcode.php');
 * BB code parser for the WYSIWYG editor
 *
 * @package 		vBulletin
-* @version		$Revision: 44293 $
-* @date 		$Date: 2011-06-08 12:17:25 -0700 (Wed, 08 Jun 2011) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_BbCodeParser_Wysiwyg extends vB_BbCodeParser
 {
+	/**
+	 * When set, look for tags with this option to disable at runtime (for the wysiwyg parser)
+	 * For tags defined at runtime (plugins)
+	 * 
+	 * @var boolean
+	 */
+	var $handle_wysiwyg_no_parse = true;
+	
 	/**
 	* List of tags the WYSIWYG BB code parser should not parse.
 	*
@@ -233,18 +241,16 @@ class vB_BbCodeParser_Wysiwyg extends vB_BbCodeParser
 
 			$ids = array();
 			$attachments = $vbulletin->db->query_read_slave("
-				SELECT a.settings, a.attachmentid
+				SELECT a.settings, a.attachmentid, a.filename
 				FROM " . TABLE_PREFIX . "attachment AS a
 				WHERE
-					a.attachmentid IN (" . implode(',', $matches[1]) . ")
-						AND
-					a.settings <> ''				
+					a.attachmentid IN (" . implode(',', $matches[1]) . ")			
 				LIMIT 50
 			");
 			while ($attachment = $vbulletin->db->fetch_array($attachments))
 			{
-				$extension = strtolower(file_extension($attachment['filename']));
-				$ids[$attachment['attachmentid']] = @unserialize($attachment['settings']);
+				$attachment['settings'] = @unserialize($attachment['settings']);
+				$ids[$attachment['attachmentid']] = $attachment;
 			}
 
 			foreach($matches[1] AS $attachmentid)
@@ -257,7 +263,14 @@ class vB_BbCodeParser_Wysiwyg extends vB_BbCodeParser
 					'alt'          => '',
 					'id'           => 'vbattach_' . $attachmentid,
 				);
-				if ($setting = $ids[$attachmentid])
+				
+				$extension = strtolower(file_extension($ids[$attachmentid]['filename']));
+				if ($extension == 'pdf')
+				{
+					$attribs['src'] .= '&amp;thumb=1';
+				}
+				
+				if ($setting = $ids[$attachmentid]['settings'])
 				{
 					if ($setting['styles'])
 					{
@@ -534,10 +547,12 @@ class vB_BbCodeParser_Wysiwyg extends vB_BbCodeParser
 	* Handles a single bullet of a list
 	*
 	* @param	string	Text of bullet
+	* @param	int		Indent Value
+	* @param	string	Align
 	*
 	* @return	string	HTML for bullet
 	*/
-	function handle_bbcode_list_element($text, $indentvalue = 0)
+	function handle_bbcode_list_element($text, $indentvalue = 0, $align = '')
 	{
 		$bad_tag_list = '(br|p|li|ul|ol)';
 
@@ -559,19 +574,34 @@ class vB_BbCodeParser_Wysiwyg extends vB_BbCodeParser
 				$output .= "$value\n";
 			}
 		}
-		$output = preg_replace('#<br />+\s*$#i', '', $output);
+		$output = preg_replace('#<br ?/?>+\s*$#i', '', $output);
 
 		$indent = '';
 		$indentvalue = intval($indentvalue);
+		$styleattr = array();
 		if ($indentvalue)
 		{
 			$dir = $this->registry->stylevars['textdirection']['string'] == 'rtl' ? 'right' : 'left';
-			$indent = " style=\"margin-{$dir}: {$indentvalue}px\"";
+			$styleattr[] = "margin-{$dir}: {$indentvalue}px";
 		}
-
-		return "<li{$indent}>$output</li>";
-	}
-
+		if ($align)
+		{
+			$styleattr[] = "text-align: {$align}";
+		}
+		
+		$style = ' style="' . implode("; ", $styleattr) . '"';
+			
+		if ($style)
+		{
+			return "<li{$style}>$output</li>\n";
+		}
+		else
+		{
+			return "<li>$output</li>\n";
+		}
+	}	
+	
+	
 	/**
 	* Returns whether this parser is a WYSIWYG parser if no type is specified.
 	* If a type is specified, it checks whether our type matches
@@ -651,8 +681,8 @@ class vB_BbCodeParser_Wysiwyg extends vB_BbCodeParser
 * parsed with this parser to prevent user-added <img> tags from counting.
 *
 * @package 		vBulletin
-* @version		$Revision: 44293 $
-* @date 		$Date: 2011-06-08 12:17:25 -0700 (Wed, 08 Jun 2011) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_BbCodeParser_ImgCheck extends vB_BbCodeParser
@@ -773,14 +803,14 @@ class vB_BbCodeParser_ImgCheck extends vB_BbCodeParser
 	*
 	* @param	string	The code to display
 	*
-	* @return	string	<img> - expectation that occurrences of <img> are checked
+	* @return	string	<video /> - expectation that occurrences of <video> are checked
 	*/
 	function handle_bbcode_video($url, $option)
 	{
 		global $vbulletin, $vbphrase, $show;
 
 		$params = array();
-		$options = explode(';', $option);
+		$options = explode(';', $option, 2);
 		$provider = strtolower($options[0]);
 		$code = $options[1];
 
@@ -789,7 +819,7 @@ class vB_BbCodeParser_ImgCheck extends vB_BbCodeParser
 			return '[video=' . $option . ']' . $url . '[/video]';
 		}
 
-		return '<img />';
+		return '<video />';
 	}
 
 	/**
@@ -841,9 +871,9 @@ class vB_BbCodeParser_PrintableThread extends vB_BbCodeParser
 	*
 	* @return	string	Parsed text
 	*/
-	function do_parse($text, $do_html = false, $do_smilies = true, $do_bbcode = true , $do_imgcode = true, $do_nl2br = true, $cachable = false)
+	function do_parse($text, $do_html = false, $do_smilies = true, $do_bbcode = true , $do_imgcode = true, $do_nl2br = true, $cachable = false, $htmlstate = null, $minimal = false, $do_videocode = true)
 	{
-		return parent::do_parse($text, $do_html, $do_smilies, $do_bbcode, false, $do_nl2br, $cachable);
+		return parent::do_parse($text, $do_html, $do_smilies, $do_bbcode, false, $do_nl2br, $cachable, $htmlstate, $minimal, false);
 	}
 }
 
@@ -851,8 +881,8 @@ class vB_BbCodeParser_PrintableThread extends vB_BbCodeParser
 * BB code parser that generates plain text. This is basically useful for emails.
 *
 * @package 		vBulletin
-* @version		$Revision: 44293 $
-* @date 		$Date: 2011-06-08 12:17:25 -0700 (Wed, 08 Jun 2011) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_BbCodeParser_PlainText extends vB_BbCodeParser
@@ -1182,7 +1212,7 @@ class vB_BbCodeParser_PlainText extends vB_BbCodeParser
 	*
 	* @return	string	Parsed text
 	*/
-	function do_parse($text, $do_html = false, $do_smilies = true, $do_bbcode = true , $do_imgcode = true, $do_nl2br = true, $cachable = false)
+	function do_parse($text, $do_html = false, $do_smilies = true, $do_bbcode = true , $do_imgcode = true, $do_nl2br = true, $cachable = false, $htmlstate = null, $minimal = false, $do_videocode = true)
 	{
 		global $html_allowed;
 
@@ -1193,12 +1223,13 @@ class vB_BbCodeParser_PlainText extends vB_BbCodeParser
 		$cachable = false;
 
 		$this->options = array(
-			'do_html' => $do_html,
-			'do_smilies' => $do_smilies,
-			'do_bbcode' => $do_bbcode,
-			'do_imgcode' => $do_imgcode,
-			'do_nl2br' => $do_nl2br,
-			'cachable' => $cachable
+			'do_html'      => $do_html,
+			'do_smilies'   => $do_smilies,
+			'do_bbcode'    => $do_bbcode,
+			'do_imgcode'   => $do_imgcode,
+			'do_videocode' => $do_videocode,
+			'do_nl2br'     => $do_nl2br,
+			'cachable'     => $cachable
 		);
 		$this->cached = array('text' => '', 'has_images' => 0);
 
@@ -1210,7 +1241,7 @@ class vB_BbCodeParser_PlainText extends vB_BbCodeParser
 		// ********************* PARSE BBCODE TAGS ***************************
 		if ($do_bbcode)
 		{
-			$text = $this->parse_bbcode($text, $do_smilies, $do_imgcode, $do_html);
+			$text = $this->parse_bbcode($text, $do_smilies, $do_videocode, $do_html);
 		}
 
 		// parse out nasty active scripting codes
@@ -1529,7 +1560,7 @@ class vB_BbCodeParser_PlainText extends vB_BbCodeParser
 	{
 		global $vbphrase;
 
-		if (($has_img_code == 2 OR $has_img_code == 3) AND preg_match_all('#\[attach(?:=(right|left))?\](\d+)\[/attach\]#i', $bbcode, $matches))
+		if (($has_img_code == 2 OR $has_img_code == 3) AND preg_match_all('#\[attach(?:=(right|left|config))?\](\d+)\[/attach\]#i', $bbcode, $matches))
 		{
 			$search = array();
 			$replace = array();
@@ -1575,8 +1606,8 @@ class vB_BbCodeParser_PlainText extends vB_BbCodeParser
 * post is made.
 *
 * @package 		vBulletin
-* @version		$Revision: 44293 $
-* @date 		$Date: 2011-06-08 12:17:25 -0700 (Wed, 08 Jun 2011) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_BbCodeParser_Video_PreParse extends vB_BbCodeParser
@@ -1721,8 +1752,7 @@ class vB_BbCodeParser_Video_PreParse extends vB_BbCodeParser
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44293 $
+|| # CVS: $RCSfile$ - $Revision: 57655 $
 || ####################################################################
 \*======================================================================*/
 ?>

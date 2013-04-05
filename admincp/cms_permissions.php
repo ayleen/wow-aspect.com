@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -37,10 +37,10 @@ if (!count($phrasegroups))
 // ########################## REQUIRE BACK-END ############################
 require_once('./global.php');
 require_once(DIR . '/includes/functions_cms_layout.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
 require_once(DIR . '/packages/vbcms/contentmanager.php');
 require_once(DIR . '/includes/functions_databuild.php');
-vB_Bootstrap_Framework::init('../');
+
+vB_Router::setRelativePath('../'); // Needed ?
 
 if (!isset($vbulletin->userinfo['permissions']['cms']))
 {
@@ -618,7 +618,6 @@ function getSectionList($orderby = 1)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 27874 $
 || ####################################################################
 \*======================================================================*/

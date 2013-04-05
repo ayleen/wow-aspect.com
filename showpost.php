@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -46,7 +46,6 @@ $globaltemplates = array(
 	'postbit_attachmentmoderated',
 	'postbit_ip',
 	'postbit_onlinestatus',
-	'postbit_reputation',
 	'bbcode_code',
 	'bbcode_html',
 	'bbcode_php',
@@ -173,9 +172,6 @@ if (in_coventry($post['userid']) AND !can_moderate($threadinfo['forumid']))
 // check for attachments
 if ($post['attach'])
 {
-	require_once(DIR . '/includes/class_bootstrap_framework.php');
-	require_once(DIR . '/vb/types.php');
-	vB_Bootstrap_Framework::init();
 	$types = vB_Types::instance();
 	$contenttypeid = $types->getContentTypeID('vBForum_Post');
 
@@ -291,8 +287,7 @@ $xml->print_xml();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 41161 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

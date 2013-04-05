@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -130,9 +130,8 @@ $actiontemplates = array(
 		'blog_sidebar_user_block_visitors',
 		'blog_sidebar_user_block_custom',
 		'blog_tag_cloud_link',
-		'blog_tagbit',
+		'blog_taglist',
 		'blog_trackback',
-		'memberinfo_visitorbit',
 		'ad_blogshowentry_after',
 		'ad_blogshowentry_before',
 		'postbit_attachmentimage',
@@ -160,8 +159,7 @@ $actiontemplates = array(
 		'blog_sidebar_user_block_visitors',
 		'blog_sidebar_user_block_custom',
 		'blog_tag_cloud_link',
-		'blog_tagbit',
-		'memberinfo_visitorbit',
+		'blog_taglist',
 	),
 	'none'				=> array(
 		'blog_list_entries',
@@ -189,8 +187,7 @@ $actiontemplates = array(
 		'blog_sidebar_user_block_visitors',
 		'blog_sidebar_user_block_custom',
 		'blog_tag_cloud_link',
-		'blog_tagbit',
-		'memberinfo_visitorbit',
+		'blog_taglist',
 		'ad_bloglist_first_entry',
 		'postbit_attachmentimage',
 		'postbit_attachmentthumbnail',
@@ -219,7 +216,6 @@ $actiontemplates = array(
 		'blog_sidebar_calendar',
 		'blog_sidebar_calendar_day',
 		'blog_tag_cloud_link',
-		'memberinfo_visitorbit',
 	),
 	'viewip'         => array(
 		'blog_entry_ip',
@@ -257,7 +253,6 @@ $actiontemplates = array(
 		'blog_sidebar_entry_link',
 		'blog_sidebar_user',
 		'blog_tag_cloud_link',
-		'memberinfo_visitorbit',
 	),
 	'custompage'      => array(
 		'blog_custompage',
@@ -277,7 +272,6 @@ $actiontemplates = array(
 		'blog_sidebar_user_block_visitors',
 		'blog_sidebar_user_block_custom',
 		'blog_tag_cloud_link',
-		'memberinfo_visitorbit',
 	),
 );
 
@@ -303,10 +297,6 @@ require_once(DIR . '/includes/blog_init.php');
 require_once(DIR . '/includes/blog_functions_main.php');
 
 verify_blog_url();
-
-//get autoloader hooked up.
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -963,30 +953,39 @@ if ($_REQUEST['do'] == 'blog')
 	if (
 		$guestuser['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview']
 			AND
-		$vbulletin->options['socialbookmarks'] AND is_array($vbulletin->bookmarksitecache) AND !empty($vbulletin->bookmarksitecache)
+		$guestuser['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewothers']
 			AND
 		$bloginfo['state'] == 'visible'
 			AND
 		$bloginfo['guest_canviewmyblog']
 			AND
-		$vbulletin->userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewothers']
+		!$bloginfo['pending']
 	)
 	{
-		foreach($vbulletin->bookmarksitecache AS $bookmarksite)
+		if ($vbulletin->options['socialbookmarks'] AND is_array($vbulletin->bookmarksitecache) AND !empty($vbulletin->bookmarksitecache))
 		{
-			$bookmarksite['link'] = str_replace(
-				array('{URL}', '{TITLE}'),
-				array(urlencode(fetch_seo_url('entry|bburl|nosession', $bloginfo)), urlencode($bloginfo['title'])),
-				$bookmarksite['url']
-			);
+			$raw_title = html_entity_decode($bloginfo['title'], ENT_QUOTES);
+			foreach($vbulletin->bookmarksitecache AS $bookmarksite)
+			{
+				$bookmarksite['link'] = str_replace(
+					array('{URL}', '{TITLE}'),
+					array(urlencode(fetch_seo_url('entry|bburl|nosession', $bloginfo)), urlencode($bookmarksite['utf8encode'] ? utf8_encode($raw_title) : $raw_title)),
+					$bookmarksite['url']
+				);
 
-			($hook = vBulletinHook::fetch_hook('blog_entry_bookmarkbit')) ? eval($hook) : false;
+				($hook = vBulletinHook::fetch_hook('blog_entry_bookmarkbit')) ? eval($hook) : false;
 
-			$templater = vB_Template::create('blog_bookmark');
-				$templater->register('bloginfo', $bloginfo);
-				$templater->register('bookmarksite', $bookmarksite);
-			$bookmarksites .= $templater->render();
+				$templater = vB_Template::create('blog_bookmark');
+					$templater->register('bloginfo', $bloginfo);
+					$templater->register('bookmarksite', $bookmarksite);
+				$bookmarksites .= $templater->render();
+			}
 		}
+		$show['guestview'] = true;
+	}
+	else
+	{
+		$show['guestview'] = false;
 	}
 
 	$show['trackbacks'] = ($vbulletin->GPC['pagenumber'] <= 1);
@@ -1023,15 +1022,17 @@ if ($_REQUEST['do'] == 'blog')
 		$memberaction_dropdown = construct_memberaction_dropdown($bloginfo);
 	}
 
-	// facebook options
-	if (is_facebookenabled())
+	if ($show['guestview'])
 	{
-		// display publish to Facebook checkbox in quick editor?
-		$fbpublishcheckbox = construct_fbpublishcheckbox();
+		// facebook options
+		if (is_facebookenabled())
+		{
+			// display publish to Facebook checkbox in quick editor?
+			$fbpublishcheckbox = construct_fbpublishcheckbox();
+		}
+		// display the like button for this thread?
+		$fblikebutton = construct_fblikebutton();
 	}
-
-	// display the like button for this thread?
-	$fblikebutton = construct_fblikebutton();
 
 	($hook = vBulletinHook::fetch_hook('blog_entry_complete')) ? eval($hook) : false;
 
@@ -1129,6 +1130,7 @@ if ($_REQUEST['do'] == 'list')
 		{
 			print_no_permission();
 		}
+
 		if (in_coventry($userinfo['userid']) AND !can_moderate_blog())
 		{
 			standard_error(fetch_error('invalidid', $vbphrase['blog'], $vbulletin->options['contactuslink']));
@@ -2323,6 +2325,13 @@ if ($_REQUEST['do'] == 'bloglist')
 
 			$oppositesort = ($vbulletin->GPC['sortorder'] == 'asc' ? 'desc' : 'asc');
 
+			$sortorder = array(
+				'title' => ($sortfield == 'title') ? $oppositesort : 'asc',
+				'entries' => ($sortfield == 'entries') ? $oppositesort : 'desc',
+				'comments' => ($sortfield == 'comments') ? $oppositesort : 'desc',
+				'lastblog' => ($sortfield == 'lastblog') ? $oppositesort : 'desc',
+			);
+
 			$templater = vB_Template::create('forumdisplay_sortarrow');
 				$templater->register('oppositesort', $oppositesort);
 			$sortarrow["$sortfield"] = $templater->render();
@@ -2512,6 +2521,7 @@ if ($_REQUEST['do'] == 'bloglist')
 			$templater->register('pagenav', $pagenav);
 			$templater->register('sortarrow', $sortarrow);
 			$templater->register('sorturl', $sorturl);
+			$templater->register('sortorder', $sortorder);
 		$content = $templater->render();
 	}
 	else
@@ -3033,7 +3043,7 @@ if ($_POST['do'] == 'dosendtofriend')
 		$sendtoname = htmlspecialchars_uni($sendtoname);
 
 		$vbulletin->url = fetch_seo_url('entry', $bloginfo);
-		eval(print_standard_redirect('redirect_blog_sentemail'));
+		print_standard_redirect(array('redirect_blog_sentemail',$sendtoname));
 	}
 	else
 	{
@@ -3166,7 +3176,7 @@ if ($_POST['do'] == 'rate')
 				if (!$vbulletin->GPC['ajax'])
 				{
 					$vbulletin->url = fetch_seo_url('entry', $bloginfo);
-					eval(print_standard_redirect('redirect_blog_rate_add'));
+					print_standard_redirect('redirect_blog_rate_add');
 				}
 			}
 			else if (!$vbulletin->GPC['ajax'])
@@ -3190,7 +3200,7 @@ if ($_POST['do'] == 'rate')
 			if (!$vbulletin->GPC['ajax'])
 			{
 				$vbulletin->url = fetch_seo_url('entry', $bloginfo);
-				eval(print_standard_redirect('redirect_blog_rate_add'));
+				print_standard_redirect('redirect_blog_rate_add');
 			}
 		}
 	}
@@ -3232,7 +3242,7 @@ if ($_POST['do'] == 'rate')
 					if (!$vbulletin->GPC['ajax'])
 					{
 						$vbulletin->url = fetch_seo_url('entry', $bloginfo);
-						eval(print_standard_redirect('redirect_blog_rate_add'));
+						print_standard_redirect('redirect_blog_rate_add');
 					}
 				}
 				else if (!$vbulletin->GPC['ajax'])
@@ -3258,7 +3268,7 @@ if ($_POST['do'] == 'rate')
 				if (!$vbulletin->GPC['ajax'])
 				{
 					$vbulletin->url = fetch_seo_url('entry', $bloginfo);
-					eval(print_standard_redirect('redirect_blog_rate_add'));
+					print_standard_redirect('redirect_blog_rate_add');
 				}
 			}
 		}
@@ -3436,7 +3446,7 @@ if ($_REQUEST['do'] == 'markread')
 	{
 		$vbulletin->url = fetch_seo_url('blog', $userinfo, null, 'userid', 'blog_title');
 	}
-	eval(print_standard_redirect('blog_markread', true, true));
+	print_standard_redirect('blog_markread', true, true);
 }
 
 // ############################################################################
@@ -3567,7 +3577,7 @@ if ($_REQUEST['do'] == 'switchcss')
 	{
 		$vbulletin->url = fetch_seo_url('blog', array('userid' => $vbulletin->GPC['userid']));
 	}
-	eval(print_standard_redirect('redirect_usercss_toggled'));
+	print_standard_redirect('redirect_usercss_toggled');
 }
 
 // ############################### custom page ###############################
@@ -3675,8 +3685,7 @@ if (!empty($content))
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 45788 $
+|| # SVN: $Revision: 62622 $
 || ####################################################################
 \*======================================================================*/
 ?>

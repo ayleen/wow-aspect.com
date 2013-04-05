@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -96,30 +96,6 @@ if (!VB_API)
 require_once('./global.php');
 require_once DIR . '/vb/search/searchtools.php';
 ($hook = vBulletinHook::fetch_hook('ajax_start')) ? eval($hook) : false;
-
-// ######################### REQUIRE FRAMEWORK ############################
-if (in_array($_REQUEST['do'], array(
-	'autosave',
-	'calwidget',
-	'checkurl',
-	'del_perms',
-	'find_categories',
-	'find_leaves',
-	'get_comment_reply',
-	'get_comments',
-	'list',
-	'list_allcategory',
-	'list_allsection',
-	'list_categories',
-	'list_nodes',
-	'list_sections',
-	'perms_section',
-	'gettheme',
-	'saveusertheme'
-)))
-{
-	bootstrap_framework();
-}
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -330,12 +306,8 @@ if ($_POST['do'] == 'updatethreadtitle')
 
 		if ($threaddata->save())
 		{
-			// Reindex first post to set up title properly.
-			require_once(DIR . '/includes/functions_databuild.php');
-			delete_post_index($getfirstpost['postid'], $getfirstpost['title'], $getfirstpost['pagetext']);
 			$getfirstpost['threadtitle'] = $threaddata->fetch_field('title');
 			$getfirstpost['title'] =& $getfirstpost['threadtitle'];
-			build_post_index($getfirstpost['postid'] , $foruminfo, 1, $getfirstpost);
 
 			cache_ordered_forums(1);
 
@@ -411,8 +383,9 @@ if ($_POST['do'] == 'updatethreadopen')
 if ($_POST['do'] == 'quickedit')
 {
 	$vbulletin->input->clean_array_gpc('p', array(
-		'postid'   => TYPE_UINT,
-		'editorid' => TYPE_STR
+		'postid'      => TYPE_UINT,
+		'editorid'    => TYPE_STR,
+		'return_node' => TYPE_UINT,
 	));
 
 	$xml = new vB_AJAX_XML_Builder($vbulletin, 'text/xml');
@@ -429,31 +402,31 @@ if ($_POST['do'] == 'quickedit')
 
 		if (!$postinfo['postid'])
 		{
-			$xml->add_tag('error', 'invalidid');
+			$xml->add_tag('error', fetch_error('invalidid'));
 			$xml->print_xml();
 		}
 
-		if ((!$postinfo['visible'] OR $postinfo ['isdeleted']) AND !can_moderate($threadinfo['forumid']))
+		if ((!$postinfo['visible'] OR $postinfo['isdeleted']) AND !can_moderate($threadinfo['forumid']))
 		{
-			$xml->add_tag('error', 'nopermission');
+			$xml->add_tag('error', fetch_error('nopermission'));
 			$xml->print_xml();
 		}
 
 		if ((!$threadinfo['visible'] OR $threadinfo['isdeleted']) AND !can_moderate($threadinfo['forumid']))
 		{
-			$xml->add_tag('error', 'nopermission');
+			$xml->add_tag('error', fetch_error('nopermission'));
 			$xml->print_xml();
 		}
 
 		$forumperms = fetch_permissions($threadinfo['forumid']);
 		if (!($forumperms & $vbulletin->bf_ugp_forumpermissions['canview']) OR !($forumperms & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
 		{
-			$xml->add_tag('error', 'nopermission');
+			$xml->add_tag('error', fetch_error('nopermission'));
 			$xml->print_xml();
 		}
 		if (!($forumperms & $vbulletin->bf_ugp_forumpermissions['canviewothers']) AND ($threadinfo['postuserid'] != $vbulletin->userinfo['userid'] OR $vbulletin->userinfo['userid'] == 0))
 		{
-			$xml->add_tag('error', 'nopermission');
+			$xml->add_tag('error', fetch_error('nopermission'));
 			$xml->print_xml();
 		}
 
@@ -464,14 +437,46 @@ if ($_POST['do'] == 'quickedit')
 		if (in_coventry($threadinfo['postuserid']) AND !can_moderate($threadinfo['forumid']))
 		{
 			// do not show post if part of a thread from a user in Coventry and bbuser is not mod
-			$xml->add_tag('error', 'nopermission');
+			$xml->add_tag('error', fetch_error('nopermission'));
 			$xml->print_xml();
 		}
 		if (in_coventry($postinfo['userid']) AND !can_moderate($threadinfo['forumid']))
 		{
 			// do not show post if posted by a user in Coventry and bbuser is not mod
-			$xml->add_tag('error', 'nopermission');
+			$xml->add_tag('error', fetch_error('nopermission'));
 			$xml->print_xml();
+		}
+
+		if (!can_moderate($threadinfo['forumid'], 'caneditposts'))
+		{ // check for moderator
+			if (!$threadinfo['open'])
+			{
+				$xml->add_tag('error', fetch_error('threadclosed'));
+				$xml->print_xml();
+			}
+			if (!($forumperms & $vbulletin->bf_ugp_forumpermissions['caneditpost']))
+			{
+				$xml->add_tag('error', fetch_error('nopermission_loggedout'));
+				$xml->print_xml();
+			}
+			else
+			{
+				if ($vbulletin->userinfo['userid'] != $postinfo['userid'])
+				{
+					// check user owns this post
+					$xml->add_tag('error', fetch_error('nopermission_loggedout'));
+					$xml->print_xml();
+				}
+				else
+				{
+					// check for time limits
+					if ($postinfo['dateline'] < (TIMENOW - ($vbulletin->options['edittimelimit'] * 60)) AND $vbulletin->options['edittimelimit'] != 0)
+					{
+						$xml->add_tag('error', fetch_error('edittimelimit', $vbulletin->options['edittimelimit'], $vbulletin->options['contactuslink']));
+						$xml->print_xml();
+					}
+				}
+			}
 		}
 
 		$show['managepost'] = iif (can_moderate($threadinfo['forumid'], 'candeleteposts') OR can_moderate($threadinfo['forumid'], 'canremoveposts'), true, false);
@@ -482,7 +487,11 @@ if ($_POST['do'] == 'quickedit')
 		// Is this the first post in the thread?
 		$isfirstpost = $postinfo['postid'] == $threadinfo['firstpostid'] ? true : false;
 
-		if ($isfirstpost AND can_moderate($threadinfo['forumid'], 'canmanagethreads'))
+		if ($vbulletin->GPC['return_node'])
+		{
+			$show['deletepostoption'] = false;
+		}
+		else if ($isfirstpost AND can_moderate($threadinfo['forumid'], 'canmanagethreads'))
 		{
 			$show['deletepostoption'] = true;
 		}
@@ -504,9 +513,6 @@ if ($_POST['do'] == 'quickedit')
 		$show['keepattachmentsoption'] = iif ($postinfo['attach'], true, false);
 		$show['firstpostnote'] = $isfirstpost;
 
-		//exec_ajax_content_type_header('text/html', $ajax_charset);
-		//echo "<textarea rows=\"10\" cols=\"60\" title=\"" . $vbulletin->GPC['editorid'] . "\">" . $postinfo['pagetext'] . '</textarea>';
-
 		require_once(DIR . '/includes/functions_editor.php');
 		require_once(DIR . '/includes/functions_attach.php');
 
@@ -518,7 +524,7 @@ if ($_POST['do'] == 'quickedit')
 		$posthash = md5(TIMENOW . $vbulletin->userinfo['userid'] . $vbulletin->userinfo['salt']);
 		$poststarttime = TIMENOW;
 
-		if ($forumperms & $vbulletin->bf_ugp_forumpermissions['canpostattachment'] AND $vbulletin->userinfo['userid'] AND !empty($vbulletin->userinfo['attachmentextensions']))
+		if ($forumperms & $vbulletin->bf_ugp_forumpermissions['canpostattachment'] AND $vbulletin->userinfo['userid'] AND !empty($vbulletin->userinfo['attachmentextensions']) AND !$vbulletin->GPC['return_node'])
 		{
 			$values = "values[t]=$threadinfo[threadid]";
 			require_once(DIR . '/packages/vbattach/attach.php');
@@ -576,7 +582,7 @@ if ($_POST['do'] == 'editorswitch')
 {
 	$vbulletin->input->clean_array_gpc('p', array(
 		'towysiwyg'    => TYPE_BOOL,
-		'message'      => TYPE_STR,
+		'message'      => TYPE_NOTRIM,
 		'parsetype'    => TYPE_STR, // string to support non-forum options
 		'allowsmilie'  => TYPE_BOOL,
 		'allowbbcode'  => TYPE_BOOL, // run time editor option for announcements
@@ -611,7 +617,18 @@ if ($_POST['do'] == 'editorswitch')
 	{
 		// from standard to wysiwyg
 		$html_parser = new vB_WysiwygHtmlParser($vbulletin);
-		$xml->add_tag('message', process_replacement_vars($html_parser->parse_wysiwyg_html(htmlspecialchars_uni($vbulletin->GPC['message']), false, $vbulletin->GPC['parsetype'], $vbulletin->GPC['allowsmilie'])));
+		$message = process_replacement_vars($html_parser->parse_wysiwyg_html(htmlspecialchars_uni($vbulletin->GPC['message']), false, $vbulletin->GPC['parsetype'], $vbulletin->GPC['allowsmilie']));
+		if (is_browser('mozilla'))
+		{
+			// Going with a list of items to check at the end of the container, one for now but other tags might need to be added
+			// Otherwise we are going to have instances where a break appears when we don't want it
+			$find = array(
+				'#(<hr[^>]*>)$#si',
+			);
+			$replace = array('\\1<br type="_moz" />');
+			$message = preg_replace($find, $replace, $message);
+		}
+		$xml->add_tag('message', $message);
 	}
 	else
 	{
@@ -1013,7 +1030,7 @@ if ($_REQUEST['do'] == 'list')
 if ($_POST['do'] == 'loadimageconfig')
 {
 	$vbulletin->input->clean_array_gpc('p', array(
-		'attachmentid' => TYPE_UINT,
+		'attachmentid'  => TYPE_UINT,
 		'posthash'      => TYPE_NOHTML,
 		'poststarttime' => TYPE_NOHTML,
 		'contentid'     => TYPE_UINT,
@@ -1028,7 +1045,7 @@ if ($_POST['do'] == 'loadimageconfig')
 	$xml->add_group('settings');
 
 		if ($attachment = $db->query_first("
-			SELECT attachmentid, settings, posthash, contenttypeid, contentid
+			SELECT attachmentid, settings, posthash, contenttypeid, contentid, filename
 			FROM " . TABLE_PREFIX . "attachment
 			WHERE attachmentid = " . $vbulletin->GPC['attachmentid'] . "
 		"))
@@ -1065,6 +1082,8 @@ if ($_POST['do'] == 'loadimageconfig')
 			}
 		}
 
+	$xml->add_tag('extension', file_extension($attachment['filename']));
+	$xml->add_tag('canstyle', ($vbulletin->userinfo['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canattachmentcss']) ? 1 : 0);
 	$xml->close_group('settings');
 	$xml->print_xml();
 }
@@ -1076,7 +1095,9 @@ if ($_POST['do'] == 'saveimageconfig')
 		'size'            => TYPE_NOHTML,
 		'title'           => TYPE_NOHTML,
 		'caption'         => TYPE_NOHTML,
+		'link'            => TYPE_UINT,
 		'linkurl'         => TYPE_NOHTML,
+		'linktarget'      => TYPE_BOOL,
 		'styles'          => TYPE_NOHTML,
 		'description'     => TYPE_NOHTML,
 		'attachmentid'    => TYPE_UINT,
@@ -1098,8 +1119,10 @@ if ($_POST['do'] == 'saveimageconfig')
 		'alignment'   => $vbulletin->GPC['alignment'],
 		'size'        => $vbulletin->GPC['size'],
 		'caption'     => $vbulletin->GPC['caption'],
+		'link'        => $vbulletin->GPC['link'],
 		'linkurl'     => $vbulletin->GPC['linkurl'],
-		'styles'      => $vbulletin->GPC['styles'],
+		'linktarget'  => $vbulletin->GPC['linktarget'],
+		'styles'      => ($vbulletin->userinfo['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canattachmentcss']) ? $vbulletin->GPC['styles'] : '',
 		'description' => $vbulletin->GPC['description'],
 		'title'       => $vbulletin->GPC['title'],
 	);
@@ -1149,31 +1172,6 @@ if ($_REQUEST['do'] == 'rss')
 	//we just replace "ajax.php" with "external.php"
 	$redirect_url = 'external.php?' . $_SERVER['QUERY_STRING'];
 	exec_header_redirect($redirect_url , 301);
-}
-
-if ($_REQUEST['do'] == 'get_comments')
-{
-	$current_user = new vB_Legacy_CurrentUser();
-	$vbulletin->input->clean_array_gpc('r', array(
-		'per_page' => TYPE_UINT,
-		'page' => TYPE_UINT,
-		'comments_previous' => TYPE_STR,
-		'comments_next' => TYPE_STR,
-		'nodeid' => TYPE_UINT,
-		'this_url' => TYPE_STR));
-
-	if (! $vbulletin->GPC_exists['page'])
-	{
-		$vbulletin->GPC['page'] = 1;
-	}
-
-	if (! $vbulletin->GPC_exists['per_page'])
-	{
-		$vbulletin->GPC['per_page'] = 5;
-	}
-	vBCms_Widget_Comments::showCommentsXml($vbulletin->GPC['nodeid'], $current_user,
-		$vbulletin->GPC['page'], $vbulletin->GPC['per_page'],
-		$vbulletin->GPC_exists['this_url'] ? $vbulletin->GPC['this_url'] : '');
 }
 
 if ($_REQUEST['do'] == 'get_comment_reply')
@@ -1272,8 +1270,6 @@ if ($_REQUEST['do'] == 'getalbum' )
 
 		if ($vbulletin->GPC_exists['albumid'])
 		{
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			vB_Bootstrap_Framework::init();
 			//class db_Assertor needs to be initialized.
 			vB_dB_Assertor::init(vB::$vbulletin->db, vB::$vbulletin->userinfo);
 			echo vB_ProfileCustomize::getAlbumContents($vbulletin->GPC['albumid'], $vbulletin->userinfo);
@@ -1289,8 +1285,6 @@ if ($_REQUEST['do'] == 'getassetpicker' )
 
 	if (intval($vbulletin->userinfo['userid']) )
 	{
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 		//class db_Assertor needs to be initialized.
 		vB_dB_Assertor::init(vB::$vbulletin->db, vB::$vbulletin->userinfo);
 		vB_ProfileCustomize::getAssetPicker($vbulletin->userinfo, $vbulletin);
@@ -1306,8 +1300,6 @@ if ($_REQUEST['do'] == 'getconfirmclosebox' )
 
 	if (intval($vbulletin->userinfo['userid']) )
 	{
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 		echo vB_ProfileCustomize::getConfirmCloseBox();
 	}
 
@@ -1322,8 +1314,6 @@ if ($_REQUEST['do'] == 'getprofiledialog' )
 		'phrase' => TYPE_STR));
 	if ($vbulletin->GPC_exists['phrase'])
 	{
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 		echo vB_ProfileCustomize::getProfileDialog($vbulletin->GPC['phrase']);
 	}
 
@@ -1357,7 +1347,7 @@ if ($_POST['do'] == 'autosave')
 		echo 'INVALID CONTENTTYPEID';
 		exit;
 	}
-	
+
 	if (!$vbulletin->GPC['pagetext'])
 	{
 		echo 'NO PAGETEXT';
@@ -1462,7 +1452,6 @@ if ($_POST['do'] == 'autosave')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45530 $
+|| # CVS: $RCSfile$ - $Revision: 62619 $
 || ####################################################################
 \*======================================================================*/

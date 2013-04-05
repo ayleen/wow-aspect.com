@@ -3,9 +3,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -29,6 +29,42 @@ require_once (DIR . "/vb/legacy/dataobject.php");
  */
 class vB_Legacy_Forum extends vB_Legacy_Dataobject
 {
+	// VBIV-9878
+	private $noncachedfields = array(
+		'podcast' => 1, // This is normally cached (unless Install or Upgrade).
+		'replycount' => 1,
+		'lastpost' => 1,
+		'lastposter' => 1,
+		'lastposterid' => 1,
+		'lastpostid' => 1, // This is actually cached but should be treated as uncached.
+		'lastthread' => 1,
+		'lastthreadid' => 1,
+		'lasticonid' => 1,
+		'lastprefixid' => 1,
+		'threadcount' => 1
+	);
+ 
+	// VBIV-9878
+	public function has_field($field)
+	{
+		return ((isset($this->record[$field])) OR isset($this->noncachedfields[$field]));
+	}
+	
+	public function get_field($field)
+	{
+		// Update cache if field not currently cached.
+		if (isset($this->noncachedfields[$field]))
+		{
+			$this->record = fetch_foruminfo($this->record['forumid'], false);
+		}
+		
+		return parent::get_field($field);
+	}
+
+	public function get_fieldnames()
+	{
+		return array_merge(array_keys($this->record), array_keys($this->noncachedfields));
+	}
 
 	/**
 	 * Create object from and existing record
@@ -51,15 +87,7 @@ class vB_Legacy_Forum extends vB_Legacy_Dataobject
 	 */
 	public static function create_from_id($id)
 	{
-		//the cache get prefilled with abbreviated data that is *different* from what
-		//the query in fetch_foruminfo provides. We can skip the cache, but that means
-		//we never cache, even if we want to.
-		//this is going to prove to be a problem.
-		
-		//There is an incomplete copy stored in cache. Not sure why,
-		// but it consistently doesn't give me the lastthreadid unless I pass "false"
-		// to prevent reading from cache
-		$foruminfo = fetch_foruminfo($id, false);
+		$foruminfo = fetch_foruminfo($id);
 
 		//try to work with bad data integrity.  There are dbs out there
 		//with threads that belong to a nonexistant forum.
@@ -194,7 +222,6 @@ class vB_Legacy_Forum extends vB_Legacy_Dataobject
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

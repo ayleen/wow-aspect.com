@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -84,9 +84,10 @@ class vBForum_Search_Result_Event extends vB_Search_Result
 
 		//a bunch of crap set by fetch_event_date_time that I can't find any use of.
 		//leaving it in for now in case I missed some use of globals.
-		global $titlecolor, $allday;
+		global $titlecolor, $allday, $calendarinfo;
 
 		$eventinfo = $this->event->get_record();
+		$calendarinfo = $this->event->get_calendar()->get_record();
 
 		//event['dst'] means "don't adjust event time for dst"
 		$offset = $current_user->getTimezoneOffset(!$eventinfo['dst']);
@@ -155,8 +156,6 @@ class vBForum_Search_Result_Event extends vB_Search_Result
 
 		// prepare the member action drop-down menu
 		$memberaction_dropdown = construct_memberaction_dropdown($eventinfo);		
-		
-		$calendarinfo = $this->event->get_calendar()->get_record();
 
 		($hook = vBulletinHook::fetch_hook('calendar_getday_event')) ? eval($hook) : false;
 
@@ -232,7 +231,6 @@ class vBForum_Search_Result_Event extends vB_Search_Result
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

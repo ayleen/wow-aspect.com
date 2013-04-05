@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -115,8 +115,7 @@ if (empty($_REQUEST['do']))
 require_once('./global.php');
 require_once(DIR . '/includes/functions_album.php');
 require_once(DIR . '/includes/functions_user.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
+
 $contenttypeid = vB_Types::instance()->getContentTypeID('vBForum_Album');
 
 $vbulletin->input->clean_array_gpc('r', array(
@@ -274,7 +273,7 @@ if ($_POST['do'] == 'killalbum')
 	unset($albumdata);
 
 	$vbulletin->url = 'album.php?' . $vbulletin->session->vars['sessionurl'] . "u=$albuminfo[userid]";
-	eval(print_standard_redirect('album_deleted'));
+	print_standard_redirect('album_deleted');
 }
 
 // #######################################################################
@@ -367,7 +366,7 @@ if ($_POST['do'] == 'updatealbum')
 		}
 
 		$vbulletin->url = 'album.php?' . $vbulletin->session->vars['sessionurl'] . 'albumid=' . $albumdata->fetch_field('albumid');
-		eval(print_standard_redirect('album_added_edited'));
+		print_standard_redirect('album_added_edited');
 	}
 
 	unset($albumdata);
@@ -449,6 +448,7 @@ if ($_REQUEST['do'] == 'addalbum' OR $_REQUEST['do'] == 'editalbum')
 		$templater->register('navbar', $navbar);
 		$templater->register('usercss', $usercss);
 		$templater->register('userinfo', $userinfo);
+		$templater->register('albumcount', $albumcount);
 	print_output($templater->render());
 }
 
@@ -577,7 +577,7 @@ if ($_POST['do'] == 'updatepictures')
 			// if we can't delete, then we're not going to do the update either
 			if ($can_delete)
 			{
-				$attachdata->delete();
+				$attachdata->delete(true, true, 'album', 'photo');
 				if ($attachdata->info['have_updated_usercss'])
 				{
 					$need_css_rebuild = true;
@@ -646,6 +646,16 @@ if ($_POST['do'] == 'updatepictures')
 
 			$attachdata->set('caption', $vbulletin->GPC['pictures']["$picture[attachmentid]"]['caption']);
 			$attachdata->save();
+
+			if (!$picture['contentid'])
+			{
+				$activity = new vB_ActivityStream_Manage('album', 'photo');
+				$activity->set('contentid', $picture['attachmentid']);
+				$activity->set('userid', $picture['userid']);
+				$activity->set('dateline', $picture['dateline']);
+				$activity->set('action', 'create');
+				$activity->save();
+			}
 
 			if (
 				$albuminfo['userid'] != $vbulletin->userinfo['userid']
@@ -773,7 +783,7 @@ if ($_POST['do'] == 'updatepictures')
 		$vbulletin->url = 'album.php?' . $vbulletin->session->vars['sessionurl'] . "albumid=$albuminfo[albumid]";
 	}
 
-	eval(print_standard_redirect('pictures_updated'));
+	print_standard_redirect('pictures_updated');
 }
 
 // #######################################################################
@@ -872,21 +882,25 @@ if ($_REQUEST['do'] == 'editpictures')
 		$db->free_result($album_result);
 	}
 
+	$limit = "$start, $perpage";
+	$orderby = 'a.dateline DESC';
+
+	$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+	($hook = vBulletinHook::fetch_hook('album_picturelist_query')) ? eval($hook) : false;
+
 	$picture_sql = $db->query_read("
-		SELECT
-			a.attachmentid, a.userid, a.caption, a.state, a.dateline,
-			fd.filesize, fd.thumbnail_filesize, fd.thumbnail_dateline, fd.thumbnail_width, fd.thumbnail_height, IF(fd.thumbnail_filesize > 0, 1, 0) AS hasthumbnail
+		SELECT a.attachmentid, a.userid, a.caption, a.state, a.dateline, fd.filesize, fd.thumbnail_filesize,
+		fd.thumbnail_dateline, fd.thumbnail_width, fd.thumbnail_height, IF(fd.thumbnail_filesize > 0, 1, 0) AS hasthumbnail
+		$hook_query_fields
 		FROM " . TABLE_PREFIX . "attachment AS a
 		INNER JOIN " . TABLE_PREFIX . "filedata AS fd ON (a.filedataid = fd.filedataid)
-		WHERE
-			a.contentid = $albuminfo[albumid]
-				AND
-			a.contenttypeid = " . intval($contenttypeid) . "
-			" . ($vbulletin->GPC['attachmentids'] ? "AND a.attachmentid IN (" . implode(',', $vbulletin->GPC['attachmentids']) . ")" : '') . "
-			" . (!can_moderate(0, 'canmoderatepictures') ? "AND (a.state = 'visible' OR a.userid = " . $vbulletin->userinfo['userid'] . ")" : "") . "
-		ORDER BY
-			a.dateline DESC
-		LIMIT $start, $perpage
+		$hook_query_joins
+		WHERE a.contentid = $albuminfo[albumid] AND a.contenttypeid = " . intval($contenttypeid) . "
+		" . ($vbulletin->GPC['attachmentids'] ? "AND a.attachmentid IN (" . implode(',', $vbulletin->GPC['attachmentids']) . ")" : '') . "
+		" . (!can_moderate(0, 'canmoderatepictures') ? "AND (a.state = 'visible' OR a.userid = " . $vbulletin->userinfo['userid'] . ")" : "") . "
+		$hook_query_where
+		ORDER BY $orderby
+		LIMIT $limit
 	");
 
 	$picturebits = '';
@@ -1031,7 +1045,7 @@ if ($_POST['do'] == 'doaddgroupmult')
 	{
 		$picture_sql = $db->query_read("
 			SELECT
-				attachment.filedataid, attachment.filename
+				attachment.filedataid, attachment.filename, attachment.caption
 			FROM " . TABLE_PREFIX . "attachment AS attachment
 			WHERE
 				attachment.contentid = $albuminfo[albumid]
@@ -1066,11 +1080,20 @@ if ($_POST['do'] == 'doaddgroupmult')
 			{
 				$db->query_write("
 					INSERT IGNORE INTO " . TABLE_PREFIX . "attachment
-						(contenttypeid, contentid, userid, dateline, filedataid, filename)
+						(contenttypeid, contentid, userid, dateline, filedataid, filename, caption)
 					VALUES
-						(" . intval(vB_Types::instance()->getContentTypeID('vBForum_SocialGroup')) . ", $group[groupid], $userinfo[userid], " . TIMENOW . ", $picture[filedataid], '" . $db->escape_string($picture['filename']) . "')
+						(" . intval(vB_Types::instance()->getContentTypeID('vBForum_SocialGroup')) . ", $group[groupid], $userinfo[userid], " . TIMENOW . ", $picture[filedataid], '" . $db->escape_string($picture['filename']) . "', '" . $db->escape_string($picture['caption']) . "')
 				");
 				$pictures = true;
+				$attachmentid = $db->insert_id();
+
+				// Activity Stream insert
+				$activity = new vB_ActivityStream_Manage('socialgroup', 'photo');
+				$activity->set('contentid', $attachmentid);
+				$activity->set('userid', $userinfo['userid']);
+				$activity->set('dateline', TIMENOW);
+				$activity->set('action', 'create');
+				$activity->save();
 			}
 		}
 
@@ -1086,7 +1109,7 @@ if ($_POST['do'] == 'doaddgroupmult')
 	}
 
 	$vbulletin->url = fetch_seo_url('group', $group, array('do' => 'grouppictures'));
-	eval(print_standard_redirect('pictures_added'));
+	print_standard_redirect('pictures_added');
 }
 
 // #######################################################################
@@ -1171,11 +1194,19 @@ if ($_POST['do'] == 'doaddgroup')
 				{
 					$db->query_write("
 						INSERT IGNORE INTO " . TABLE_PREFIX . "attachment
-							(contenttypeid, contentid, userid, dateline, filedataid, filename)
+							(contenttypeid, contentid, userid, dateline, filedataid, filename, caption)
 						VALUES
-							(" . intval(vB_Types::instance()->getContentTypeID('vBForum_SocialGroup')) . ", $group[groupid], $userinfo[userid], " . TIMENOW . ", $pictureinfo[filedataid], '" . $db->escape_string($pictureinfo['filename']) . "')
+							(" . intval(vB_Types::instance()->getContentTypeID('vBForum_SocialGroup')) . ", $group[groupid], $userinfo[userid], " . TIMENOW . ", $pictureinfo[filedataid], '" . $db->escape_string($pictureinfo['filename']) . "', '" . $db->escape_string($pictureinfo['caption']) . "')
 					");
 					$changed_groups["$group[groupid]"] = $group;
+					$attachmentid = $db->insert_id();
+
+					$activity = new vB_ActivityStream_Manage('socialgroup', 'photo');
+					$activity->set('contentid', $attachmentid);
+					$activity->set('userid', $userinfo[userid]);
+					$activity->set('dateline', TIMENOW);
+					$activity->set('action', 'create');
+					$activity->save();
 				}
 			}
 			else if (empty($vbulletin->GPC['groupids']["$group[groupid]"]) AND $group['picingroup'])
@@ -1212,7 +1243,7 @@ if ($_POST['do'] == 'doaddgroup')
 	}
 
 	$vbulletin->url = 'album.php?' . $vbulletin->session->vars['sessionurl'] . "albumid=$albuminfo[albumid]&amp;attachmentid=$pictureinfo[attachmentid]";
-	eval(print_standard_redirect('groups_picture_changed'));
+	print_standard_redirect('groups_picture_changed');
 }
 
 // #######################################################################
@@ -1387,7 +1418,7 @@ if ($_REQUEST['do'] == 'report' OR $_POST['do'] == 'sendemail')
 		$reportobj->do_report($vbulletin->GPC['reason'], $pictureinfo);
 
 		$url =& $vbulletin->url;
-		eval(print_standard_redirect('redirect_reportthanks'));
+		print_standard_redirect('redirect_reportthanks');
 	}
 }
 
@@ -1435,18 +1466,21 @@ if ($_REQUEST['do'] == 'picture')
 			($vbulletin->options['enableemail'] AND $vbulletin->options['rpemail']))
 	);
 
+	$orderby = 'a.dateline DESC';
+	$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+	($hook = vBulletinHook::fetch_hook('album_picture_query')) ? eval($hook) : false;
+
 	$navpictures_sql = $db->query_read_slave("
-		SELECT
-			a.attachmentid
+		SELECT a.attachmentid
+		$hook_query_fields
 		FROM " . TABLE_PREFIX . "attachment AS a
-		WHERE
-			a.contentid = $albuminfo[albumid]
-				AND
-			a.contenttypeid = " . intval($contenttypeid) . "
+		$hook_query_joins
+		WHERE a.contentid = $albuminfo[albumid] AND a.contenttypeid = " . intval($contenttypeid) . "
 		" . ((!can_moderate(0, 'canmoderatepictures') AND $pictureinfo['userid'] != $vbulletin->userinfo['userid']) ? "AND a.state = 'visible'" : "") . "
-		ORDER BY
-			a.dateline DESC
+		$hook_query_where
+		ORDER BY $orderby
 	");
+
 	$pic_location = fetch_picture_location_info($navpictures_sql, $pictureinfo['attachmentid']);
 
 	($hook = vBulletinHook::fetch_hook('album_picture')) ? eval($hook) : false;
@@ -1713,12 +1747,14 @@ if ($_REQUEST['do'] == 'album')
 		{
 			if ($picture['hasthumbnail'])
 			{
-				$picture['pictureurl'] = create_full_url('attachment.php?' . $vbulletin->session->vars['sessionurl'] . "attachmentid=$picture[attachmentid]&thumb=1&d=$picture[thumbnail_dateline]");
+				$picture['pictureurl'] = create_full_url('attachment.php?' . $vbulletin->session->vars['sessionurl'] . "attachmentid=$picture[attachmentid]&thumb=1&stc=1&d=$picture[thumbnail_dateline]");
 			}
 			else
 			{
 				$picture['pictureurl'] = '';
 			}
+
+			$picture['picturefullurl'] = create_full_url('attachment.php?' . $vbulletin->session->vars['sessionurl'] . "attachmentid=$picture[attachmentid]&d=$picture[dateline]");
 		}
 
 		if ($show['add_group_form'] AND $picture['state'] == 'visible')
@@ -2047,6 +2083,7 @@ if ($_REQUEST['do'] == 'user')
 		$templater->register('template_hook', $template_hook);
 		$templater->register('usercss', $usercss);
 		$templater->register('userinfo', $userinfo);
+		$templater->register('albumcount', $albumcount);
 	print_output($templater->render());
 }
 
@@ -2276,8 +2313,7 @@ if ($_REQUEST['do'] == 'unread')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44595 $
+|| # CVS: $RCSfile$ - $Revision: 62621 $
 || ####################################################################
 \*======================================================================*/
 ?>

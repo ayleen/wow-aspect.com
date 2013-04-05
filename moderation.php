@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -1892,9 +1892,6 @@ if ($_REQUEST['do'] == 'viewpcs')
 	{
 		if (empty($attachcache[$comment['pictureowner'] . '-' . $comment['filedataid']]))
 		{
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			require_once(DIR . '/vb/types.php');
-			vB_Bootstrap_Framework::init();
 			$types = vB_Types::instance();
 
 			$attachcache[$comment['pictureowner'] . '-' . $comment['filedataid']] = $attachmultiple->fetch_results("
@@ -2264,8 +2261,7 @@ if ($_REQUEST['do'] == 'viewattachments')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44688 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

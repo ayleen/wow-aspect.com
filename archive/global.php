@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -80,7 +80,7 @@ else
 }
 
 // check to see if server is too busy. this is checked at the end of session.php
-if ((!empty($servertoobusy) AND $vbulletin->userinfo['usergroupid'] != 6) OR $vbulletin->options['archiveenabled'] == 0)
+if ((server_overloaded() AND $vbulletin->userinfo['usergroupid'] != 6) OR $vbulletin->options['archiveenabled'] == 0)
 {
 	exec_header_redirect(fetch_seo_url('forumhome|bburl', array()));
 }
@@ -165,8 +165,9 @@ function print_archive_forum_list($parentid = -1, $indent = '')
 				{
 					if ($forum['cancontainthreads'] OR $forum['link'] !== '')
 					{
-						$forum_link = '<a href="' . $vbulletin->options['bburl'] . '/archive/index.php' .
-							(SLASH_METHOD ? '/' : '?') . "f-$forumid.html" . ARCHIVE_SESSION_URL . "\">";
+						$link = ($forum['link'] !== '' ? $forum['link'] : $vbulletin->options['bburl'] . '/archive/index.php' .
+							(SLASH_METHOD ? '/' : '?') . "f-$forumid.html" . ARCHIVE_SESSION_URL );
+						$forum_link = '<a href="' . $link . '">';
 					}
 					else
 					{
@@ -355,8 +356,7 @@ function fetch_ad_templates(array $templatenames)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40911 $
+|| # CVS: $RCSfile$ - $Revision: 59007 $
 || ####################################################################
 \*======================================================================*/
 ?>

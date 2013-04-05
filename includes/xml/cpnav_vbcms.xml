@@ -34,10 +34,7 @@
 				<link>cms_content_admin.php?do=fix_nodes</link>
 			</navoption>
 
-			<navoption displayorder="70">
-				<phrase>clear_cms_cache</phrase>
-				<link>cms_content_admin.php?do=clear_cache</link>
-			</navoption>
+			<!-- Clear Cache Moved To Maintenance Section -->
 
 			<navoption displayorder="80">
 				<phrase>layout_manager</phrase>

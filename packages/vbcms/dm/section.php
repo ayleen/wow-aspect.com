@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 38280 $
- * @since $Date: 2010-08-11 13:20:21 -0700 (Wed, 11 Aug 2010) $
+ * @version $Revision: 54787 $
+ * @since $Date: 2011-11-07 15:52:18 -0800 (Mon, 07 Nov 2011) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_DM_Section extends vBCms_DM_Node
@@ -83,7 +83,8 @@ class vBCms_DM_Section extends vBCms_DM_Node
 		}
 
 		vB::$vbulletin->input->clean_array_gpc('p', array(
-			'ids' => vB_Input::TYPE_ARRAY));
+			'ids' => vB_Input::TYPE_ARRAY_UINT
+		));
 		//The parent classes insist on setting new=1, but we want new=0;
 		vB::$vbulletin->db->query_write("UPDATE " . TABLE_PREFIX . "cms_node
 		SET new = 0 WHERE nodeid = " . (isset($this->set_fields['nodeid']) ? $this->set_fields['nodeid'] : $this->primary_id));
@@ -227,7 +228,6 @@ class vBCms_DM_Section extends vBCms_DM_Node
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 38280 $
+|| # CVS: $RCSfile$ - $Revision: 54787 $
 || ####################################################################
 \*======================================================================*/

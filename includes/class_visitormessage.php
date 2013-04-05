@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -249,6 +249,7 @@ class vB_Visitor_Message
 
 		// preparation for display...
 		$this->prepare_start();
+		fetch_avatar_from_userinfo($this->message, true);
 
 		if ($this->message['userid'])
 		{
@@ -258,8 +259,6 @@ class vB_Visitor_Message
 		{
 			$this->process_unregistered_user();
 		}
-
-		fetch_avatar_from_userinfo($this->message, true);
 
 		$this->process_date_status();
 		$this->process_display();
@@ -697,8 +696,7 @@ class vB_Visitor_Message_Simple_Ignored extends vB_Visitor_Message
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 40651 $
+|| # SVN: $Revision: 60418 $
 || ####################################################################
 \*======================================================================*/
 ?>

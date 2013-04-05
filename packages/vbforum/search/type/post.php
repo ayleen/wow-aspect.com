@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -49,7 +49,6 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 		require_once(DIR . '/includes/functions_forumlist.php');
 		cache_moderators_once();
 
-		global $vbulletin;
 		$map = array();
 		foreach ($ids AS $i => $id)
 		{
@@ -86,7 +85,12 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 				}
 			}
 		}
-		return array('list' => $list, 'groups_rejected' => $rejected_groups);
+		
+		$retval = array('list' => $list, 'groups_rejected' => $rejected_groups);
+
+		($hook = vBulletinHook::fetch_hook('search_validated_list')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 // ###################### Start prepare_render ######################
@@ -118,6 +122,8 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 			$this->mod_rights['approveattachment'] = ($this->mod_rights['approveattachment'] OR
 				$user->canModerateForum($item['forumid'], 'canmoderateattachments'));
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_prepare_render')) ? eval($hook) : false;
 	}
 
 // ###################### Start get_display_name ######################
@@ -156,7 +162,7 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 */
 	public function additional_pref_defaults()
 	{
-		return array(
+		$retval = array(
 			'childforums' => 1,
 			'replyless'   => 0,
 			'replylimit'  => 0,
@@ -172,9 +178,14 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 			'searchdate'  => 0,
 			'beforeafter' => 0,
 			'sortby'      => 'dateline',
-			'order' 	     => 'descending',
+			'order' 	  => 'descending',
 			'tag'         => '',
-			'showposts'	  => 0);
+			'showposts'	  => 0
+		);
+
+		($hook = vBulletinHook::fetch_hook('search_pref_defaults')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 // ###################### Start can_group ######################
@@ -217,11 +228,9 @@ class vBForum_Search_Type_Post extends vB_Search_Type
  *		a default template.
  * @return $html: complete html for the search elements
  */
-	public function listUi($prefs = null, $contenttypeid = null, $registers = null,
-		$template_name = null)
+	public function listUi($prefs = null, $contenttypeid = null, $registers = null,	$template_name = null)
 	{
 		global $vbulletin, $vbphrase;
-
 
 		if (!isset($template_name))
 		{
@@ -279,6 +288,9 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 				$template->register($key, htmlspecialchars_uni($value));
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_listui_complete')) ? eval($hook) : false;
+
 		return $template->render();
 	}
 // ###################### Start showForumSelect ######################
@@ -477,12 +489,12 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 			$this->add_pollid_filter($criteria, $registry->GPC['pollid'], vB_Search_Core::OP_EQ);
 		}
 
-		if ($registry->GPC['replylimit'] OR $registry->GPC['replylimit'] === '0')
+		if ($registry->GPC['replyless'] OR $registry->GPC['replylimit'])
 		{
 			$op = $registry->GPC['replyless'] ? vB_Search_Core::OP_LT : vB_Search_Core::OP_GT;
 			$criteria->add_filter('replycount', $op, $registry->GPC['replylimit'], true);
 
-			if ($registry->GPC['replylimit'] === '1')
+			if ($registry->GPC['replylimit'] == 1)
 			{
 				$criteria->add_display_strings('replycount',
 				vB_Search_Searchtools::getCompareString($registry->GPC['replyless'])
@@ -495,15 +507,17 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 				. construct_phrase($vbphrase['x_replies'], $registry->GPC['replylimit']));
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_advanced_filters')) ? eval($hook) : false;
 	}
 
 	public function get_db_query_info($fieldname)
 	{
 		$result['corejoin']['thread'] = sprintf(self::$thread_join, TABLE_PREFIX,
-				vB_Types::instance()->getContentTypeId("vBForum_Post"));
+				vB_Types::instance()->getContentTypeID("vBForum_Post"));
 
 		$result['groupjoin']['thread'] = sprintf(self::$thread_group_join, TABLE_PREFIX,
-				vB_Types::instance()->getContentTypeId("vBForum_Thread"));
+				vB_Types::instance()->getContentTypeID("vBForum_Thread"));
 
 
 		$result['table'] = 'thread';
@@ -541,8 +555,10 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 		}
 		else
 		{
-			return false;
+			$result = false;
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_dbquery_info')) ? eval($hook) : false;
 
 		return $result;
 	}
@@ -563,14 +579,27 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 		global $vbulletin, $vbphrase;
 
 		$all_forumids = fetch_search_forumids($forumids, $include_children);
+
 		if ($all_forumids)
 		{
+			$names = array();
 			$criteria->add_filter('forumid', vB_Search_Core::OP_EQ, $all_forumids);
-
-			$forum_strings =  vB_Search_Searchtools::getDisplayString('forum', $vbphrase['forum'], 'title',
-				'forumid', $all_forumids,	vB_Search_Core::OP_EQ, false);
-			$criteria->add_display_strings('forumid', $forum_strings .
- 				( $include_children ? ' ' . $vbphrase['and_child_forums'] : ''));
+			foreach ($all_forumids as $forumid)
+			{
+				if(!empty($vbulletin->forumcache[$forumid]))
+				{
+					$names[$forumid] = $vbulletin->forumcache[$forumid]['title'];
+				}
+			}
+			if (!empty($names))
+			{
+				$forum_strings =  vB_Search_Searchtools::generateDisplayString($vbphrase['forum'], $names, vB_Search_Core::OP_EQ, false);
+				$criteria->add_display_strings('forumid', $forum_strings . ( $include_children ? ' ' . $vbphrase['and_child_forums'] : ''));
+			}
+			else
+			{
+				$criteria->add_error('invalidid', $vbphrase['forum'], $vbulletin->options['contactuslink']);
+			}
 		}
 		else
 		{
@@ -694,7 +723,7 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 		'prefixchoice'	  => TYPE_ARRAY,
 		'childforums'	  => TYPE_BOOL,
 		'replyless'  => TYPE_BOOL,
-		'replylimit' => TYPE_NOHTML
+		'replylimit' => TYPE_UINT
 	);
 
 	private static $thread_join =
@@ -711,7 +740,6 @@ class vBForum_Search_Type_Post extends vB_Search_Type
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 30635 $
 || ####################################################################
 \*======================================================================*/

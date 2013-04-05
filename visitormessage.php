@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ï¿½2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -44,7 +44,6 @@ $phrasegroups = array(
 
 if ($_REQUEST['do'] == 'message')
 {
-	$phrasegroups[] = 'threadmanage';
 	$phrasegroups[] = 'inlinemod';
 }
 
@@ -74,8 +73,6 @@ $actiontemplates = array(
 // ######################### REQUIRE BACK-END ############################
 require_once('./global.php');
 require_once(DIR . '/includes/functions_visitormessage.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -422,7 +419,7 @@ if ($_REQUEST['do'] == 'message')
 				if ($messageinfo)
 				{
 					$vbulletin->url = fetch_seo_url('member', $userinfo, array('vmid' => $messageinfo['vmid'])) . "#vmessage$messageinfo[vmid]";
-					eval(print_standard_redirect('visitormessageeditthanks'));
+					print_standard_redirect('visitormessageeditthanks');  
 				}
 				else
 				{
@@ -434,7 +431,7 @@ if ($_REQUEST['do'] == 'message')
 					{
 						$vbulletin->url = fetch_seo_url('member', $userinfo, array('vmid' => $vmid)) . "#vmessage$vmid";
 					}
-					eval(print_standard_redirect('visitormessagethanks'));
+					print_standard_redirect('visitormessagethanks');  
 				}
 			}
 		}
@@ -695,13 +692,13 @@ if ($_POST['do'] == 'deletemessage')
 			);
 		}
 
-		$vbulletin->url = fetch_seo_url('member', $userinfo);
-		eval(print_standard_redirect('visitormessagedelete'));
+		$vbulletin->url = fetch_seo_url('member', $userinfo, array('tab' => 'visitor_messaging'));
+		print_standard_redirect('visitormessagedelete');  
 	}
 	else
 	{
 		$vbulletin->url = fetch_seo_url('member', $userinfo);
-		eval(print_standard_redirect('visitormessage_nodelete'));
+		print_standard_redirect('visitormessage_nodelete');  
 	}
 }
 
@@ -811,7 +808,7 @@ if ($_REQUEST['do'] == 'report' OR $_POST['do'] == 'sendemail')
 		$reportobj->do_report($vbulletin->GPC['reason'], $messageinfo);
 
 		$url =& $vbulletin->url;
-		eval(print_standard_redirect('redirect_reportthanks'));
+		print_standard_redirect('redirect_reportthanks');  
 	}
 
 }
@@ -861,8 +858,7 @@ if ($_REQUEST['do'] == 'quickedit')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44223 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

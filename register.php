@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -559,7 +559,7 @@ if ($_REQUEST['do'] == 'fbdisconnect')
 		else if ($vbulletin->GPC['deny'])
 		{
 			$vbulletin->url = fetch_seo_url('forumhome', array());
-			eval(print_standard_redirect('action_cancelled'));
+			print_standard_redirect('action_cancelled');  
 		}
 
 		// otherwise, make sure current FB account is associated with vb account
@@ -646,7 +646,7 @@ if ($_POST['do'] == 'fbconnect')
 		{
 			$userdata->save();
 			$vbulletin->url = $vbulletin->options['forumhome'] . '.php' . $vbulletin->session->vars['sessionurl_q'];
-			eval(print_standard_redirect('redirect_updatethanks'));
+			print_standard_redirect(array('redirect_updatethanks',$vbulletin->userinfo['username']));  
 		}
 	}
 
@@ -654,7 +654,7 @@ if ($_POST['do'] == 'fbconnect')
 	else if ($vbulletin->GPC['nolink'])
 	{
 		$vbulletin->url = $vbulletin->options['forumhome'] . '.php' . $vbulletin->session->vars['sessionurl_q'];
-		eval(print_standard_redirect('redirect_updatethanks'));
+		print_standard_redirect(array('redirect_updatethanks',$vbulletin->userinfo['username']));  
 	}
 }
 
@@ -807,6 +807,14 @@ if ($_REQUEST['do'] == 'register')
 		$templater->register('errorlist', $errorlist);
 		print_output($templater->render());
 	}
+	else if (is_facebookenabled() AND vB_Facebook::instance()->userIsLoggedIn())
+	{
+		if (!vB_Facebook::instance()->verifyLoginFromServer())
+		{
+			vB_Facebook::instance()->doLogoutFbUser();
+			$show['facebookuser'] = false;
+		}
+	}
 
 	$vbulletin->input->clean_array_gpc('p', array(
 		'year'    => TYPE_UINT,
@@ -907,6 +915,7 @@ if ($_REQUEST['do'] == 'register')
 	$htmlonoff = ($vbulletin->options['allowhtml'] ? $vbphrase['on'] : $vbphrase['off']);
 	$bbcodeonoff = ($vbulletin->options['allowbbcode'] ? $vbphrase['on'] : $vbphrase['off']);
 	$imgcodeonoff = ($vbulletin->options['allowbbimagecode'] ? $vbphrase['on'] : $vbphrase['off']);
+	$videocodeonoff = ($vbulletin->options['allowbbvideocode'] ? $vbphrase['on'] : $vbphrase['off']);
 	$smiliesonoff = ($vbulletin->options['allowsmilies'] ? $vbphrase['on'] : $vbphrase['off']);
 
 	// human verification, which we can bypass if user has been verified on facebook
@@ -1078,13 +1087,27 @@ if ($_REQUEST['do'] == 'register')
 		{
 			$data = unserialize($profilefield['data']);
 			$selectbits = '';
+
+			if ($profilefield['optional'])
+			{
+				$optional = htmlspecialchars_uni($vbulletin->GPC['userfield']["$optionalname"]);
+
+				$templater = vB_Template::create('userfield_optional_input');
+					$templater->register('optional', $optional);
+					$templater->register('optionalname', $optionalname);
+					$templater->register('profilefield', $profilefield);
+					$templater->register('tabindex', $tabindex);
+				$optionalfield = $templater->render();
+			}
+
+			$foundselect = 0;
 			foreach ($data AS $key => $val)
 			{
 				$key++;
 				$selected = '';
 				if (isset($profilefield['currentvalue']))
 				{
-					if (trim($val) == $profilefield['currentvalue'])
+					if ($key == $profilefield['currentvalue'])
 					{
 						$selected = 'selected="selected"';
 						$foundselect = 1;
@@ -1103,20 +1126,9 @@ if ($_REQUEST['do'] == 'register')
 				$selectbits .= $templater->render();
 			}
 
-			if ($profilefield['optional'])
-			{
-				if (!$foundselect AND $profilefield['currentvalue'])
-				{
-					$optional = htmlspecialchars_uni($profilefield['currentvalue']);
-				}
-				$templater = vB_Template::create('userfield_optional_input');
-					$templater->register('optional', $optional);
-					$templater->register('optionalname', $optionalname);
-					$templater->register('profilefield', $profilefield);
-					$templater->register('tabindex', $tabindex);
-				$optionalfield = $templater->render();
-			}
-			if (!$foundselect)
+			$show['noemptyoption'] = iif($profilefield['def'] != 2, true, false);
+
+			if (!$foundselect AND $show['noemptyoption'])
 			{
 				$selected = 'selected="selected"';
 			}
@@ -1124,7 +1136,7 @@ if ($_REQUEST['do'] == 'register')
 			{
 				$selected = '';
 			}
-			$show['noemptyoption'] = iif($profilefield['def'] != 2, true, false);
+
 			$templater = vB_Template::create('userfield_select');
 				$templater->register('optionalfield', $optionalfield);
 				$templater->register('profilefield', $profilefield);
@@ -1138,33 +1150,15 @@ if ($_REQUEST['do'] == 'register')
 			$data = unserialize($profilefield['data']);
 			$radiobits = '';
 			$foundfield = 0;
-
-			foreach ($data AS $key => $val)
-			{
-				$key++;
-				$checked = '';
-				if (!$profilefield['currentvalue'] AND $key == 1 AND $profilefield['def'] == 1)
-				{
-					$checked = 'checked="checked"';
-				}
-				else if (trim($val) == $profilefield['currentvalue'])
-				{
-					$checked = 'checked="checked"';
-					$foundfield = 1;
-				}
-				$templater = vB_Template::create('userfield_radio_option');
-					$templater->register('checked', $checked);
-					$templater->register('key', $key);
-					$templater->register('profilefieldname', $profilefieldname);
-					$templater->register('val', $val);
-				$radiobits .= $templater->render();
-			}
+			
 			if ($profilefield['optional'])
 			{
-				if (!$foundfield AND $profilefield['currentvalue'])
+				$optional = htmlspecialchars_uni($vbulletin->GPC['userfield']["$optionalname"]);
+				if ($optional)
 				{
-					$optional = htmlspecialchars_uni($profilefield['currentvalue']);
+					$foundfield = 1;
 				}
+
 				$templater = vB_Template::create('userfield_optional_input');
 					$templater->register('optional', $optional);
 					$templater->register('optionalname', $optionalname);
@@ -1172,6 +1166,31 @@ if ($_REQUEST['do'] == 'register')
 					$templater->register('tabindex', $tabindex);
 				$optionalfield = $templater->render();
 			}
+
+			foreach ($data AS $key => $val)
+			{
+				$key++;
+				$checked = '';
+				if (!$foundfield)
+				{
+					if (!$profilefield['currentvalue'] AND $key == 1 AND $profilefield['def'] == 1)
+					{
+						$checked = 'checked="checked"';
+					}
+					else if ($key == $profilefield['currentvalue'])
+					{
+						$checked = 'checked="checked"';
+					}
+				}
+				
+				$templater = vB_Template::create('userfield_radio_option');
+					$templater->register('checked', $checked);
+					$templater->register('key', $key);
+					$templater->register('profilefieldname', $profilefieldname);
+					$templater->register('val', $val);
+				$radiobits .= $templater->render();
+			}
+
 			$templater = vB_Template::create('userfield_radio');
 				$templater->register('optionalfield', $optionalfield);
 				$templater->register('profilefield', $profilefield);
@@ -1185,7 +1204,8 @@ if ($_REQUEST['do'] == 'register')
 			$radiobits = '';
 			foreach ($data AS $key => $val)
 			{
-				if ($profilefield['currentvalue'] & pow(2,$key))
+				$key++;
+				if (is_array($profilefield['currentvalue']) AND in_array($key, $profilefield['currentvalue']))
 				{
 					$checked = 'checked="checked"';
 				}
@@ -1193,7 +1213,6 @@ if ($_REQUEST['do'] == 'register')
 				{
 					$checked = '';
 				}
-				$key++;
 				$templater = vB_Template::create('userfield_checkbox_option');
 					$templater->register('checked', $checked);
 					$templater->register('key', $key);
@@ -1221,7 +1240,8 @@ if ($_REQUEST['do'] == 'register')
 
 			foreach ($data AS $key => $val)
 			{
-				if ($profilefield['currentvalue'] & pow(2, $key))
+				$key++;
+				if (is_array($profilefield['currentvalue']) AND in_array($key, $profilefield['currentvalue']))
 				{
 					$selected = 'selected="selected"';
 				}
@@ -1229,7 +1249,6 @@ if ($_REQUEST['do'] == 'register')
 				{
 					$selected = '';
 				}
-				$key++;
 				$templater = vB_Template::create('userfield_select_option');
 					$templater->register('key', $key);
 					$templater->register('selected', $selected);
@@ -1367,15 +1386,8 @@ if ($vbulletin->GPC['a'] == 'ver')
 		$vbulletin->userinfo['username'] = '';
 	}
 
-	if ($permissions['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview'])
-	{
-		$navbits = construct_navbits(array('' => $vbphrase['activate_your_account']));
-		$navbar = render_navbar_template($navbits);
-	}
-	else
-	{
-		$navbar = '';
-	}
+	$navbits = construct_navbits(array('' => $vbphrase['activate_your_account']));
+	$navbar = render_navbar_template($navbits);
 
 	($hook = vBulletinHook::fetch_hook('register_activateform')) ? eval($hook) : false;
 
@@ -1554,18 +1566,12 @@ if ($_REQUEST['do'] == 'requestemail')
 		$email = $vbulletin->GPC['email'];
 	}
 
-	if ($permissions['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview'])
-	{
-		$navbits = construct_navbits(array(
-			'register.php?' . $vbulletin->session->vars['sessionurl'] . 'a=ver' => $vbphrase['activate_your_account'],
-			'' => $vbphrase['email_activation_codes']
-		));
-		$navbar = render_navbar_template($navbits);
-	}
-	else
-	{
-		$navbar = '';
-	}
+	$navbits = construct_navbits(array(
+		'register.php?' . $vbulletin->session->vars['sessionurl'] . 'a=ver' => $vbphrase['activate_your_account'],
+		'' => $vbphrase['email_activation_codes']
+	));
+	
+	$navbar = render_navbar_template($navbits);
 
 	($hook = vBulletinHook::fetch_hook('register_requestemail')) ? eval($hook) : false;
 
@@ -1625,7 +1631,7 @@ if ($_POST['do'] == 'emailcode')
 			}
 		}
 
-		eval(print_standard_redirect('redirect_lostactivatecode', true, true));
+		print_standard_redirect('redirect_lostactivatecode', true, true);  
 	}
 	else
 	{
@@ -1738,7 +1744,6 @@ if ($_REQUEST['do'] == 'killactivation')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44666 $
+|| # CVS: $RCSfile$ - $Revision: 57655 $
 || ####################################################################
 \*======================================================================*/

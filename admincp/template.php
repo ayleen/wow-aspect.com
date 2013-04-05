@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,8 +14,11 @@ error_reporting(E_ALL & ~E_NOTICE);
 @set_time_limit(0);
 ignore_user_abort(true);
 
+// Get styleid before global.php cleans it
+$realstyleid = $_REQUEST['styleid']; 
+
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 45140 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62098 $');
 if ($_POST['do'] == 'updatetemplate' OR $_POST['do'] == 'inserttemplate' OR $_REQUEST['do'] == 'createfiles')
 {
 	// double output buffering does some weird things, so turn it off in these three cases
@@ -89,10 +92,23 @@ if ($_REQUEST['do'] == 'stylegenerator' AND !(is_browser('ie') AND !is_browser('
 		$stylegeneratorjs_phrasetext .= "\t" . 'vbphrase["' . $phrase . '"] = "' . $vbphrase[$phrase] . '";' . "\n";
 	}
 
+	$jquerypath = vB_Template_Runtime::fetchStyleVar('jquerymain');
+	if (!$show['remotejquery'])
+	{
+		$jquerypath = '../' . $jquerypath;
+	}
 	$stylegeneratorjs =
 		'<link rel="stylesheet" href="' . $cssfile . '" type="text/css">
 		<script type="text/javascript">' . $stylegeneratorjs_phrasetext . '</script>
-		<script type="text/javascript" src="../clientscript/jquery/jquery-1.6.1.min.js?v=' . SIMPLE_VERSION . '"></script>
+		<script type="text/javascript" src="' . $jquerypath . '"></script>
+		<script type="text/javascript">
+		<!--
+			if (typeof jQuery === "undefined")
+			{
+				document.write(\'<script type="text/javascript" src="../clientscript/jquery/jquery-' . JQUERY_VERSION . '.min.js">\');
+			}
+		// -->
+		</script>
 		<script type="text/javascript" src="../clientscript/jquery/jquery.styledselect.js?v=' . SIMPLE_VERSION . '"></script>
 		<script type="text/javascript" src="../clientscript/jquery/jquery.floatbox.js?v=' . SIMPLE_VERSION . '"></script>
 		<script type="text/javascript" src="../clientscript/jquery/jquery.tooltip.js?v=' . SIMPLE_VERSION . '"></script>
@@ -312,13 +328,20 @@ if ($_REQUEST['do'] == 'download')
 		$vbulletin->GPC['filename'] = 'vbulletin-style.xml';
 	}
 
-	$doc = get_style_export_xml(
-		$vbulletin->GPC['dostyleid'],
-		$vbulletin->GPC['product'],
-		$full_product_info[$vbulletin->GPC['product']]['version'],
-		$vbulletin->GPC['title'],
-		$vbulletin->GPC['mode']
-	);
+	try
+	{
+		$doc = get_style_export_xml(
+			$vbulletin->GPC['dostyleid'],
+			$vbulletin->GPC['product'],
+			$full_product_info[$vbulletin->GPC['product']]['version'],
+			$vbulletin->GPC['title'],
+			$vbulletin->GPC['mode']
+		);
+	}
+	catch (vB_Exception_AdminStopMessage $e)
+	{
+		call_user_func_array('print_stop_message', $e->getParams());
+	}
 
 	require_once(DIR . '/includes/functions_file.php');
 	file_download($doc, $vbulletin->GPC['filename'], 'text/xml');
@@ -384,7 +407,8 @@ if ($_REQUEST['do'] == 'upload')
 		//build the next page url;
 		$startat = $startat + $perpage;
 		$url = 'template.php?do=upload&startat=' . $startat;
-
+		
+		$vbulletin->GPC['overwritestyleid'] = $imported['overwritestyleid'];
 		unset($fields['startat']);
 		foreach($fields AS $name => $type)
 		{
@@ -402,9 +426,10 @@ if ($_REQUEST['do'] == 'upload')
 		print_cp_redirect($url);
 	}
 
-	if ($imported['master'])
+	if ($imported['master'] OR $imported['mobilemaster'])
 	{
-		print_cp_redirect('template.php?do=massmerge&product=' . urlencode($imported['product']) . '&hash=' . CP_SESSIONHASH);
+		$mastertype = ($imported['master'] ? 'standard' : 'mobile');
+		print_cp_redirect('template.php?do=massmerge&product=' . urlencode($imported['product']) . '&mastertype=' . $mastertype . '&hash=' . CP_SESSIONHASH);
 	}
 	else
 	{
@@ -435,11 +460,25 @@ if ($_REQUEST['do'] == 'files')
 		document.forms.downloadform.title.value = style[styleid];
 	}
 	var style = new Array();
-	style['-1'] = "<?php echo $vbphrase['master_style'] . '";';
+	style['-1'] = "<?php echo $vbphrase['master_style'] . "\";\n";?>
+	style['-2'] = "<?php echo $vbphrase['mobile_master_style'] . '";';?>
+	
+	<?php
+	if ($vbulletin->debug)
+	{
+		$styles = array(
+			'standard' => array(-1 => $vbphrase['master_style']),
+			'mobile'   => array(-2 => $vbphrase['mobile_master_style']),
+		);
+	}
+	else
+	{
+		$styles = array();
+	}
 	foreach($stylecache AS $styleid => $style)
 	{
 		echo "\n\tstyle['$styleid'] = \"" . addslashes_js($style['title'], '"') . "\";";
-		$styleoptions["$styleid"] = construct_depth_mark($style['depth'], '--', iif($vbulletin->debug, '--', '')) . ' ' . $style['title'];
+		$styles[$style['type']]["$styleid"] = construct_depth_mark($style['depth'], '--', ($vbulletin->debug ? '--' : '')) . ' ' . $style['title'];
 	}
 	echo "\n";
 	?>
@@ -447,11 +486,15 @@ if ($_REQUEST['do'] == 'files')
 	</script>
 	<?php
 
+	$styleoptions = array(
+		$vbphrase['standard_styles'] => $styles['standard'],
+		$vbphrase['mobile_styles']   => $styles['mobile'],
+	);
+	
 	print_form_header('template', 'download', 0, 1, 'downloadform" target="download');
 	print_table_header($vbphrase['download']);
 	print_label_row($vbphrase['style'], '
 		<select name="dostyleid" onchange="js_fetch_style_title();" tabindex="1" class="bginput">
-		' . iif($vbulletin->debug, '<option value="-1">' . $vbphrase['master_style'] . '</option>') . '
 		' . construct_select_options($styleoptions, $vbulletin->GPC['dostyleid']) . '
 		</select>
 	', '', 'top', 'dostyleid');
@@ -471,7 +514,20 @@ if ($_REQUEST['do'] == 'files')
 	print_table_header($vbphrase['import_style_xml_file']);
 	print_upload_row($vbphrase['upload_xml_file'], 'stylefile', 999999999);
 	print_input_row($vbphrase['import_xml_file'], 'serverfile', './install/vbulletin-style.xml');
-	print_style_chooser_row('overwritestyleid', -1, '(' . $vbphrase['create_new_style'] . ')', $vbphrase['overwrite_style'], 1);
+	
+	cache_styles();
+	$styles = array(
+		0 => '(' . $vbphrase['create_new_style'] . ')'
+	);
+	foreach($stylecache AS $style)
+	{
+		$_styles[$style['type']]["$style[styleid]"] = construct_depth_mark($style['depth'], '--', '--') . " $style[title]";
+	}
+	$styles[$vbphrase['standard_styles']] = $_styles['standard'];
+	$styles[$vbphrase['mobile_styles']] = $_styles['mobile'];
+
+	print_select_row($vbphrase['overwrite_style'], 'overwritestyleid', $styles, -1);
+	
 	print_yes_no_row($vbphrase['ignore_style_version'], 'anyversion', 0);
 	print_description_row($vbphrase['following_options_apply_only_if_new_style'], 0, 2, 'thead" style="font-weight:normal; text-align:center');
 	print_input_row($vbphrase['title_for_uploaded_style'], 'title');
@@ -510,7 +566,22 @@ if ($_POST['do'] == 'replace')
 	$limit_style = $vbulletin->GPC['startat_style'];
 	if ($vbulletin->GPC['dostyleid'] == -1)
 	{
-		$conds = 'AND styleid ' . iif($vbulletin->debug, '<> -2', '> 0');
+		$conds = "AND type = 'standard'";
+		$mastertype = 'standard';
+	}
+	else if ($vbulletin->GPC['dostyleid'] == -2)
+	{
+		$conds = "AND type = 'mobile'";	
+		$mastertype = 'mobile';
+	}
+	else
+	{
+		$conds = "AND styleid = " . $vbulletin->GPC['dostyleid'];
+		$style = $db->query_first("SELECT type FROM " . TABLE_PREFIX . "style WHERE styleid = {$vbulletin->GPC['dostyleid']}");
+		$mastertype = $style['type'];
+	}	
+	if ($vbulletin->GPC['dostyleid'] == -1 OR $vbulletin->GPC['dostyleid'] == -2)
+	{
 		if ($vbulletin->debug)
 		{
 			if ($vbulletin->GPC['startat_style'] == 0)
@@ -523,20 +594,23 @@ if ($_POST['do'] == 'replace')
 			}
 		}
 	}
-	else
-	{
-		$conds = "AND styleid = " . $vbulletin->GPC['dostyleid'];
-	}
 
 	if ($editmaster != true)
 	{
-		$styleinfo = $db->query_first("SELECT styleid, title, templatelist FROM " . TABLE_PREFIX . "style WHERE 1=1 $conds LIMIT $limit_style, 1");
+		$styleinfo = $db->query_first("
+			SELECT styleid, title, templatelist, type
+			FROM " . TABLE_PREFIX . "style
+			WHERE
+				1=1
+				$conds
+			LIMIT $limit_style, 1
+		");
 		if (!$styleinfo)
 		{
 			// couldn't grab a style, so we're done -- rebuild styles if necessary
 			if ($vbulletin->GPC['requirerebuild'])
 			{
-				build_all_styles(0, 0, "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=search");
+				build_all_styles(0, 0, "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=search", false, $mastertype);
 				print_cp_footer();
 				exit;
 			}
@@ -551,12 +625,12 @@ if ($_POST['do'] == 'replace')
 	else
 	{
 		$styleinfo = array(
-			'styleid' => -1,
-			'title' => 'MASTER STYLE'
+			'styleid' => $vbulletin->GPC['dostyleid'],
+			'title'   => ($vbulletin->GPC['dostyleid'] == -1) ? $vbphrase['master_style'] : $vbphrase['mobile_master_style'],
 		);
 		$templatelist = array();
 
-		$tids = $db->query_read("SELECT title, templateid FROM " . TABLE_PREFIX . "template WHERE styleid IN (-1,0)");
+		$tids = $db->query_read("SELECT title, templateid FROM " . TABLE_PREFIX . "template WHERE styleid IN ({$vbulletin->GPC['dostyleid']},0)");
 		while ($tid = $db->fetch_array($tids))
 		{
 			$templatelist["$tid[title]"] = $tid['templateid'];
@@ -740,10 +814,14 @@ if ($_POST['do'] == 'replace')
 if ($_REQUEST['do'] == 'search')
 {
 
+	$topname = array(
+		-1 => $vbphrase['search_in_all_styles'] . ($vbulletin->debug ? ' (' . $vbphrase['including_master_style'] . ')' : ''),
+		-2 => $vbphrase['search_in_all_styles'] . ($vbulletin->debug ? ' (' . $vbphrase['including_mobile_master_style'] . ')' : ''),
+	);
 	// search only
 	print_form_header('template', 'modify', false, true, 'sform', '90%', '', true, 'get');
 	print_table_header($vbphrase['search_templates']);
-	print_style_chooser_row("searchset", $vbulletin->GPC['dostyleid'], $vbphrase['search_in_all_styles'] . iif($vbulletin->debug, ' (' . $vbphrase['including_master_style'] . ')'), $vbphrase['search_in_style'], 1);
+	print_style_chooser_row("searchset", $vbulletin->GPC['dostyleid'], $topname, $vbphrase['search_in_style'], 1);
 	print_textarea_row($vbphrase['search_for_text'], "searchstring");
 	print_yes_no_row($vbphrase['search_titles_only'], "titlesonly", 0);
 	print_submit_row($vbphrase['find']);
@@ -751,7 +829,7 @@ if ($_REQUEST['do'] == 'search')
 	// search & replace
 	print_form_header('template', 'replace', 0, 1, 'srform');
 	print_table_header($vbphrase['find_and_replace_in_templates']);
-	print_style_chooser_row("dostyleid", $vbulletin->GPC['dostyleid'], $vbphrase['search_in_all_styles'] .  iif($vbulletin->debug, ' (' . $vbphrase['including_master_style'] . ')'), $vbphrase['search_in_style'], 1);
+	print_style_chooser_row("dostyleid", $vbulletin->GPC['dostyleid'], $topname, $vbphrase['search_in_style'], 1);
 	print_textarea_row($vbphrase['search_for_text'], 'searchstring', '', 5, 60, 1, 0);
 	print_textarea_row($vbphrase['replace_with_text'], 'replacestring', '', 5, 60, 1, 0);
 	print_yes_no_row($vbphrase['test_replace_only'], 'test', 1);
@@ -774,6 +852,7 @@ if ($_POST['do'] == 'insertstyle')
 	$vbulletin->input->clean_array_gpc('p', array(
 		'title'        => TYPE_STR,
 		'displayorder' => TYPE_INT,
+		'parentid'     => TYPE_INT,
 	));
 
 	if (!$vbulletin->GPC['title'])
@@ -781,12 +860,30 @@ if ($_POST['do'] == 'insertstyle')
 		print_stop_message('please_complete_required_fields');
 	}
 
+	if ($vbulletin->GPC['parentid'] == -1)
+	{
+		$type = 'standard';
+	}
+	else if ($vbulletin->GPC['parentid'] == -2)
+	{
+		$type = 'mobile';
+	}
+	else
+	{
+		$style = $db->query_first("
+			SELECT type
+			FROM " . TABLE_PREFIX . "style
+			WHERE styleid = {$vbulletin->GPC['parentid']}
+		");
+		$type = $style['type'];
+	}
+
 	/*insert query*/
 	$insert = $db->query_write("
 		INSERT INTO " . TABLE_PREFIX . "style
-		(title)
+		(title, type)
 		VALUES
-		('" . $db->escape_string($vbulletin->GPC['title']) . "')
+		('" . $db->escape_string($vbulletin->GPC['title']) . "', '" . $db->escape_string($type) . "')
 	");
 
 	if ($vbulletin->GPC['displayorder'] == 0)
@@ -845,14 +942,19 @@ if ($_POST['do'] == 'updatestyle')
 	{
 		print_stop_message('please_complete_required_fields');
 	}
-
+	
 	// SANITY CHECK (prevent invalid nesting)
+	$style = $vbulletin->db->query_first("
+		SELECT type, title
+		FROM " . TABLE_PREFIX . "style
+		WHERE styleid = {$vbulletin->GPC['dostyleid']}
+	");		
 	if ($vbulletin->GPC['parentid'] == $vbulletin->GPC['dostyleid'])
 	{
 		print_stop_message('cant_parent_style_to_self');
 	}
 	$ts_info = $db->query_first("
-		SELECT styleid, title, parentlist
+		SELECT styleid, title, parentlist, type
 		FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['parentid'] . "
 	");
 	$parents = explode(',', $ts_info['parentlist']);
@@ -860,18 +962,33 @@ if ($_POST['do'] == 'updatestyle')
 	{
 		if ($childid == $vbulletin->GPC['dostyleid'])
 		{
-			print_stop_message('cant_parent_x_to_child');
+			print_stop_message('cant_parent_x_to_child', $style['title']);
 		}
+	}
+	if ($vbulletin->GPC['parentid'] < 0)
+	{
+		$mastertype = ($vbulletin->GPC['parentid'] == -2) ? 'mobile' : 'standard';
+		
+	}
+	else
+	{
+		$mastertype = $ts_info['type'];
+	}
+	if ($mastertype != $style['type'])
+	{
+		print_stop_message('cant_move_style_to_another_master');
 	}
 	// end Sanity check
 
 	$db->query_write("
 		UPDATE " . TABLE_PREFIX . "style
-		SET title = '" . $db->escape_string($vbulletin->GPC['title']) . "',
-		parentid = " . $vbulletin->GPC['parentid'] . ",
-		userselect = " . $vbulletin->GPC['userselect'] . ",
-		displayorder = " . $vbulletin->GPC['displayorder'] . "
-		WHERE styleid = " . $vbulletin->GPC['dostyleid'] . "
+		SET
+			title = '" . $db->escape_string($vbulletin->GPC['title']) . "',
+			parentid = " . $vbulletin->GPC['parentid'] . ",
+			userselect = " . $vbulletin->GPC['userselect'] . ",
+			displayorder = " . $vbulletin->GPC['displayorder'] . "
+		WHERE
+			styleid = " . $vbulletin->GPC['dostyleid'] . "
 	");
 
 	($hook = vBulletinHook::fetch_hook('admin_style_save')) ? eval($hook) : false;
@@ -880,7 +997,7 @@ if ($_POST['do'] == 'updatestyle')
 
 	if ($vbulletin->GPC['parentid'] != $vbulletin->GPC['oldparentid'])
 	{
-		build_template_parentlists();
+		build_template_parentlists($mastertype);
 		print_rebuild_style($vbulletin->GPC['dostyleid'], $vbulletin->GPC['title'], 1, 1, 1, 1);
 		print_cp_redirect("template.php?" . $vbulletin->session->vars['sessionurl'] . "do=modify&expandset=" . $vbulletin->GPC['dostyleid'] . "&modify&group=" . $vbulletin->GPC['group'], 1);
 	}
@@ -907,7 +1024,7 @@ if ($_REQUEST['do'] == 'editstyle')
 	construct_hidden_code('dostyleid', $vbulletin->GPC['dostyleid']);
 	construct_hidden_code('oldparentid', $style['parentid']);
 	print_table_header(construct_phrase($vbphrase['x_y_id_z'], $vbphrase['style'], $style['title'], $style['styleid']), 2, 0);
-	print_style_chooser_row('parentid', $style['parentid'], $vbphrase['no_parent_style'], $vbphrase['parent_style'], 1);
+	print_style_chooser_row('parentid', $style['parentid'], $vbphrase['no_parent_style'], $vbphrase['parent_style'], true, $style['type']);
 	print_input_row($vbphrase['title'], 'title', $style['title']);
 	print_yes_no_row($vbphrase['allow_user_selection'], 'userselect', $style['userselect']);
 	print_input_row($vbphrase['display_order'], 'displayorder', $style['displayorder']);
@@ -930,7 +1047,8 @@ if ($_POST['do'] == 'killstyle')
 
 	// check to see if we are deleting the last style
 	$check = $db->query_first("SELECT COUNT(*) AS numstyles FROM " . TABLE_PREFIX . "style");
-
+	$style = $db->query_first("SELECT * FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']);
+	
 	// Delete css file
 	if ($vbulletin->options['storecssasfile'] AND $fetchstyle = $db->query_first("SELECT css FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']))
 	{
@@ -950,8 +1068,8 @@ if ($_POST['do'] == 'killstyle')
 		$db->query_write("TRUNCATE TABLE " . TABLE_PREFIX . "style");
 		$db->query_write("TRUNCATE TABLE " . TABLE_PREFIX . "templatehistory");
 		$db->query_write("TRUNCATE TABLE " . TABLE_PREFIX . "templatemerge");
-		$db->query_write("DELETE FROM " . TABLE_PREFIX . "template WHERE styleid <> -1");
-		$db->query_write("DELETE FROM " . TABLE_PREFIX . "stylevar WHERE styleid <> -1");
+		$db->query_write("DELETE FROM " . TABLE_PREFIX . "template WHERE styleid <> -1 AND styleid <> -2");
+		$db->query_write("DELETE FROM " . TABLE_PREFIX . "stylevar WHERE styleid <> -1 AND styleid <> -2");
 
 		// insert a new default style
 		/*insert query*/
@@ -959,7 +1077,8 @@ if ($_POST['do'] == 'killstyle')
 			INSERT INTO " . TABLE_PREFIX . "style
 				(title, parentid, parentlist, userselect, displayorder)
 			VALUES
-				('Default Style', -1, '1,-1', 1, 1)
+				('Default Style', -1, '1,-1', 1, 1),
+				('Default Mobile Style', -2, '2,-2', 1, 1)
 		");
 
 		// set this to be the default style in $vbulletin->options
@@ -995,8 +1114,7 @@ if ($_POST['do'] == 'killstyle')
 		");
 	}
 
-	build_all_styles(0, 0, "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=modify&amp;group=" . $vbulletin->GPC['group']);
-
+	build_all_styles(0, 0, "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=modify&amp;group=" . $vbulletin->GPC['group'], false, $style['type']);
 	print_cp_redirect("template.php?" . $vbulletin->session->vars['sessionurl'] . "do=modify&amp;group=" . $vbulletin->GPC['group'], 1);
 
 }
@@ -1006,21 +1124,37 @@ if ($_POST['do'] == 'killstyle')
 if ($_REQUEST['do'] == 'deletestyle')
 {
 
-	if ($vbulletin->GPC['dostyleid'] == $vbulletin->options['styleid'])
+	if ($vbulletin->GPC['dostyleid'] == $vbulletin->options['styleid']
+			OR
+		$vbulletin->GPC['dostyleid'] == $vbulletin->options['mobilestyleid_basic']
+			OR
+		$vbulletin->GPC['dostyleid'] == $vbulletin->options['mobilestyleid_advanced'])
 	{
 		print_stop_message('cant_delete_default_style');
 	}
 
+	$style = $db->query_first("SELECT * FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']);
+	
 	// look at how many styles are being deleted
-	$count = $db->query_first("SELECT COUNT(*) AS styles FROM " . TABLE_PREFIX . "style WHERE userselect = 1");
-	// check that this isn't the last one that we're about to delete
-	$last = $db->query_first("SELECT userselect FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']);
-	if ($count['styles'] == 1 AND $last['userselect'] == 1)
+	$count1 = $db->query_first("
+			SELECT COUNT(*) AS styles
+			FROM " . TABLE_PREFIX . "style
+			WHERE
+				userselect = 1
+					AND
+				type = '{$style['type']}'
+	");
+	$count2 = $db->query_first("
+			SELECT COUNT(*) AS styles
+			FROM " . TABLE_PREFIX . "style
+			WHERE type = '{$style['type']}'
+	");				
+				
+	if (($count1['styles'] == 1 AND $style['userselect'] == 1) OR $count2['styles'] == 1)
 	{
 		print_stop_message('cant_delete_last_style');
 	}
 
-	$style = $db->query_first("SELECT * FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']);
 	$hidden = array();
 	$hidden['parentid'] = $style['parentid'];
 	$hidden['parentlist'] = $style['parentlist'];
@@ -1036,11 +1170,16 @@ if ($_POST['do'] == 'dorevertall')
 		'group' => TYPE_STR,
 	));
 
-	if ($vbulletin->GPC['dostyleid'] != -1 AND $style = $db->query_first("SELECT styleid, parentid, parentlist, title FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']))
+	if (
+		$vbulletin->GPC['dostyleid'] != -1
+			AND
+		$vbulletin->GPC['dostyleid'] != -2
+			AND
+		$style = $db->query_first("SELECT styleid, parentid, parentlist, title FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']))
 	{
 		if (!$style['parentlist'])
 		{
-			$style['parentlist'] = '-1';
+			$style['parentlist'] = ($style['type'] == 'standard') ? '-1' : '-2';
 		}
 
 		$templates = $db->query_read("
@@ -1090,11 +1229,17 @@ if ($_REQUEST['do'] == 'revertall')
 		'group' => TYPE_STR,
 	));
 
-	if ($vbulletin->GPC['dostyleid'] != -1 AND $style = $db->query_first("SELECT styleid, title, parentlist FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']))
+	if (
+		$vbulletin->GPC['dostyleid'] != -1
+			AND
+		$vbulletin->GPC['dostyleid'] != -2
+			AND
+		$style = $db->query_first("SELECT styleid, title, parentlist, type FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']
+	))
 	{
 		if (!$style['parentlist'])
 		{
-			$style['parentlist'] = '-1';
+			$style['parentlist'] = ($style['type'] == 'standard') ? '-1' : '-2';
 		}
 
 		$templates = $db->query_read("
@@ -1142,11 +1287,23 @@ if ($_REQUEST['do'] == 'revertall')
 if ($_REQUEST['do'] == 'massmerge')
 {
 	$vbulletin->input->clean_array_gpc('r', array(
-		'startat'  => TYPE_UINT,
-		'product'  => TYPE_STR,
-		'redirect' => TYPE_STR,
+		'startat'    => TYPE_UINT,
+		'product'    => TYPE_STR,
+		'redirect'   => TYPE_STR,
+		'mastertype' => TYPE_STR,
 	));
 
+	if ($vbulletin->GPC['mastertype'] != 'mobile')
+	{
+		$mastertype = 'standard';
+		$masterstyleid = -1;
+	}
+	else
+	{
+		$mastertype = 'mobile';
+		$masterstyleid = -2;
+	}
+	
 	verify_cp_sessionhash();
 
 	require_once(DIR . '/includes/class_template_merge.php');
@@ -1168,12 +1325,12 @@ if ($_REQUEST['do'] == 'massmerge')
 		$merge->merge_version = $full_product_info[$vbulletin->GPC['product']]['version'];
 	}
 
-	$completed = $merge->merge_templates($merge_data, $output);
+	$completed = $merge->merge_templates($merge_data, $output, $masterstyleid);
 
 	if ($completed)
 	{
 		// completed
-		build_all_styles();
+		build_all_styles(0, 0, '', false, $mastertype);
 
 		if ($vbulletin->GPC['redirect'])
 		{
@@ -1187,7 +1344,9 @@ if ($_REQUEST['do'] == 'massmerge')
 		// more templates to merge
 		print_cp_redirect(
 			'template.php?do=massmerge&product=' . urlencode($vbulletin->GPC['product'])
-			. '&hash=' . CP_SESSIONHASH . '&redirect=' . urlencode($vbulletin->GPC['redirect'])
+			. '&hash=' . CP_SESSIONHASH
+			. '&redirect=' . urlencode($vbulletin->GPC['redirect'])
+			. '&mastertype=' . $mastertype
 			. '&startat=' . ($merge_data->start_offset + $merge->fetch_processed_count())
 		);
 	}
@@ -1201,15 +1360,34 @@ if ($_REQUEST['do'] == 'history')
 		'title' => TYPE_STR,
 	));
 
+	$styleids = array($vbulletin->GPC['dostyleid']);
+	if ($vbulletin->GPC['dostyleid'] != -1 AND $vbulletin->GPC['dostyleid'] != -2)
+	{
+		$style = $db->query_first("
+			SELECT IF(type = 'standard', '-1', '-2') AS masterstyleid
+			FROM " . TABLE_PREFIX . "style
+			WHERE
+				styleid = {$vbulletin->GPC['dostyleid']}
+		");
+		if (!$style)
+		{
+			print_stop_message('invalid_x_specified', 'styleid');
+		}
+		$styleids[] = $style['masterstyleid'];
+	}
+	
 	$revisions = array();
 	$have_cur_def = false;
 	$cur_temp_time = 0;
 
 	$current_temps = $db->query_read("
-		SELECT templateid, title, styleid, dateline, username, version
+		SELECT
+			templateid, title, styleid, dateline, username, version
 		FROM " . TABLE_PREFIX . "template
-		WHERE title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
-			AND styleid IN (-1, " . $vbulletin->GPC['dostyleid'] . ")
+		WHERE
+			title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
+				AND
+			styleid IN (" . implode(",", $styleids) . ")
 	");
 	while ($template = $db->fetch_array($current_temps))
 	{
@@ -1219,7 +1397,7 @@ if ($_REQUEST['do'] == 'history')
 		// collisions, as rare as that may be
 		$revisions["$template[dateline]|b$template[templateid]"] = $template;
 
-		if ($template['styleid'] == -1)
+		if ($template['styleid'] == -1 OR $template['styleid'] == -2)
 		{
 			$have_cur_def = true;
 		}
@@ -1232,8 +1410,10 @@ if ($_REQUEST['do'] == 'history')
 	$historical_temps = $db->query_read("
 		SELECT *
 		FROM " . TABLE_PREFIX . "templatehistory
-		WHERE title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
-			AND styleid IN (-1, " . $vbulletin->GPC['dostyleid'] . ")
+		WHERE
+			title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
+				AND
+			styleid IN (" . implode(",", $styleids) . ")
 	");
 	$history_count = $db->num_rows($historical_temps);
 	while ($template = $db->fetch_array($historical_temps))
@@ -1271,7 +1451,7 @@ if ($_REQUEST['do'] == 'history')
 		if ($revision['type'] == 'current')
 		{
 			// we are marking this entry (ignore all other entries)
-			if ($revision['styleid'] == -1)
+			if ($revision['styleid'] == -1 OR $revision['styleid'] == -2)
 			{
 				$type = $vbphrase['current_default'];
 			}
@@ -1301,7 +1481,7 @@ if ($_REQUEST['do'] == 'history')
 		}
 		else
 		{
-			if ($revision['styleid'] == '-1')
+			if ($revision['styleid'] == '-1' OR $revision['styleid'] == -2)
 			{
 				$type = $vbphrase['old_default'];
 			}
@@ -1375,11 +1555,11 @@ if ($_REQUEST['do'] == 'viewversion')
 
 	if ($template['templateid'])
 	{
-		$type = ($template['styleid'] == -1 ? $vbphrase['current_default'] : $vbphrase['current_version']);
+		$type = (($template['styleid'] == -1 OR $template['styleid'] == -2) ? $vbphrase['current_default'] : $vbphrase['current_version']);
 	}
 	else
 	{
-		$type = ($template['styleid'] == -1 ? $vbphrase['old_default'] : $vbphrase['historical']);
+		$type = (($template['styleid'] == -1 OR $template['styleid'] == -2) ? $vbphrase['old_default'] : $vbphrase['historical']);
 	}
 
 	$date = vbdate($vbulletin->options['dateformat'], $template['dateline']);
@@ -1446,7 +1626,6 @@ if ($_POST['do'] == 'dodelete')
 // generate a diff between two templates (current or historical versions)
 if ($_POST['do'] == 'docompare')
 {
-
 	// Consolidating duplicate code used in this do branch into a function
 	// not sure this is the right place for this.
 	function docompare_print_control_form($inline, $wrap, $context_lines)
@@ -1569,7 +1748,7 @@ if ($_POST['do'] == 'docompare')
 
 			foreach ($diff_entry->fetch_data_new() AS $content)
 			{
-				echo $diff_entry->prep_diff_text($content, $wrap) . "\n";
+				echo $diff_entry->prep_diff_text($content, $wrap) . "<br />\n";
 			}
 
 			echo "</td></tr>\n\n";
@@ -1972,9 +2151,13 @@ if ($_POST['do'] == 'inserttemplate')
 	}
 
 	$get_existing = $db->query_read("
-		SELECT templateid, styleid, product FROM " . TABLE_PREFIX . "template
-		WHERE title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
-		AND templatetype = 'template'
+		SELECT
+			templateid, styleid, product
+		FROM " . TABLE_PREFIX . "template
+		WHERE
+			title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
+				AND
+			templatetype = 'template'
 	");
 	$exists = array();
 	while ($curtemplate = $db->fetch_array($get_existing))
@@ -1985,21 +2168,37 @@ if ($_POST['do'] == 'inserttemplate')
 
 	$template_un = $vbulletin->GPC['template'];
 	$vbulletin->GPC['template'] = compile_template($vbulletin->GPC['template']);
-
+	
 	// work out what we should be doing with the product field
-	if ($exists['-1'] AND $vbulletin->GPC['dostyleid'] != -1)
+	if ($vbulletin->GPC['dostyleid'] != -1 AND $vbulletin->GPC['dostyleid'] != -2)
 	{
-		// there is already a template with this name in the master set - don't allow a different product id
-		$vbulletin->GPC['product'] = $exists['-1']['product'];
-	}
-	else if ($vbulletin->GPC['dostyleid'] != -1)
-	{
-		// we are not adding a new template to the master set - only allow the default product id
-		$vbulletin->GPC['product'] = 'vbulletin';
-	}
-	else
-	{
-		// allow this - we are adding a totally new template to the master set
+		$styleinfo = $db->query_first("SELECT type FROM " . TABLE_PREFIX . "style WHERE styleid = {$vbulletin->GPC['dostyleid']}");
+		if ($styleinfo['type'] == 'standard')
+		{
+			// there is already a template with this name in the master set - don't allow a different product id
+			if ($exists['-1'])
+			{
+				$vbulletin->GPC['product'] = $exists['-1']['product'];
+			}
+			else
+			{
+				// we are not adding a new template to the master set - only allow the default product id
+				$vbulletin->GPC['product'] = 'vbulletin';
+			}
+		}
+		else
+		{
+			// there is already a template with this name in the master set - don't allow a different product id
+			if ($exists['-2'])
+			{
+				$vbulletin->GPC['product'] = $exists['-2']['product'];
+			}
+			else
+			{
+				// we are not adding a new template to the master set - only allow the default product id
+				$vbulletin->GPC['product'] = 'vbulletin';
+			}
+		}
 	}
 
 	// error checking on conditionals
@@ -2046,6 +2245,7 @@ if ($_POST['do'] == 'inserttemplate')
 				'" . $db->escape_string($vbulletin->GPC['product']) . "')
 		");
 
+		// At the moment only master style is tracked in the file system, master mobile style isn't.
 		// now update the file system if we setup to do so and we are in the master style
 		if (defined('DEV_AUTOEXPORT') AND DEV_AUTOEXPORT AND $vbulletin->GPC['dostyleid'] == -1)
 		{
@@ -2131,20 +2331,26 @@ if ($_REQUEST['do'] == 'add')
 		'expandset'    => TYPE_STR,
 	));
 
-	if ($vbulletin->GPC['dostyleid'] == -1)
+	if ($vbulletin->GPC['dostyleid'] == -1 OR $vbulletin->GPC['dostyleid'] == -2)
 	{
 		$style['title'] = $vbphrase['global_templates'];
+		$masterstyleid = $vbulletin->GPC['dostyleid'];
 	}
 	else
 	{
-		$style = $db->query_first("SELECT title FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']);
+		$style = $db->query_first("SELECT type, title FROM " . TABLE_PREFIX . "style WHERE styleid = " . $vbulletin->GPC['dostyleid']);
+		$masterstyleid = ($style['type'] == 'standard' ? -1 : -2);
 	}
 
 	if ($vbulletin->GPC['title'])
 	{
 		$templateinfo = $db->query_first("
-			SELECT * FROM " . TABLE_PREFIX . "template
-			WHERE styleid IN (-1,0) AND title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
+			SELECT *
+			FROM " . TABLE_PREFIX . "template
+			WHERE
+				styleid IN ({$masterstyleid},0)
+					AND
+				title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
 		");
 	}
 	else if ($vbulletin->GPC['templateid'])
@@ -2194,7 +2400,7 @@ if ($_REQUEST['do'] == 'add')
 	construct_hidden_code('expandset', $vbulletin->GPC['expandset']);
 	construct_hidden_code('searchset', $vbulletin->GPC['expandset']);
 	construct_hidden_code('searchstring', $vbulletin->GPC['searchstring']);
-	print_style_chooser_row('dostyleid', $vbulletin->GPC['dostyleid'], $vbphrase['master_style'], $vbphrase['style'], iif($vbulletin->debug == 1, 1, 0));
+	print_style_chooser_row('dostyleid', $vbulletin->GPC['dostyleid'], $vbphrase['master_style'], $vbphrase['style'], $vbulletin->debug ? 1 : 0);
 	print_input_row(
 		$vbphrase['title'] .
 			($history ?
@@ -2207,7 +2413,7 @@ if ($_REQUEST['do'] == 'add')
 	print_textarea_row($vbphrase['template'] . '
 			<br /><br />
 			<span class="smallfont">' .
-			iif($vbulletin->GPC['title'], construct_link_code($vbphrase['show_default'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=view&amp;title=" . $vbulletin->GPC['title'], 1) . '<br /><br />', '') .
+			iif($vbulletin->GPC['title'], construct_link_code($vbphrase['show_default'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=view&amp;styleid={$masterstyleid}&amp;title=" . $vbulletin->GPC['title'], 1) . '<br /><br />', '') .
 			'<!--' . $vbphrase['wrap_text'] . '<input type="checkbox" unselectable="on" onclick="set_wordwrap(\'ta_template\', this.checked);" accesskey="w" checked="checked" />-->
 			</span>',
 		'template', $templateinfo['template_un'], 22, '5000" style="width:99%', true, true, 'ltr', 'code');
@@ -2268,12 +2474,13 @@ if ($_POST['do'] == 'updatetemplate')
 		construct_hidden_code('product', $vbulletin->GPC['product']);
 		construct_hidden_code('savehistory', intval($vbulletin->GPC['savehistory']));
 		construct_hidden_code('histcomment', $vbulletin->GPC['histcomment']);
+		construct_hidden_code('hash', $vbulletin->GPC['hash']);
+		construct_hidden_code('return', $vbulletin->GPC['return']);
 		print_table_header($vbphrase['vbulletin_message']);
 		print_description_row($error);
 		print_submit_row($vbphrase['continue'], 0, 2, $vbphrase['go_back']);
 		print_cp_footer();
 	}
-
 
 	// remove escaped CDATA (just in case user is pasting template direct from an XML editor
 	// where the CDATA tags will have been escaped by our escaper...
@@ -2373,13 +2580,18 @@ if ($_POST['do'] == 'updatetemplate')
 		}
 
 		// update any customized templates to reflect a change of product id
-		if ($old_template['styleid'] == -1 AND $vbulletin->GPC['product'] != $old_template['product'])
+		if (($old_template['styleid'] == -1 OR $old_template['styleid'] == -2) AND $vbulletin->GPC['product'] != $old_template['product'])
 		{
+			$mastertype = ($old_template['styleid'] == -1) ? 'standard' : 'mobile';
 			$db->query_write("
-				UPDATE " . TABLE_PREFIX . "template
-				SET product = '" . $db->escape_string($vbulletin->GPC['product']) . "'
-				WHERE title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
-					AND styleid <> -1
+				UPDATE " . TABLE_PREFIX . "template AS t
+				INNER JOIN " . TABLE_PREFIX . "style AS s ON (s.styleid = t.styleid)
+				SET
+					t.product = '" . $db->escape_string($vbulletin->GPC['product']) . "'
+				WHERE
+					t.title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
+						AND
+					s.type = '{$mastertype}'
 			");
 		}
 
@@ -2445,7 +2657,6 @@ if ($_POST['do'] == 'updatetemplate')
 // edit form for an existing template
 if ($_REQUEST['do'] == 'edit')
 {
-
 	function edit_get_merged_text($templateid)
 	{
 		global $vbphrase;
@@ -2471,9 +2682,9 @@ if ($_REQUEST['do'] == 'edit')
 				$chunk_text = $chunk->get_merged_text();
 				if ($chunk_text === false)
 				{
-						$new_title = construct_phrase($vbphrase['merge_title_new'], $new['version']);
-						$chunk_text = format_conflict_text($chunk->get_text_right(), $chunk->get_text_original(),
-							 $chunk->get_text_left(), $origin['version'], $new['version']);
+					$new_title = construct_phrase($vbphrase['merge_title_new'], $new['version']);
+					$chunk_text = format_conflict_text($chunk->get_text_right(), $chunk->get_text_original(),
+					$chunk->get_text_left(), $origin['version'], $new['version']);
 				}
 				$text .= $chunk_text;
 			}
@@ -2489,8 +2700,9 @@ if ($_REQUEST['do'] == 'edit')
 	));
 
 	$template = $db->query_first("
-		SELECT template.*, style.title AS style, IF(template.styleid = 0, -1, template.styleid) AS styleid,
-			MD5(template.template_un) AS hash
+		SELECT
+			template.*, style.title AS style, IF(template.styleid = 0, IF(style.type = 'standard', -1, -2), template.styleid) AS styleid,
+			MD5(template.template_un) AS hash, style.type
 		FROM " . TABLE_PREFIX . "template AS template
 		LEFT JOIN " . TABLE_PREFIX . "style AS style USING(styleid)
 		WHERE templateid = " . $vbulletin->GPC['templateid'] . "
@@ -2499,8 +2711,18 @@ if ($_REQUEST['do'] == 'edit')
 	if ($template['styleid'] == -1)
 	{
 		$template['style'] = $vbphrase['master_style'];
+		$masterstyleid = -1;
 	}
-
+	else if ($template['styleid'] == -2)
+	{
+		$template['style'] = $vbphrase['mobile_master_style'];
+		$masterstyleid = -2;
+	}
+	else
+	{
+		$masterstyleid = ($template['type'] == 'standard' ? '-1' : '-2');
+	}
+	
 	if ($vbulletin->GPC['showmerge'])
 	{
 		try
@@ -2593,7 +2815,7 @@ if ($_REQUEST['do'] == 'edit')
 
 	$products = fetch_product_list();
 
-	if ($template['styleid'] == -1)
+	if ($template['styleid'] == -1 OR $template['styleid'] == -2)
 	{
 		print_select_row($vbphrase['product'], 'product', $products, $template['product']);
 	}
@@ -2625,7 +2847,7 @@ if ($_REQUEST['do'] == 'edit')
 	print_textarea_row($vbphrase['template'] . '
 			<br /><br />
 			<span class="smallfont">' .
-			iif($template['styleid'] != -1, construct_link_code($vbphrase['show_default'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=view&amp;title=$template[title]", 1) . '<br /><br />', '') .
+			iif($template['styleid'] != -1 AND $template['styleid'] != -2, construct_link_code($vbphrase['show_default'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=view&amp;styleid={$masterstyleid}&amp;title=$template[title]", 1) . '<br /><br />', '') .
 			'<!--' . $vbphrase['wrap_text'] . '<input type="checkbox" unselectable="on" onclick="set_wordwrap(\'ta_template\', this.checked);" accesskey="w" checked="checked" />-->
 			</span>',
 		'template', $text, 22, '5000" style="width:99%', true, true, 'ltr', 'code');
@@ -2735,13 +2957,42 @@ if ($_REQUEST['do'] == 'delete')
 if ($_REQUEST['do'] == 'view')
 {
 	$vbulletin->input->clean_array_gpc('r', array(
-		'title' => TYPE_STR,
+		'title'   => TYPE_STR,
 	));
 
+	switch ($realstyleid)
+	{	
+		case 'n1':
+			$vbulletin->GPC['styleid'] = -1;
+			break;
+		case 'n2':
+			$vbulletin->GPC['styleid'] = -2;
+			break;
+		default:
+			$vbulletin->GPC['styleid'] = intval($realstyleid);
+	}
+	
+	if ($vbulletin->GPC['styleid'] > 0)
+	{
+		$styleinfo = $db->query_first("
+			SELECT type
+			FROM " . TABLE_PREFIX . "style
+			WHERE styleid = {$vbulletin->GPC['styleid']}
+		");
+		$masterstyleid = ($styleinfo['type'] == 'mobile' ? -2 : -1);
+	}
+	else
+	{
+		$masterstyleid = $vbulletin->GPC['styleid'];
+	}
+	
 	$template = $db->query_first("
 		SELECT templateid, styleid, title, template_un
 		FROM " . TABLE_PREFIX . "template
-		WHERE styleid IN (-1,0) AND title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
+		WHERE
+			styleid IN ({$masterstyleid},0)
+				AND
+			title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
 	");
 
 	print_form_header('', '');
@@ -3095,8 +3346,9 @@ if ($_REQUEST['do'] == 'modify')
 		}
 		else
 		{
+			// Don't see where this $parentlist is being used so no change made for -2 case
 			$parentlist = '-1';
-			$vbulletin->GPC['expandset'] = 'all';
+			$vbulletin->GPC['expandset'] = 'all' . $vbulletin->GPC['searchset'];
 		}
 	}
 	else
@@ -3111,16 +3363,8 @@ if ($_REQUEST['do'] == 'modify')
 	}
 
 	// all browsers now support the enhanced template editor
-	if (true)
-	{
-		define('FORMTYPE', 1);
-		$SHOWTEMPLATE = 'construct_template_option';
-	}
-	else
-	{
-		define('FORMTYPE', 0);
-		$SHOWTEMPLATE = 'construct_template_link';
-	}
+	define('FORMTYPE', 1);
+	$SHOWTEMPLATE = 'construct_template_option';
 
 	if ($vbulletin->debug)
 	{
@@ -3221,15 +3465,27 @@ else
 	{
 		DEVDEBUG("Querying master template ids");
 		$masters = $db->query_read("
-			SELECT templateid, title
+			SELECT templateid, title, styleid
 			FROM " . TABLE_PREFIX . "template
 			WHERE templatetype = 'template'
-				AND styleid IN (-1,0)
+				AND styleid IN (-2,-1,0)
 			ORDER BY title
 		");
 		while ($master = $db->fetch_array($masters))
 		{
-			$masterset["$master[title]"] = $master['templateid'];
+			if ($master['styleid'] == -1)
+			{
+				$masterset['standard']["$master[title]"] = $master['templateid'];
+			}
+			else if ($master['styleid'] == -2)
+			{
+				$masterset['mobile']["$master[title]"] = $master['templateid'];
+			}
+			else	// styleid = 0
+			{
+				$masterset['standard']["$master[title]"] = $master['templateid'];
+				$masterset['mobile']["$master[title]"] = $master['templateid'];
+			}
 		}
 	}
 	else
@@ -3253,9 +3509,34 @@ else
 	}
 	foreach($stylecache AS $styleid => $style)
 	{
-		print_style($styleid, $style);
+		print_style($styleid, $style, -1);
 	}
 
+?>
+</div>
+<table cellpadding="2" cellspacing="0" border="0" width="100%" class="tborder" style="border: 0px">
+<tr>
+	<td class="tfoot" align="center">
+		<input type="submit" class="button" tabindex="1" value="<?php echo $vbphrase['save_display_order']; ?>" />
+		<input type="button" class="button" tabindex="1" value="<?php echo $vbphrase['search_in_templates']; ?>" onclick="window.location='template.php?<?php echo $vbulletin->session->vars['sessionurl_js']; ?>do=search';" />
+	</td>
+</tr>
+</table>
+</div>
+
+<div class="tborder" style="margin-top:20px; width:90%; text-align:<?php echo vB_Template_Runtime::fetchStyleVar('left'); ?>">
+<div class="tcat" style="padding:4px; text-align:center"><?php echo $pagehelplink; ?><b><?php echo $vbphrase['style_manager']; ?></b></div>
+<div class="stylebg">	
+	
+<?php
+	if ($vbulletin->debug)
+	{
+		print_style(-2);
+	}
+	foreach($stylecache AS $styleid => $style)
+	{
+		print_style($styleid, $style, -2);
+	}	
 ?>
 </div>
 <table cellpadding="2" cellspacing="0" border="0" width="100%" class="tborder" style="border: 0px">
@@ -3305,7 +3586,8 @@ if ($_REQUEST['do'] == 'rebuild')
 
 	echo "<p>&nbsp;</p>";
 
-	build_all_styles($vbulletin->GPC['renumber'], $vbulletin->GPC['install'], $vbulletin->GPC['goto']);
+	build_all_styles($vbulletin->GPC['renumber'], $vbulletin->GPC['install'], '', false, 'standard');
+	build_all_styles($vbulletin->GPC['renumber'], $vbulletin->GPC['install'], $vbulletin->GPC['goto'], false, 'mobile');
 }
 
 // #############################################################################
@@ -3397,7 +3679,6 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45140 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/

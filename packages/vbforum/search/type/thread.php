@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -47,12 +47,16 @@ class vBForum_Search_Type_Thread extends vB_Search_Type
 			}
 		}
 
-		return array('list' => $list, 'groups_rejected' => $rejected_groups);
+		$retval = array('list' => $list, 'groups_rejected' => $rejected_groups);
+
+		($hook = vBulletinHook::fetch_hook('search_validated_list')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	public function prepare_render($user, $results)
 	{
-		global $show, $vbulletin;
+		global $show;
 
 		$this->mod_rights['movethread'] = false;
 		$this->mod_rights['deletethread'] = false;
@@ -91,6 +95,8 @@ class vBForum_Search_Type_Thread extends vB_Search_Type
 		//which is called from vBForum_Search_Result_Thread::render
 		global $dotthreads;
 		$dotthreads = fetch_dot_threads_array(implode(',', $ids));
+
+		($hook = vBulletinHook::fetch_hook('search_prepare_render')) ? eval($hook) : false;
 	}
 
 	public function get_display_name()
@@ -191,7 +197,6 @@ class vBForum_Search_Type_Thread extends vB_Search_Type
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

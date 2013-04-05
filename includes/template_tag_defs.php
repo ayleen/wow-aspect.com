@@ -33,6 +33,88 @@ class vB_TemplateParser_Tag
 	{
 		return $parser->_parse_nodes($main_node->childNodes());
 	}
+
+	public static function compileVar($main_var)
+	{
+		$temp_var = trim($main_var);
+		$parts = explode('.', $temp_var);
+
+		$output = $parts[0];
+
+		if (isset($parts[1]))
+		{
+			for ($i = 1; $i < sizeof($parts); $i++)
+			{
+				if ($parts[$i][0] == '$')
+				{
+					$output .= '[' . $parts[$i] . ']';
+				}
+				else if (strpos($parts[$i], '$') !== false)
+				{
+					$output .= '["' . $parts[$i] . '"]';
+				}
+				else
+				{
+					$output .= "['" . $parts[$i] . "']";
+				}
+			}
+		}
+
+		return ($output[0] !== '$' ? '$' : '') . $output;
+	}
+
+	public static function validateVar($main_var, $allow_array = true)
+	{
+		$temp_var = trim($main_var);
+
+		// Cannot be empty		
+		if (empty($temp_var))
+		{
+			return false;
+		}
+
+		// Allow leading $
+		if (substr($temp_var,0,1) == '$')
+		{
+			$temp_var = substr($temp_var,1);
+		}
+
+		// Cannot start with .
+		if (substr($temp_var,0,1) == '.')
+		{
+			return false;
+		}
+
+		// Cannot start with a number
+		if (intval(substr($temp_var,0,1)))
+		{
+			return false;
+		}
+
+		// Cannot finish with .
+		if (substr($temp_var,-1,1) == '.')
+		{
+			return false;
+		}
+
+		preg_match_all('#\W#i', $temp_var, $matches);
+		$check = str_replace(' ','#',implode('',$matches[0]));
+
+		if(strlen($check))
+		{
+			if(!$allow_array)
+			{
+				return false;
+			}
+
+			if (trim(str_replace('.','',$check)))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
 }
 
 // ##########################################################################
@@ -302,14 +384,27 @@ class vB_TemplateParser_TagEach extends vB_TemplateParser_Tag
 	{
 		$errors = array();
 
-		if (empty($main_node->attributes['from']))
+		if (strpos(implode('',$main_node->attributes),'(') !== false)
 		{
-			$errors[] = 'each_missing_from';
+			throw new vB_Exception_TemplateFatalError('template_text_not_safe');
 		}
 
-		if (empty($main_node->attributes['value']))
+		if(!parent::validateVar($main_node->attributes['from']))
 		{
-			$errors[] = 'each_missing_value';
+			$errors[] = 'invalid_each_from';
+		}
+
+		if(!parent::validateVar($main_node->attributes['value'], false))
+		{
+			$errors[] = 'invalid_each_value';
+		}
+
+		if (isset($main_node->attributes['key']))
+		{
+			if(!parent::validateVar($main_node->attributes['key'], false))
+			{
+				$errors[] = 'invalid_each_key';
+			}
 		}
 
 		return $errors;
@@ -317,8 +412,17 @@ class vB_TemplateParser_TagEach extends vB_TemplateParser_Tag
 
 	public static function compile(vB_DomNode $main_node, vB_TemplateParser $parser)
 	{
+		$key = '';
+		if (isset($main_node->attributes['key']))
+		{
+			$key = parent::compileVar($main_node->attributes['key']);
+		}
+		$from = parent::compileVar($main_node->attributes['from']);
+		$value = parent::compileVar($main_node->attributes['value']);
+
 		$children = $parser->_parse_nodes($main_node->childNodes());
-		return "''" . '; if (is_array($' . $main_node->attributes['from'] . ') || $' . $main_node->attributes['from'] . ' instanceof ArrayAccess) { foreach ($' . $main_node->attributes['from'] . ' AS $' . (($main_node->attributes['key']) ? $main_node->attributes['key'] . ' => $' : '') . $main_node->attributes['value'] . ') {' . $parser->outputVar . " .= '" . $children . "'; } }" . $parser->outputVar . " .= ''";  
+
+		return "''" . '; if (is_array(' . $from . ') || ' . $from . ' instanceof ArrayAccess) { foreach (' . $from . ' AS ' . ($key ? $key . ' => ' : '') . $value . ') {' . $parser->outputVar . " .= '" . $children . "'; } }" . $parser->outputVar . " .= ''";  
 	}
 }
 

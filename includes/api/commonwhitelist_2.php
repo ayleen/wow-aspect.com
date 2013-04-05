@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright Â©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -119,7 +119,7 @@ $VB_API_WHITELIST_COMMON['thread'] = array(
 	'del_userid', 'moderatedprefix', 'realthreadid', 'rating', 'sticky',
 	'preview', 'dot_count', 'dot_lastpost', 'threadiconpath', 'threadicontitle',
 	'movedprefix', 'typeprefix', 'prefix_rich', 'redirectthreadid',
-	'starttime', 'dot_count', 'dot_lastpost',
+	'starttime', 'dot_count', 'dot_lastpost', 'forumid', 'forumtitle',
 	'pagenav' => array(
 		'*' => array(
 			'curpage'
@@ -128,7 +128,7 @@ $VB_API_WHITELIST_COMMON['thread'] = array(
 	'totalpages', 'lastpagelink',
 	'taglist', 'expiretime',
 	'attach', 'replycount', 'views', 'lastposttime', 'highlight',
-	'lastpostid', 'del_username', 'issubscribed'
+	'lastposterid', 'lastposter', 'lastpostid', 'del_username', 'issubscribed'
 );
 
 $VB_API_WHITELIST_COMMON['threadbit'] = array(
@@ -144,7 +144,7 @@ $VB_API_WHITELIST_COMMON['threadbit'] = array(
 );
 
 $VB_API_WHITELIST_COMMON['threadinfo'] = array(
-	'meta_description', 'prefix_plain_html', 'title', 'threadid', 'rating', 'keywords'
+	'meta_description', 'prefix_plain_html', 'title', 'threadid', 'rating', 'keywords', 'forumid'
 );
 
 $VB_API_WHITELIST_COMMON['moderator'] = array(
@@ -307,19 +307,19 @@ if ($_REQUEST['apitextformat'])
 					unset($VB_API_WHITELIST_COMMON['responsebits']['*']['response'][$k]);
 				}
 				break;
-			case '3': // plain & html
+			case '4': // plain & html
 				if ($v == 'message_bbcode')
 				{
 					unset($VB_API_WHITELIST_COMMON['responsebits']['*']['response'][$k]);
 				}
 				break;
-			case '3': // bbcode & html
+			case '5': // bbcode & html
 				if ($v == 'message_plain')
 				{
 					unset($VB_API_WHITELIST_COMMON['responsebits']['*']['response'][$k]);
 				}
 				break;
-			case '3': // bbcode & plain
+			case '6': // bbcode & plain
 				if ($v == 'message')
 				{
 					unset($VB_API_WHITELIST_COMMON['responsebits']['*']['response'][$k]);
@@ -377,8 +377,11 @@ function api_result_prerender_c2($t, &$r)
 			$r['thread']['lastposttime'] = $r['thread']['lastpost'];
 			$r['thread']['posttime'] = $r['thread']['postdateline'];
 			$r['thread']['expiretime'] = $r['thread']['expires'];
+			$r['thread']['threadtitle'] = str_replace('&amp;', '&', $r['thread']['threadtitle']);
 			break;
 		case 'postbit_wrapper':
+			$r['post']['message_bbcode'] = preg_replace('|\[QUOTE([^\]]*)\]\[\/QUOTE\]|iu', '', $r['post']['message_bbcode']);
+			$r['post']['message_plain'] = str_replace('<<  >>', '', $r['post']['message_plain']);
 			$r['post']['posttime'] = $r['post']['dateline'];
 			$r['post']['joindate'] = $r['post']['joindateline'];
 			$r['post']['edit_time'] = $r['post']['edit_dateline'];
@@ -415,11 +418,20 @@ function api_result_prerender_c2($t, &$r)
 		case 'blog_show_entry':
 			$r['blog']['time'] = $r['blog']['dateline'];
 			$r['blog']['edit_time'] = $r['blog']['edit_dateline'];
+			$r['status']['type'] = basename($r['status']['image'], '.gif');
 			break;
 		case 'albumbit':
 		case 'album_latestbit':
 			$r['album']['picturetime'] = $r['album']['lastpicturedate'];
 			break;
+		case 'FORUMDISPLAY':
+			$r['foruminfo']['title_clean'] = str_replace('&amp;', '&', $r['foruminfo']['title_clean']);
+			break;
+	}
+
+	if (strpos($t, 'forumbit') !== false)
+	{
+		$r['forum']['title_clean'] = str_replace('&amp;', '&', $r['forum']['title_clean']);
 	}
 }
 
@@ -428,7 +440,6 @@ vB_APICallback::instance()->add('result_prerender', 'api_result_prerender_c2', '
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35584 $
 || ####################################################################
 \*======================================================================*/

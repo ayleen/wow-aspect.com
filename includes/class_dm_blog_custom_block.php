@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -197,10 +197,12 @@ class vB_DataManager_Blog_Custom_Block extends vB_DataManager
 		if ($this->fetch_field('type') == 'block')
 		{
 			$this->registry->options['maximages'] = $this->registry->options['vbblog_blockmaximages'];
+			$this->registry->options['maxvideos'] = $this->registry->options['vbblog_blockmaxvideos'];
 		}
 		else
 		{
 			$this->registry->options['maximages'] = $this->registry->options['vbblog_pagemaximages'];
+			$this->registry->options['maxvideos'] = $this->registry->options['vbblog_pagemaxvideos'];
 		}
 		if (!$this->verify_image_count('pagetext', 'allowsmilie', 'blog_entry'))
 		{
@@ -490,7 +492,6 @@ class vB_DataManager_Blog_Custom_Block extends vB_DataManager
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 26654 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,8 +19,8 @@ if (!class_exists('vB_DataManager', false))
 * Class to do data save/delete operations for blog users
 *
 * @package	vBulletin
-* @version	$Revision: 40911 $
-* @date		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version	$Revision: 62619 $
+* @date		$Date: 2012-05-15 16:54:47 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_Blog_User extends vB_DataManager
 {
@@ -118,6 +118,7 @@ class vB_DataManager_Blog_User extends vB_DataManager
 		}
 
 		$this->registry->options['maximages'] = $this->registry->options['vbblog_usermaximages'];
+		$this->registry->options['maxvideos'] = $this->registry->options['vbblog_usermaxvideos'];
 		if (!$this->verify_image_count('description', 'allowsmilie', 'blog_user'))
 		{
 			return false;
@@ -205,34 +206,28 @@ class vB_DataManager_Blog_User extends vB_DataManager
 			{
 				$blogids = implode(',', $blogids);
 
-				$this->dbobject->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_deletionlog WHERE primaryid IN ($blogids) AND type = 'blogid'
-				");
+				$this->dbobject->query_write("DELETE FROM " . TABLE_PREFIX . "blog_deletionlog WHERE primaryid IN ($blogids) AND type = 'blogid'");
+				$this->dbobject->query_write("DELETE FROM " . TABLE_PREFIX . "blog_moderation WHERE primaryid IN ($blogids) AND type = 'blogid'");
+				$this->dbobject->query_write("DELETE FROM " . TABLE_PREFIX . "blog_pinghistory WHERE blogid IN ($blogids)");
+				$this->dbobject->query_write("DELETE FROM " . TABLE_PREFIX . "blog_rate WHERE blogid IN ($blogids)");
+				$this->dbobject->query_write("DELETE FROM " . TABLE_PREFIX . "blog_read WHERE blogid IN ($blogids)");
+				$this->dbobject->query_write("DELETE FROM " . TABLE_PREFIX . "blog_subscribeentry WHERE blogid IN ($blogids)");
+				$this->dbobject->query_write("DELETE FROM " . TABLE_PREFIX . "blog_tachyentry WHERE blogid IN ($blogids)");
 
-				$this->dbobject->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_moderation WHERE primaryid IN ($blogids) AND type = 'blogid'
+				$textids = array();
+				$comments = $db->query_read("
+					SELECT blogtextid
+					FROM " . TABLE_PREFIX . "blog_text
+					WHERE blogid IN ($blogids)
 				");
-
-				$this->dbobject->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_pinghistory WHERE blogid IN ($blogids)
-				");
-
-				$this->dbobject->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_rate WHERE blogid IN ($blogids)
-				");
-
-				$this->dbobject->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_read WHERE blogid IN ($blogids)
-				");
-
-				$this->dbobject->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_subscribeentry WHERE blogid IN ($blogids)
-				");
-
-				$this->dbobject->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_tachyentry WHERE blogid IN ($blogids)
-				");
-
+				while ($comment = $db->fetch_array($comments))
+				{
+					$textids[] = $comment['blogtextid'];
+				}
+				$activity = new vB_ActivityStream_Manage('blog', 'comment');
+				$activity->set('contentid', $textids);
+				$activity->delete();				
+				
 				$this->dbobject->query_write("
 					DELETE " . TABLE_PREFIX . "blog_text, " . TABLE_PREFIX . "blog_textparsed, " . TABLE_PREFIX . "blog_editlog, " . TABLE_PREFIX . "blog_moderation, " . TABLE_PREFIX . "blog_deletionlog
 					FROM " . TABLE_PREFIX . "blog_text
@@ -243,13 +238,8 @@ class vB_DataManager_Blog_User extends vB_DataManager
 					WHERE " . TABLE_PREFIX . "blog_text.blogid IN ($blogids)
 				");
 
-				$this->dbobject->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_trackback WHERE blogid IN ($blogids)
-				");
-
-				$this->dbobject->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_views WHERE blogid IN ($blogids)
-				");
+				$this->dbobject->query_write("DELETE FROM " . TABLE_PREFIX . "blog_trackback WHERE blogid IN ($blogids)");
+				$this->dbobject->query_write("DELETE FROM " . TABLE_PREFIX . "blog_views WHERE blogid IN ($blogids)");
 
 				$this->dbobject->query_write("
 					DELETE FROM " . TABLE_PREFIX . "blog_hash
@@ -263,18 +253,16 @@ class vB_DataManager_Blog_User extends vB_DataManager
 				$attachdata->condition = "a.contentid IN ($blogids)";
 				$attachdata->delete();
 
-				require_once(DIR . '/includes/class_bootstrap_framework.php');
-				require_once(DIR . '/vb/types.php');
-				vB_Bootstrap_Framework::init();
 				$contenttypeid = vB_Types::instance()->getContentTypeID('vBBlog_BlogEntry');
 
 				$attachdata =& datamanager_init('Attachment', $this->registry, ERRTYPE_SILENT, 'attachment');
 				$attachdata->condition = "a.contentid IN ($blogids) AND a.contenttypeid = " . intval($contenttypeid);
-				$attachdata->delete(true, false);
-
-				$this->dbobject->query_write("
-					DELETE  FROM " . TABLE_PREFIX . "blog WHERE blogid IN ($blogids)
-				");
+				$attachdata->delete(true, false);				
+				
+				$this->dbobject->query_write("DELETE  FROM " . TABLE_PREFIX . "blog WHERE blogid IN ($blogids)");
+				$activity = new vB_ActivityStream_Manage('blog', 'entry');
+				$activity->set('contentid', explode(',', $blogids));
+				$activity->delete();
 			}
 		}
 		else
@@ -534,8 +522,7 @@ class vB_DataManager_Blog_User extends vB_DataManager
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 40911 $
+|| # SVN: $Revision: 62619 $
 || ####################################################################
 \*======================================================================*/
 ?>

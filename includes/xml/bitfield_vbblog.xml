@@ -39,6 +39,7 @@
                 <bitfield name="blog_allowsmilies"             group="vbblog_entry_permissions"   phrase="allow_smilies"                     >1024</bitfield>
                 <bitfield name="blog_allowbbcode"              group="vbblog_entry_permissions"   phrase="allow_bbcode"                      >2048</bitfield>
                 <bitfield name="blog_allowimages"              group="vbblog_entry_permissions"   phrase="allow_img_code"                    >4096</bitfield>
+                <bitfield name="blog_allowvideos"              group="vbblog_entry_permissions"   phrase="allow_video_code"                  >32768</bitfield>
                 <bitfield name="blog_allowhtml"                group="vbblog_entry_permissions"   phrase="allow_html"                        >8192</bitfield>
             </group>
             <group name="vbblog_comment_permissions">
@@ -50,6 +51,7 @@
                 <bitfield name="blog_allowsmilies"             group="vbblog_comment_permissions" phrase="allow_smilies"                     >128</bitfield>
                 <bitfield name="blog_allowbbcode"              group="vbblog_comment_permissions" phrase="allow_bbcode"                      >256</bitfield>
                 <bitfield name="blog_allowimages"              group="vbblog_comment_permissions" phrase="allow_img_code"                    >512</bitfield>
+                <bitfield name="blog_allowvideos"              group="vbblog_comment_permissions" phrase="allow_video_code"                  >2048</bitfield>
                 <bitfield name="blog_allowhtml"                group="vbblog_comment_permissions" phrase="allow_html"                        >1024</bitfield>
             </group>
         </group>

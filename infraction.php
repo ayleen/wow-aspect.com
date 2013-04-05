@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -49,8 +49,6 @@ $actiontemplates['update'] =& $actiontemplates['report'];
 // ######################### REQUIRE BACK-END ############################
 require_once('./global.php');
 require_once(DIR . '/includes/functions_banning.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -342,7 +340,7 @@ if ($_POST['do'] == 'reverse')
 
 			($hook = vBulletinHook::fetch_hook('infraction_reverse_complete')) ? eval($hook) : false;
 
-			eval(print_standard_redirect('redirect_infraction_reversed'));
+			print_standard_redirect('redirect_infraction_reversed');  
 		}
 		else
 		{
@@ -941,11 +939,11 @@ if ($_POST['do'] == 'update')
 		if ($postinfo['postid'])
 		{
 			$vbulletin->url = fetch_seo_url('thread', $threadinfo, array('p' => $postinfo['postid'])) . "#post$postinfo[postid]";
-			eval(print_standard_redirect('redirect_infraction_added'));
+			print_standard_redirect('redirect_infraction_added');  
 		}
 		else
 		{
-			eval(print_standard_redirect('redirect_infraction_added'));
+			print_standard_redirect('redirect_infraction_added');  
 		}
 	}
 	else
@@ -1166,10 +1164,11 @@ if ($_REQUEST['do'] == 'report')
 		$show['parseurl'] = $vbulletin->options['privallowbbcode'];
 
 		// build forum rules
-		$bbcodeon = iif($vbulletin->options['privallowbbcode'], $vbphrase['on'], $vbphrase['off']);
-		$imgcodeon = iif($vbulletin->options['privallowbbimagecode'], $vbphrase['on'], $vbphrase['off']);
-		$htmlcodeon = iif($vbulletin->options['privallowhtml'], $vbphrase['on'], $vbphrase['off']);
-		$smilieson = iif($vbulletin->options['privallowsmilies'], $vbphrase['on'], $vbphrase['off']);
+		$bbcodeon = ($vbulletin->options['privallowbbcode'] ? $vbphrase['on'] : $vbphrase['off']);
+		$imgcodeon = ($vbulletin->options['privallowbbimagecode'] ? $vbphrase['on'] : $vbphrase['off']);
+		$videocodeon = ($vbulletin->options['privallowbbvideocode'] ? $vbphrase['on'] : $vbphrase['off']);
+		$htmlcodeon = ($vbulletin->options['privallowhtml'] ? $vbphrase['on'] : $vbphrase['off']);
+		$smilieson = ($vbulletin->options['privallowsmilies'] ? $vbphrase['on'] : $vbphrase['off']);
 
 		// only show posting code allowances in forum rules template
 		$show['codeonly'] = true;
@@ -1179,6 +1178,7 @@ if ($_REQUEST['do'] == 'report')
 			$templater->register('can', $can);
 			$templater->register('htmlcodeon', $htmlcodeon);
 			$templater->register('imgcodeon', $imgcodeon);
+			$templater->register('videocodeon', $videocodeon);
 			$templater->register('smilieson', $smilieson);
 		$forumrules = $templater->render();
 
@@ -1229,6 +1229,8 @@ if ($_REQUEST['do'] == 'report')
 		}
 	}
 
+	$show['signaturecheckbox'] = ($permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canusesignature'] AND $vbulletin->userinfo['signature']);
+
 	$navbar = render_navbar_template($navbits);
 
 	($hook = vBulletinHook::fetch_hook('infraction_report_complete')) ? eval($hook) : false;
@@ -1269,8 +1271,7 @@ if ($_REQUEST['do'] == 'report')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 43197 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

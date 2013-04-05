@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -145,17 +145,30 @@ function fetch_stylevars_array()
 		if ($vbulletin->GPC['dostyleid'] > 0)
 		{
 			$parentlist = fetch_parentids($vbulletin->GPC['dostyleid']);
+			$style = $vbulletin->db->query_first("
+				SELECT IF (type = 'standard', '-1', '-2') AS masterstyleid
+				FROM " . TABLE_PREFIX . "style
+				WHERE styleid = {$vbulletin->GPC['dostyleid']}
+			");
+			$masterstyleid = $style['masterstyleid'];
 		}
 		else
 		{
-			$parentlist = '-1';
+			$parentlist = $vbulletin->GPC['dostyleid'];
+			$masterstyleid = $vbulletin->GPC['dostyleid'];
 		}
+			
 		$stylevars_result = $vbulletin->db->query_read("
-			SELECT stylevardfn.*, stylevar.styleid AS stylevarstyleid, stylevar.value
+			SELECT
+				stylevardfn.*, stylevar.styleid AS stylevarstyleid, stylevar.value
 			FROM " . TABLE_PREFIX . "stylevar AS stylevar
 			INNER JOIN " . TABLE_PREFIX . "stylevardfn AS stylevardfn ON(stylevar.stylevarid = stylevardfn.stylevarid)
-			WHERE stylevar.styleid IN (" . trim($parentlist) . ")
-			ORDER by stylevar.stylevarid, stylevar.styleid ASC
+			WHERE
+				stylevar.styleid IN (" . trim($parentlist) . ")
+					AND
+				stylevardfn.styleid = {$masterstyleid}
+			ORDER BY
+				stylevar.stylevarid, stylevar.styleid ASC
 		");
 		while ($sv = $vbulletin->db->fetch_array($stylevars_result))
 		{
@@ -196,7 +209,6 @@ function fetch_stylevars_array()
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 41161 $
+|| # CVS: $RCSfile$ - $Revision: 58539 $
 || ####################################################################
 \*======================================================================*/

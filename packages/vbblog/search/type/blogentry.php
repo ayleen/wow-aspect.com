@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -40,7 +40,12 @@ class vBBlog_Search_Type_BlogEntry extends vB_Search_Type
 				$list[$id] = $item;
 			}
 		}
-		return array('list' => $list, 'groups_rejected' => array());
+
+		$retval = array('list' => $list, 'groups_rejected' => array());
+
+		($hook = vBulletinHook::fetch_hook('search_validated_list')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	/**
@@ -68,7 +73,7 @@ class vBBlog_Search_Type_BlogEntry extends vB_Search_Type
 
 	public function additional_pref_defaults()
 	{
-		return array(
+		$retval = array(
 			'query'       => '',
 			'titleonly'   => 0,
 			'nocache'     => '',
@@ -77,12 +82,15 @@ class vBBlog_Search_Type_BlogEntry extends vB_Search_Type
 			'searchdate'  => 0,
 			'beforeafter' => 0,
 			'sortby'      => 'dateline',
-			'sortorder' 	     => 'descending',
+			'sortorder'	  => 'descending',
 			'tag'         => '',
 			'ignorecomments' => ''
 		);
-	}
 
+		($hook = vBulletinHook::fetch_hook('search_pref_defaults')) ? eval($hook) : false;
+
+		return $retval;
+	}
 
 	// ###################### Start listUi ######################
 	/**
@@ -110,6 +118,9 @@ class vBBlog_Search_Type_BlogEntry extends vB_Search_Type
 
 		$this->setPrefs($template, $prefs, $prefsettings);
 		vB_Search_Searchtools::searchIntroRegisterHumanVerify($template);
+
+		($hook = vBulletinHook::fetch_hook('search_listui_complete')) ? eval($hook) : false;
+
 		return $template->render();
 	}
 
@@ -133,10 +144,12 @@ class vBBlog_Search_Type_BlogEntry extends vB_Search_Type
 		{
 			$types = array(
 				$this->get_contenttypeid(),
-				vB_Types::instance()->getContentTypeId('vBBlog_BlogComment')
+				vB_Types::instance()->getContentTypeID('vBBlog_BlogComment')
 			);
 			$criteria->add_contenttype_filter($types);
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_advanced_filters')) ? eval($hook) : false;
 	}
 
 	public function get_db_query_info($fieldname)
@@ -160,8 +173,10 @@ class vBBlog_Search_Type_BlogEntry extends vB_Search_Type
 		}
 		else
 		{
-			return false;
+			$result = false;
 		}
+		
+		($hook = vBulletinHook::fetch_hook('search_dbquery_info')) ? eval($hook) : false;
 
 		return $result;
 	}
@@ -188,7 +203,6 @@ class vBBlog_Search_Type_BlogEntry extends vB_Search_Type
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

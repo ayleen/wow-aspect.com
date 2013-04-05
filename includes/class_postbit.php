@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -40,8 +40,8 @@ define('POST_SHOW_INFRACTION', 4);
  * Postbit factory object
  *
  * @package 		vBulletin
- * @version		$Revision: 44754 $
- * @date 		$Date: 2011-06-20 09:57:57 -0700 (Mon, 20 Jun 2011) $
+ * @version		$Revision: 62099 $
+ * @date 		$Date: 2012-05-01 18:24:20 -0700 (Tue, 01 May 2012) $
  *
  */
 class vB_Postbit_Factory
@@ -97,6 +97,11 @@ class vB_Postbit_Factory
 		{
 			switch ($postbit_type)
 			{
+				case 'cmscomment':
+					$out = new vB_Postbit_Post();
+					$out->templatename = 'vbcms_postbit_legacy';
+					break;
+					
 				case 'post':
 					$out = new vB_Postbit_Post();
 					if ($this->registry->options['legacypostbit'])
@@ -164,8 +169,8 @@ class vB_Postbit_Factory
  * Generic Postbit object. This is abstract. You may not instantiate it directly.
  *
  * @package 		vBulletin
- * @version		$Revision: 44754 $
- * @date 		$Date: 2011-06-20 09:57:57 -0700 (Mon, 20 Jun 2011) $
+ * @version		$Revision: 62099 $
+ * @date 		$Date: 2012-05-01 18:24:20 -0700 (Tue, 01 May 2012) $
  *
  */
 class vB_Postbit
@@ -262,35 +267,35 @@ class vB_Postbit
 	function construct_postbit(&$post)
 	{
 		global $ad_location;
-
+	
 		$this->post =& $post;
 		$thread =& $this->thread;
 		$forum =& $this->forum;
-
+	
 		// make sure we can display this post
 		if ($this->is_displayable() == false)
 		{
 			return '';
 		}
-
+	
 		global $show, $vbphrase;
 		global $spacer_open, $spacer_close;
-
+	
 		global $bgclass, $altbgclass;
 		exec_switch_bg();
-
+	
 		$template_hook = array();
-
+	
 		($hook = vBulletinHook::fetch_hook('postbit_display_start')) ? eval($hook) : false;
-
+	
 		// put together each part of the post
 		$this->prep_post_start();
-
+	
 		$this->process_date_status();
 		$this->process_edit_info();
 		$this->process_icon();
 		$this->process_ip();
-
+	
 		if (!empty($this->post['userid']))
 		{
 			$this->process_registered_user();
@@ -300,7 +305,7 @@ class vB_Postbit
 		{
 			$this->process_unregistered_user();
 		}
-
+	
 		if ($this->post['avatarurl'] AND $this->post['avwidth'] AND $this->post['avheight'])
 		{
 			$this->post['avwidth'] = 'width="' . $this->post['avwidth'] . '"';
@@ -322,12 +327,12 @@ class vB_Postbit
 			$post['message_bbcode'] = $post['pagetext'];
 		}
 		$this->parse_bbcode();
-
+	
 		$this->process_attachments();
-
+	
 		// finish prepping the post
 		$this->prep_post_end();
-
+	
 		$pageinfo_post = array(
 			'p' => $post['postid']
 		);
@@ -335,10 +340,10 @@ class vB_Postbit
 		{
 			$pageinfo_post['viewfull'] = 1;
 		}
-
+	
 		// execute hook
 		($hook = vBulletinHook::fetch_hook('postbit_display_complete')) ? eval($hook) : false;
-
+	
 		$show['last_ad'] = $show['first_ad'] = $show['first_adsense'] = false;
 		if ($post['isfirstshown'])
 		{
@@ -348,93 +353,95 @@ class vB_Postbit
 			$template->register('adsense_pub_id', $this->registry->adsense_pub_id);
 			$template->register('adsense_host_id', $this->registry->adsense_host_id);
 			$ad_location['ad_showthread_firstpost_sig'] = $template->render();
-
+		
 			$template = vB_Template::create('ad_showthread_firstpost_start');
 			$template->register('adsense_pub_id', $this->registry->adsense_pub_id);
 			$template->register('adsense_host_id', $this->registry->adsense_host_id);
 			$ad_location['ad_showthread_firstpost_start'] = trim($template->render(true));
-
-			$ad_location['ad_showthread_firstpost_sig'] = vB_Template::create('ad_showthread_firstpost_sig')->render();
+		
 			if ($ad_location['ad_showthread_firstpost_start'])
 			{
 				$show['first_ad'] = true;
 			}
-
-			if ($ad_location['thread_first_post_content'] = trim(vB_Template::create('ad_thread_first_post_content')->render(true)))
+		
+			if (
+				$ad_location['thread_first_post_content'] = trim(vB_Template::create('ad_thread_first_post_content')->render(true))
+				AND
+				!preg_match('#^<div id="ad_thread_first_post_content">.+</div>$#si', $ad_location['thread_first_post_content'])
+			)
 			{
-				if (preg_match('#^<div id="ad_thread_first_post_content">.+</div>$#si', $ad_location['thread_first_post_content']))
-				{
-					$show['first_ad'] = true;
-				}
-				else
-				{
-					$ad_location['thread_first_post_content'] = '';
-				}
+				$ad_location['thread_first_post_content'] = '';
 			}
+	
 		}
 		else if
 		(
 			$post['islastshown']
-				AND
+			AND
 			$ad_location['thread_last_post_content'] = trim(vB_Template::create('ad_thread_last_post_content')->render(true))
+			AND
+			!preg_match('#^<div id="ad_thread_last_post_content">.+</div>$#si', $ad_location['thread_last_post_content'])
 		)
 		{
-			if (preg_match('#^<div id="ad_thread_last_post_content">.+</div>$#si', $ad_location['thread_last_post_content']))
-			{
-				$show['last_ad'] = true;
-			}
-			else
-			{
-				$ad_location['thread_last_post_content'] = '';
-			}
+			$ad_location['thread_last_post_content'] = '';
 		}
-
+	
+		if(!empty($ad_location['thread_first_post_content']) AND $post['isfirstshown'])
+		{
+			$show['first_ad'] = true;
+		}
+	
+		if(!empty($ad_location['thread_last_post_content']))
+		{
+			$show['last_ad'] = true;
+		}
+	
 		// prepare the member action drop-down menu
 		// pass the local template hook so that each drop-down gets its own hook (per-postbit)
 		$memberaction_dropdown = construct_memberaction_dropdown($post, $template_hook);
-
+	
 		// evaluate template
 		$postid =& $post['postid'];
-
+	
 		$templater = vB_Template::create($this->template_prefix . $this->templatename);
-			if ($this->add_promote_links AND $this->registry->products['vbcms'])
+		if ($this->add_promote_links AND $this->registry->products['vbcms'])
+		{
+			if (!isset($this->registry->userinfo['permissions']['cms']))
 			{
-				if (!isset($this->registry->userinfo['permissions']['cms']))
-				{
-					bootstrap_framework();
-					vBCMS_Permissions::getUserPerms();
-				}
-
-				if ($this->registry->userinfo['permissions']['cms']['canpublish'][0] != -1)
-				{
-					$templater->register('promote_sectionid', $this->registry->userinfo['permissions']['cms']['canpublish'][0]);
-					$templater->register('articletypeid', vB_Types::instance()->getContentTypeID('vBCms_Article'));
-					$query = 'contenttypeid='. vB_Types::instance()->getContentTypeID('vBCms_Article') .
-						'&amp;postid=' . $post['postid'] . '&amp;parentid=1';
-					$promote_url = vB_Route::create('vBCms_Route_Content', '1/addcontent/')->getCurrentURL(null, null, $query);
-					$templater->register('promote_url', $promote_url);
-				}
+				vBCMS_Permissions::getUserPerms();
 			}
-			$templater->register('ad_location', $ad_location);
-			$templater->register('memberaction_dropdown', $memberaction_dropdown);
-			$templater->register('pageinfo_post', $pageinfo_post);
-			$templater->register('post', $post);
-			$templater->register('postid', $postid);
-			$templater->register('template_hook', $template_hook);
-			$templater->register('thread', $thread);
+		
+			if ($this->registry->userinfo['permissions']['cms']['canpublish'][0] != -1)
+			{
+				$templater->register('promote_sectionid', $this->registry->userinfo['permissions']['cms']['canpublish'][0]);
+				$templater->register('articletypeid', vB_Types::instance()->getContentTypeID('vBCms_Article'));
+				$query = 'contenttypeid='. vB_Types::instance()->getContentTypeID('vBCms_Article') .
+					'&amp;postid=' . $post['postid'] . '&amp;parentid=1';
+				$promote_url = vB_Route::create('vBCms_Route_Content', '1/addcontent/')->getCurrentURL(null, null, $query);
+				$templater->register('promote_url', $promote_url);
+			}
+		}
+		$templater->register('ad_location', $ad_location);
+		$templater->register('memberaction_dropdown', $memberaction_dropdown);
+		$templater->register('pageinfo_post', $pageinfo_post);
+		$templater->register('post', $post);
+		$templater->register('postid', $postid);
+		$templater->register('template_hook', $template_hook);
+		$templater->register('reputationdisplay', $post['reputationdisplay']);
+		$templater->register('thread', $thread);
 		$postbit = $templater->render();
-
+	
 		$templater = vB_Template::create('postbit_wrapper');
-			$templater->register('post', $post);
-			$templater->register('postbit', $postbit);
-			$templater->register('postbit_type', ($this->templatename == 'postbit_legacy')?'postbit':$this->templatename);
-			$templater->register('spacer_close', $spacer_close);
-			$templater->register('spacer_open', $spacer_open);
+		$templater->register('post', $post);
+		$templater->register('postbit', $postbit);
+		$templater->register('postbit_type', ($this->templatename == 'postbit_legacy')?'postbit':$this->templatename);
+		$templater->register('spacer_close', $spacer_close);
+		$templater->register('spacer_open', $spacer_open);
 		$retval = $templater->render();
-
+	
 		return $retval;
 	}
-
+	
 	/**
 	* Determines whether the post should actually be displayed.
 	*
@@ -510,22 +517,41 @@ class vB_Postbit
 		$this->post['posttime'] = vbdate($this->registry->options['timeformat'], $this->post['dateline']);
 	}
 
-	/**
+		/**
 	* Processes any attachments to this post.
 	*/
 	function process_attachments()
 	{
+		global $show;
+		
 		$forumperms = fetch_permissions($this->thread['forumid']);
 		require_once(DIR . '/packages/vbattach/attach.php');
 		$attach = new vB_Attach_Display_Content($this->registry, 'vBForum_Post');
-		$attach->process_attachments(
-			$this->post,
-			$this->post['attachments'],
-			(THIS_SCRIPT == 'external'),
-			can_moderate($this->forum['forumid'], 'canmoderateattachments'),
-			$forumperms & $this->registry->bf_ugp_forumpermissions['cangetattachment'],
-			$forumperms & $this->registry->bf_ugp_forumpermissions['canseethumbnails']
-		);
+		
+		if ($this->post['allattachments'])
+		{			
+			foreach($this->post['allattachments'] AS $attachmentid => $info)
+			{
+				if (!$this->post['attachments'][$attachmentid])
+				{
+					unset($this->post['allattachments'][$attachmentid]);
+				}
+			}
+
+			$attach->process_attachments(
+				$this->post,
+				$this->post['allattachments'],
+				(THIS_SCRIPT == 'external'),
+				can_moderate($this->forum['forumid'], 'canmoderateattachments'),
+				$forumperms & $this->registry->bf_ugp_forumpermissions['cangetattachment'],
+				$forumperms & $this->registry->bf_ugp_forumpermissions['canseethumbnails']
+			);
+		}
+		else
+		{
+			$show['attachments'] = 	$show['moderatedattachment'] = $show['thumbnailattachment'] = $show['otherattachment'] = false;
+			$show['imageattachment'] = $show['imageattachmentlink'] = false;			
+		}
 	}
 
 	/**
@@ -617,13 +643,15 @@ class vB_Postbit
 		{
 			if ($this->post['hascustomavatar'] AND $this->registry->options['avatarenabled'])
 			{
+				$usethumb = ($this->template_prefix == 'vbcms_' OR IS_MOBILE_STYLE);
+
 				if ($this->registry->options['usefileavatar'])
 				{
-					$this->post['avatarurl'] = $this->registry->options['avatarurl'] . '/avatar' . $this->post['userid'] . '_' . $this->post['avatarrevision'] . '.gif';
+					$this->post['avatarurl'] = $this->registry->options['avatarurl'] . ($usethumb ? '/thumbs' : '') . '/avatar' . $this->post['userid'] . '_' . $this->post['avatarrevision'] . '.gif';
 				}
 				else
 				{
-					$this->post['avatarurl'] = 'image.php?' . $this->registry->session->vars['sessionurl'] . 'u=' . $this->post['userid'] . '&amp;dateline=' . $this->post['avatardateline'];
+					$this->post['avatarurl'] = 'image.php?' . $this->registry->session->vars['sessionurl'] . 'u=' . $this->post['userid'] . '&amp;dateline=' . $this->post['avatardateline'] . ($usethumb ? '&amp;type=thumb' : '');
 				}
 			}
 			else
@@ -847,7 +875,10 @@ class vB_Postbit
 	*/
 	function process_im_icons()
 	{
-		construct_im_icons($this->post);
+		if($this->template_prefix != 'vbcms_')
+		{
+			construct_im_icons($this->post);
+		}
 	}
 
 	/**
@@ -927,8 +958,8 @@ class vB_Postbit
 * Postbit optimized for regular posts
 *
 * @package 		vBulletin
-* @version		$Revision: 44754 $
-* @date 		$Date: 2011-06-20 09:57:57 -0700 (Mon, 20 Jun 2011) $
+* @version		$Revision: 62099 $
+* @date 		$Date: 2012-05-01 18:24:20 -0700 (Tue, 01 May 2012) $
 *
 */
 class vB_Postbit_Post extends vB_Postbit
@@ -1064,6 +1095,10 @@ class vB_Postbit_Post extends vB_Postbit
 		if ($this->registry->options['apipostidmanage']['enable'] AND $this->post['mobile_platformname'])
 		{
 			$platformname = strtolower($this->post['mobile_platformname']);
+			if (preg_match('#^(iphone|ipad|ipod)#s', $platformname))
+			{
+				$platformname = 'iphone';
+			}
 			if (isset($this->registry->options['apipostidmanage'][$platformname]))
 			{
 				$this->post['api_platform'] = $platformname;
@@ -1093,6 +1128,8 @@ class vB_Postbit_Post extends vB_Postbit
 			AND $this->registry->userinfo['userid']
 			AND $this->post['userid']
 			AND $this->post['visible'] != 2
+			AND ($this->forum['options'] & $this->registry->bf_misc_forumoptions['canreputation'])
+			AND ($this->registry->options['showrepinown'] OR $this->registry->userinfo['userid'] != $this->post['userid'])
 			AND $this->registry->usergroupcache[$this->post['usergroupid']]['genericoptions'] & $this->registry->bf_ugp_genericoptions['isnotbannedgroup']
 		);
 
@@ -1172,10 +1209,6 @@ class vB_Postbit_Post extends vB_Postbit
 			{
 				//we need to set the parser to render this quotes as a links to the article
 				// rather than showthread.
-
-				//We need the router, which requires the boot.
-				require_once(DIR . '/includes/class_bootstrap_framework.php');
-				vB_Bootstrap_Framework::init();
 
 				$nodeinfo = $this->post['nodeid'] . (empty($this->post['url']) ? '' :
 					'-' . $this->post['url']);
@@ -1309,8 +1342,7 @@ function construct_im_icons(&$userinfo, $ignore_off_setting = false)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44754 $
+|| # CVS: $RCSfile$ - $Revision: 62099 $
 || ####################################################################
 \*======================================================================*/
 ?>

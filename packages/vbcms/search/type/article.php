@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -68,9 +68,9 @@ class vBCms_Search_Type_Article extends vB_Search_Type
 			}
 
 			while($record = vB::$vbulletin->db->fetch_array($rst))
-			{
-				if (in_array($record['permissionsfrom'], vB::$vbulletin->userinfo['permissions']['cms']['canedit']) OR
-					($record['userid'] == vB::$vbulletin->userinfo['userid']))
+			{	// Removed 'canedit' permission from this, dont know what its purpose was, but it was
+				// overriding the basic premise that you must have 'canview' to see an article (or be the author).
+				if ($record['userid'] == vB::$vbulletin->userinfo['userid'])
 				{
 					$canview[] = $record['contentid'];
 				}
@@ -99,8 +99,11 @@ class vBCms_Search_Type_Article extends vB_Search_Type
 			$articles = array();
 		}
 
+		$retval = array('list' => $articles, 'groups_rejected' => $hidden);
 
-		return array('list' => $articles, 'groups_rejected' => $hidden);
+		($hook = vBulletinHook::fetch_hook('search_validated_list')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	/**
@@ -125,6 +128,8 @@ class vBCms_Search_Type_Article extends vB_Search_Type
 				$this->mod_rights[$key] = ($this->mod_rights[$key] OR (bool) $priv);
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_prepare_render')) ? eval($hook) : false;
 	}
 
 	/**
@@ -162,8 +167,7 @@ class vBCms_Search_Type_Article extends vB_Search_Type
 	 * 	grouping option(s).
 	 * @return $html: complete html for the search elements
 	 */
-	public function listUi($prefs = null, $contenttypeid = null, $registers = null,
-		$template_name = null)
+	public function listUi($prefs = null, $contenttypeid = null, $registers = null, $template_name = null)
 	{
 		global $vbulletin, $vbphrase;
 
@@ -197,6 +201,9 @@ class vBCms_Search_Type_Article extends vB_Search_Type
 				$template->register($key, htmlspecialchars_uni($value));
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_listui_complete')) ? eval($hook) : false;
+
 		return $template->render();
 	}
 
@@ -296,15 +303,20 @@ class vBCms_Search_Type_Article extends vB_Search_Type
  */
 	public function additional_pref_defaults()
 	{
-		return array(
+		$retval = array(
 			'query'         => '',
 			'exactname'     => 0,
-			'searchuser'     => '',
+			'searchuser'    => '',
 			'searchdate'    => 0,
-			'titleonly'    => 0,
+			'titleonly'     => 0,
 			'beforeafter'   => 'after',
-			'sortby'   => 'dateline',
-			'sortorder'   => 'descending');
+			'sortby'        => 'dateline',
+			'sortorder'     => 'descending'
+		);
+
+		($hook = vBulletinHook::fetch_hook('search_pref_defaults')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	public function get_db_query_info($fieldname)
@@ -312,13 +324,19 @@ class vBCms_Search_Type_Article extends vB_Search_Type
 		if ($fieldname == 'views')
 		{
 			$result['corejoin']['node'] = sprintf(" INNER JOIN %scms_node AS node ON (searchcore.contenttypeid = %u AND node.contentid = searchcore.groupid)", TABLE_PREFIX,
-				vB_Types::instance()->getContentTypeId("vBCms_Article"));
+				vB_Types::instance()->getContentTypeID("vBCms_Article"));
 			$result['groupjoin']['node'] = sprintf(" INNER JOIN %scms_node AS node ON (searchgroup.contenttypeid = %u AND node.contentid = searchgroup.groupid)", TABLE_PREFIX,
-				vB_Types::instance()->getContentTypeId("vBCms_Article"));
+				vB_Types::instance()->getContentTypeID("vBCms_Article"));
 			$result['join']['nodeinfo'] = sprintf(" INNER JOIN %scms_nodeinfo AS nodeinfo ON (nodeinfo.nodeid = node.nodeid)", TABLE_PREFIX);
 			$result['table'] = 'nodeinfo';
 			$result['field'] = 'viewcount';
 		}
+		else
+		{
+			$result = false;
+		}
+
+		($hook = vBulletinHook::fetch_hook('search_dbquery_info')) ? eval($hook) : false;
 
 		return $result;
 	}
@@ -326,7 +344,6 @@ class vBCms_Search_Type_Article extends vB_Search_Type
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 30550 $
 || ####################################################################
 \*======================================================================*/

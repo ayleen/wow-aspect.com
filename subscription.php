@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -136,7 +136,7 @@ if ($_POST['do'] == 'doaddsubscription')
 			VALUES (" . $vbulletin->userinfo['userid'] . ", $threadinfo[threadid], " . $vbulletin->GPC['emailupdate'] . ", " . $vbulletin->GPC['folderid'] . ", 1)
 		");
 		$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-		eval(print_standard_redirect('redirect_subsadd_thread', true, true));
+		print_standard_redirect('redirect_subsadd_thread', true, true);  
 	}
 	else if ($foruminfo['forumid'])
 	{
@@ -147,7 +147,7 @@ if ($_POST['do'] == 'doaddsubscription')
 		");
 
 		$vbulletin->url = fetch_seo_url('forum', $foruminfo);
-		eval(print_standard_redirect('redirect_subsadd_forum', true, true));
+		print_standard_redirect('redirect_subsadd_forum', true, true);  
 	}
 }
 
@@ -290,7 +290,7 @@ if ($_REQUEST['do'] == 'removesubscription' OR $_REQUEST['do'] == 'usub')
 					WHERE $idfield = " . $vbulletin->GPC['subscriptionid'] . "
 				");
 
-				eval(print_standard_redirect('redirect_subsremove_' . $vbulletin->GPC['type'], true, true));
+				print_standard_redirect('redirect_subsremove_' . $vbulletin->GPC['type'], true, true);  
 			}
 			else
 			{
@@ -320,7 +320,7 @@ if ($_REQUEST['do'] == 'removesubscription' OR $_REQUEST['do'] == 'usub')
 			$vbulletin->url = fetch_seo_url('thread', $threadinfo);
 		}
 
-		eval(print_standard_redirect('redirect_subsremove_thread', true, true));
+		print_standard_redirect('redirect_subsremove_thread', true, true);  
 	}
 	else if ($foruminfo['forumid'])
 	{
@@ -336,7 +336,7 @@ if ($_REQUEST['do'] == 'removesubscription' OR $_REQUEST['do'] == 'usub')
 			$vbulletin->url = 'usercp.php' . $vbulletin->session->vars['sessionurl_q'];
 		}
 
-		eval(print_standard_redirect('redirect_subsremove_forum', true, true));
+		print_standard_redirect('redirect_subsremove_forum', true, true);  
 	}
 	else
 	{
@@ -385,7 +385,7 @@ if ($_POST['do'] == 'doemptyfolder')
 
 	if ($vbulletin->GPC['deny'])
 	{
-		eval(print_standard_redirect('action_cancelled'));
+		print_standard_redirect('action_cancelled');  
 	}
 
 	if ($vbulletin->GPC['folderid'] == '' OR $vbulletin->GPC['folderid'] == 'all')
@@ -405,7 +405,7 @@ if ($_POST['do'] == 'doemptyfolder')
 		$vbulletin->url = 'usercp.php' . $vbulletin->session->vars['sessionurl_q'];
 	}
 
-	eval(print_standard_redirect('redirect_subsremove_forum', true, true));
+	print_standard_redirect('redirect_subsremove_forum', true, true);  
 }
 
 // ############################### start view threads ###############################
@@ -885,7 +885,7 @@ if ($_POST['do'] == 'movethread')
 	");
 
 	$vbulletin->url = fetch_seo_url('subscription', array(), array('folderid' => $vbulletin->GPC['folderid']));
-	eval(print_standard_redirect('sub_threadsmoved'));
+	print_standard_redirect('sub_threadsmoved');  
 
 }
 
@@ -941,7 +941,7 @@ if ($_POST['do'] == 'dostuff')
 			}
 			
 			$vbulletin->url = fetch_seo_url('subscription', array(), array('do' => 'viewsubscription', 'folderid' => $vbulletin->GPC['folderid']));
-			eval(print_standard_redirect('redirect_subupdate'));
+			print_standard_redirect('redirect_subupdate');  
 			break;
 
 		// *************************
@@ -1018,7 +1018,7 @@ if ($_POST['do'] == 'dostuff')
 
 			//its not actually possible to get here -- both print_output and eval'ing standard_error will end the script'
 			$vbulletin->url = fetch_seo_url('subscription', array(), array('do' => 'viewsubscription', 'folderid=' => $vbulletin->GPC['folderid']));
-			eval(print_standard_redirect('redirect_submove'));
+			print_standard_redirect('redirect_submove');  
 			break;
 
 		// *************************
@@ -1042,7 +1042,7 @@ if ($_POST['do'] == 'dostuff')
 			}
 
 			$vbulletin->url = fetch_seo_url('subscription', array(), array('do' => 'viewsubscription', 'folderid=' => $vbulletin->GPC['folderid']));
-			eval(print_standard_redirect('redirect_subupdate'));
+			print_standard_redirect('redirect_subupdate');  
 			break;
 
 		// *****************************
@@ -1204,15 +1204,14 @@ if ($_POST['do'] == 'doeditfolders')
 	$itemtype = $vbphrase['subscription'];
 	$itemtypes = $vbphrase['subscriptions'];
 	$vbulletin->url = fetch_seo_url('subscription', array(), array('do' => 'viewsubscription'));
-	eval(print_standard_redirect('foldersedited'));
+	print_standard_redirect(array('foldersedited',$itemtype,$itemtypes));  
 
 } #end doeditfolders
 
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44510 $
+|| # CVS: $RCSfile$ - $Revision: 53346 $
 || ####################################################################
 \*======================================================================*/
 ?>

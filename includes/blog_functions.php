@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # -----------------VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -66,6 +66,9 @@ function fetch_bloginfo($blogid, $usecache = true)
 			}
 		}
 
+		$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+		($hook = vBulletinHook::fetch_hook('blog_fetch_bloginfo_query')) ? eval($hook) : false;
+
 		$blogcache["$blogid"] = $vbulletin->db->query_first("
 			SELECT
 				blog.*, blog.options AS blogoptions,
@@ -87,6 +90,7 @@ function fetch_bloginfo($blogid, $usecache = true)
 				" . (($vbulletin->options['threadmarking'] AND $vbulletin->userinfo['userid']) ? ", blog_read.readtime AS blogread, blog_userread.readtime  AS bloguserread" : "") . "
 				" . ($deljoinsql ? ",blog_deletionlog.moddelete AS del_moddelete, blog_deletionlog.userid AS del_userid, blog_deletionlog.username AS del_username, blog_deletionlog.reason AS del_reason" : "") . "
 				$lastpost_info
+				$hook_query_fields
 			FROM " . TABLE_PREFIX . "blog AS blog
 			INNER JOIN " . TABLE_PREFIX . "blog_text AS blog_text ON (blog_text.blogtextid = blog.firstblogtextid)
 			LEFT JOIN " . TABLE_PREFIX . "user AS user ON (blog.userid = user.userid)
@@ -114,8 +118,10 @@ function fetch_bloginfo($blogid, $usecache = true)
 			$deljoinsql
 			$tachyjoin
 			$catjoin
+			$hook_query_joins
 			WHERE blog.blogid = " . intval($blogid) . "
 				$catwhere
+				$hook_query_where
 		");
 
 		if (!$blogcache["$blogid"])
@@ -504,6 +510,22 @@ function build_blog_entry_counters($blogid, $cantview = false, $cantpost = false
 		");
 	}
 
+	require_once(DIR . '/includes/functions_bigthree.php');
+	$coventry = fetch_coventry('string');
+	$uniques = $vbulletin->db->query_first("
+		SELECT COUNT(DISTINCT(userid)) AS total
+		FROM " . TABLE_PREFIX . "blog_text
+		WHERE
+			blogid = $blogid
+				AND
+			state = 'visible'
+			" . ($coventry ? "AND userid NOT IN ($coventry)" : "") . "
+	");
+	if (!$uniques['total'])
+	{
+		$uniques['total'] = 1;
+	}
+
 	$bloginfo = array('blogid' => $blogid);
 	$blogman =& datamanager_init('Blog', $vbulletin, ERRTYPE_SILENT);
 	$blogman->set_existing($bloginfo);
@@ -520,6 +542,7 @@ function build_blog_entry_counters($blogid, $cantview = false, $cantpost = false
 	$blogman->set('ratingtotal', $ratings['ratingtotal'], true, false);
 	$blogman->set('rating', $ratings['ratingnum'] ? $ratings['ratingtotal'] / $ratings['ratingnum'] : 0, true, false);
 	$blogman->set('categories', implode(',', $cats));
+	$blogman->set('postercount', $uniques['total']);
 	$blogman->save();
 }
 
@@ -948,16 +971,15 @@ function construct_calendar($month, $year, $userinfo = null)
 	}
 
 	unset($sql1['date1'], $sql1['date2'], $sql2['date1'], $sql2['date2']);
-	$starttime = vbmktime(0, 0, 0, $month, 0, $year);
-	$endtime = vbmktime(0, 0, 0, $month + 1, 0, $year);
-	$endtime = ($endtime > TIMENOW) ? TIMENOW : $endtime;
+	$starttime = vbmktime(23, 59, 59, $month, 0, $year);
+	$endtime = vbmktime(0, 0, 0, $month + 1, 1, $year);
 	$show['nextmonth'] = $show['prevmonth'] = false;
 
 	// Get first event before this month
-	$sql1['date1'] = "dateline < $starttime";
+	$sql1['date1'] = "dateline <= $starttime";
 	if ($sql2)
 	{
-		$sql2['date1'] = "dateline < $starttime";
+		$sql2['date1'] = "dateline <= $starttime";
 	}
 	$preventries = $vbulletin->db->query_read_slave("
 		" . (!empty($sql2) ? "(" : "") . "
@@ -1178,7 +1200,7 @@ function build_blog_stats()
 *
 * @return	void
 */
-function fetch_avatar_html(&$userinfo)
+function fetch_avatar_html(&$userinfo, $thumb = false)
 {
 	global $vbulletin, $show;
 
@@ -1193,11 +1215,11 @@ function fetch_avatar_html(&$userinfo)
 		{
 			if ($vbulletin->options['usefileavatar'])
 			{
-				$userinfo['avatarurl'] = $vbulletin->options['avatarurl'] . '/avatar' . $userinfo['userid'] . '_' . $userinfo['avatarrevision'] . '.gif';
+				$userinfo['avatarurl'] = $vbulletin->options['avatarurl'] . ($thumb ? '/thumbs' : '') . '/avatar' . $userinfo['userid'] . '_' . $userinfo['avatarrevision'] . '.gif';
 			}
 			else
 			{
-				$userinfo['avatarurl'] = 'image.php?' . $vbulletin->session->vars['sessionurl'] . 'u=' . $userinfo['userid'] . '&amp;dateline=' . $userinfo['avatardateline'];
+				$userinfo['avatarurl'] = 'image.php?' . $vbulletin->session->vars['sessionurl'] . 'u=' . $userinfo['userid'] . '&amp;dateline=' . $userinfo['avatardateline']. ($thumb ? '&amp;type=thumb' : '');
 			}
 
 			$userinfo['avwidthpx'] = intval($userinfo['avwidth']);
@@ -1619,8 +1641,8 @@ function &build_user_sidebar(&$userinfo, $month = 0, $year = 0, $rules = false)
 			$buddylist = array();
 		}
 
-		$visitorbits = '';
-		$firstvisitor = true;
+		$visitorcount = 0;
+		$visitorbits = array();
 		foreach ($visitors AS $user)
 		{
 			fetch_musername($user);
@@ -1628,12 +1650,20 @@ function &build_user_sidebar(&$userinfo, $month = 0, $year = 0, $rules = false)
 			$user['buddymark'] = in_array($user['userid'], $buddylist) ? '+' : '';
 
 			($hook = vBulletinHook::fetch_hook('blog_sidebar_user_visitors_loop')) ? eval($hook) : false;
-			$templater = vB_Template::create('memberinfo_visitorbit');
-				$templater->register('user', $user);
-			$sidebar['visitorbits'] .=  $templater->render();
-			$firstvisitor = false;
+
+			$visitorcount++;
+			$user['comma'] = $vbphrase['comma_space'];
+			$visitorbits[$visitorcount] = $user;
 		}
-		$sidebar['visitorcount'] = vb_number_format($vbulletin->db->num_rows($visitors_db));
+
+		// Last element
+		if ($visitorcount)
+		{
+			$visitorbits[$visitorcount]['comma'] = '';
+		}
+
+		$sidebar['visitorbits'] = $visitorbits;
+		$sidebar['visitorcount'] = $visitorcount;
 	}
 
 	//########################### Get Recent Comments #####################################
@@ -1690,40 +1720,13 @@ function &build_user_sidebar(&$userinfo, $month = 0, $year = 0, $rules = false)
 			ORDER BY blog.lastcomment DESC
 			LIMIT 5
 		");
+
 		while ($comment = $vbulletin->db->fetch_array($comments))
 		{
 			$show['deleted'] = ($comment['state'] == 'deleted') ? true : false;
 			$show['moderation'] = ($comment['state'] == 'moderation') ? true : false;
 
-			if ($comment['hascustomavatar'] AND $vbulletin->options['avatarenabled'])
-			{
-				if ($vbulletin->options['usefileavatar'])
-				{
-					$comment['avatarurl'] = $vbulletin->options['avatarurl'] . '/avatar' . $comment['userid'] . '_' . $comment['avatarrevision'] . '.gif';
-				}
-				else
-				{
-					$comment['avatarurl'] = 'image.php?' . $vbulletin->session->vars['sessionurl'] . 'u=' . $comment['userid'] . '&amp;dateline=' . $comment['avatardateline'];
-				}
-
-				$comment['avwidthpx'] = intval($comment['avwidth']);
-				$comment['avheightpx'] = intval($comment['avheight']);
-
-				if ($comment['avwidth'] AND $comment['avheight'])
-				{
-					$comment['avwidth'] = 'width="' . $userinfo['avwidth'] . '"';
-					$comment['avheight'] = 'height="' . $userinfo['avheight'] . '"';
-				}
-				else
-				{
-					$comment['avwidth'] = '';
-					$comment['avheight'] = '';
-				}
-			}
-			else
-			{
-				$comment['avatarurl'] = '';
-			}
+			fetch_avatar_html($comment, true);
 
 			($hook = vBulletinHook::fetch_hook('blog_sidebar_user_comments_loop')) ? eval($hook) : false;
 
@@ -1785,35 +1788,38 @@ function &build_user_sidebar(&$userinfo, $month = 0, $year = 0, $rules = false)
 			ORDER BY blog.dateline DESC
 			LIMIT 5
 		");
+
+		fetch_avatar_html($userinfo, true); // Set to thumbnail for sideblock
+
 		while ($entry = $vbulletin->db->fetch_array($entries))
 		{
 			if ($entry['dateline'] > TIMENOW OR $entry['pending'])
 			{
 				$status['phrase'] = $vbphrase['pending_blog_entry'];
 				$status['image'] = vB_Template_Runtime::fetchStyleVar('imgdir_misc') . "/blog/pending_small.gif";
-				$show['status'] = true;
+				$show['sidebarstatus'] = true;
 			}
 			else if ($entry['state'] == 'deleted')
 			{
 				$status['image'] = vB_Template_Runtime::fetchStyleVar('imgdir_misc') . "/blog/trashcan.gif";
 				$status['phrase'] = $vbphrase['deleted_blog_entry'];
-				$show['status'] = true;
+				$show['sidebarstatus'] = true;
 			}
 			else if ($entry['state'] == 'moderation')
 			{
 				$status['phrase'] = $vbphrase['moderated_blog_entry'];
 				$status['image'] = vB_Template_Runtime::fetchStyleVar('imgdir_misc') . "/blog/moderated.gif";
-				$show['status'] = true;
+				$show['sidebarstatus'] = true;
 			}
 			else if ($entry['state'] == 'draft')
 			{
 				$status['phrase'] = $vbphrase['draft_blog_entry'];
 				$status['image'] = vB_Template_Runtime::fetchStyleVar('imgdir_misc') . "/blog/draft_small.gif";
-				$show['status'] = true;
+				$show['sidebarstatus'] = true;
 			}
 			else
 			{
-				$show['status'] = false;
+				$show['sidebarstatus'] = false;
 			}
 
 			$entry['date'] = vbdate($vbulletin->options['dateformat'], $entry['dateline']);
@@ -1827,6 +1833,8 @@ function &build_user_sidebar(&$userinfo, $month = 0, $year = 0, $rules = false)
 				$templater->register('userinfo', $userinfo);
 			$sidebar['entrybits'] .= $templater->render();
 		}
+
+		fetch_avatar_html($userinfo);  // Unset from thumbnail
 	}
 
 	if ($useblock['block_category'])
@@ -2159,6 +2167,28 @@ function &build_user_sidebar(&$userinfo, $month = 0, $year = 0, $rules = false)
 		}
 	}
 
+	if ($userinfo['showbirthday'] == 1 OR $userinfo['showbirthday'] == 2)
+	{
+		$year = vbdate('Y', TIMENOW, false, false);
+		$month = vbdate('n', TIMENOW, false, false);
+		$day = vbdate('j', TIMENOW, false, false);
+
+		$date = explode('-', $userinfo['birthday']);
+		if ($year > $date[2] AND $date[2] != '0000')
+		{
+			$userinfo['age'] = $year - $date[2];
+			if ($month < $date[0] OR ($month == $date[0] AND $day < $date[1]))
+			{
+				$userinfo['age']--;
+			}
+
+			if ($userinfo['age'] >= 101)
+			{
+				unset($userinfo['age']);
+			}
+		}
+	}
+
 	if ($moveableblocks > 1 AND $vbulletin->userinfo['userid'] == $userinfo['userid'])
 	{
 		$show['moveable_blocks'] = true;
@@ -2166,7 +2196,7 @@ function &build_user_sidebar(&$userinfo, $month = 0, $year = 0, $rules = false)
 
 	$show['bloguserinfo'] = true;
 	$blogrssinfo = array(
-		'bloguserid' => $userinfo['bloguserid'],
+		'bloguserid' => ($userinfo['bloguserid']) ? $userinfo['bloguserid'] : $userinfo['postedby_userid'],
 		'blog_title' => $userinfo['blog_title'],
 	);
 
@@ -2690,12 +2720,14 @@ function construct_blog_rules($area = 'entry', $userinfo = null)
 		case 'comment':
 			$bbcodeon = $userinfo['permissions']['vbblog_comment_permissions'] & $vbulletin->bf_ugp_vbblog_comment_permissions['blog_allowbbcode'] ? $vbphrase['on'] : $vbphrase['off'];
 			$imgcodeon = $userinfo['permissions']['vbblog_comment_permissions'] & $vbulletin->bf_ugp_vbblog_comment_permissions['blog_allowimages'] ? $vbphrase['on'] : $vbphrase['off'];
+			$videocodeon = $userinfo['permissions']['vbblog_comment_permissions'] & $vbulletin->bf_ugp_vbblog_comment_permissions['blog_allowvideos'] ? $vbphrase['on'] : $vbphrase['off'];
 			$htmlcodeon = $userinfo['permissions']['vbblog_comment_permissions'] & $vbulletin->bf_ugp_vbblog_comment_permissions['blog_allowhtml'] ? $vbphrase['on'] : $vbphrase['off'];
 			$smilieson = $userinfo['permissions']['vbblog_comment_permissions'] & $vbulletin->bf_ugp_vbblog_comment_permissions['blog_allowsmilies'] ? $vbphrase['on'] : $vbphrase['off'];
 			break;
 		case 'usercomment':
 			$bbcodeon = $userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_allowbbcode'] ? $vbphrase['on'] : $vbphrase['off'];
 			$imgcodeon = $userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_allowimages'] ? $vbphrase['on'] : $vbphrase['off'];
+			$videocodeon = $userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_allowvideos'] ? $vbphrase['on'] : $vbphrase['off'];
 			$htmlcodeon = $userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_allowhtml'] ? $vbphrase['on'] : $vbphrase['off'];
 			$smilieson = $userinfo['permissions']['vbblog_comment_permissions'] & $vbulletin->bf_ugp_vbblog_comment_permissions['blog_allowsmilies'] ? $vbphrase['on'] : $vbphrase['off'];
 			break;
@@ -2705,6 +2737,7 @@ function construct_blog_rules($area = 'entry', $userinfo = null)
 		case 'custompage':
 			$bbcodeon = $userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowbbcode'] ? $vbphrase['on'] : $vbphrase['off'];
 			$imgcodeon = $userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowimages'] ? $vbphrase['on'] : $vbphrase['off'];
+			$videocodeon = $userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowvideos'] ? $vbphrase['on'] : $vbphrase['off'];
 			$htmlcodeon = $userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowhtml'] ? $vbphrase['on'] : $vbphrase['off'];
 			$smilieson = $userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowsmilies'] ? $vbphrase['on'] : $vbphrase['off'];
 			break;
@@ -2715,6 +2748,7 @@ function construct_blog_rules($area = 'entry', $userinfo = null)
 	$templater = vB_Template::create('blog_rules');
 		$templater->register('bbcodeon', $bbcodeon);
 		$templater->register('imgcodeon', $imgcodeon);
+		$templater->register('videocodeon', $videocodeon);
 		$templater->register('htmlcodeon', $htmlcodeon);
 		$templater->register('smilieson', $smilieson);
 	return $templater->render();
@@ -2857,9 +2891,6 @@ function fetch_blog_tagcloud($type = 'usage', $links = false, $userid = 0)
 				}
 			}
 
-			//get autoloader hooked up.
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			vB_Bootstrap_Framework::init();
 			$contenttypeid = vB_Types::instance()->getContentTypeID('vBBlog_BlogEntry');
 
 			$tags_result = $vbulletin->db->query_read_slave("
@@ -3268,7 +3299,6 @@ if (version_compare($vbulletin->options['templateversion'], '3.8.0', '='))
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 40911 $
+|| # SVN: $Revision: 62621 $
 || ####################################################################
 \*======================================================================*/

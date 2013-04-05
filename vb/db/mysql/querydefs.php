@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright 2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright 2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -78,7 +78,7 @@ class vB_dB_MYSQL_QueryDefs extends  vB_dB_QueryDefs
 		'lastupdated','publicpreview','auto_displayorder','comments_enabled','new',
 		'showtitle','showuser','showpreviewonly','showupdated','showviewcount','showpublishdate',
 		'settingsforboth','includechildren','showall','editshowchildren','showrating',
-		'hidden','shownav','nosearch')
+		'hidden','shownav','nosearch', 'keepthread', 'allcomments')
 		),
 		'cms_article' => array('key'=> 'contentid', 'structure' => array( 'contentid',
 		'pagetext', 'threadid', 'blogid', 'posttitle', 'postauthor', 'poststarter',
@@ -189,12 +189,29 @@ class vB_dB_MYSQL_QueryDefs extends  vB_dB_QueryDefs
 					a.contentid = {albumid} and a.contenttypeid = {contenttypeid}	AND
 					fd.extension IN ({extensions}) AND album.state in ('public', 'profile') ORDER BY album.title",
 			'quotes_ok' => array('extensions')),
+		'get_comments' => array('querytype'=> 's',
+		'query_string' =>  'SELECT post.postid, post.visible, post.dateline FROM {TABLE_PREFIX}post AS post
+				INNER JOIN {TABLE_PREFIX}cms_nodeinfo AS info ON info.associatedthreadid = post.threadid
+				AND post.dateline > info.creationdate WHERE info.nodeid={nodeid} AND post.parentid != 0 AND post.visible = 1
+				ORDER BY post.dateline ASC'),
+		'get_all_comments' => array('querytype'=> 's',
+		'query_string' =>  'SELECT post.postid, post.visible, post.dateline FROM {TABLE_PREFIX}post AS post
+				INNER JOIN {TABLE_PREFIX}cms_nodeinfo AS info ON info.associatedthreadid = post.threadid
+				WHERE info.nodeid={nodeid} AND post.parentid != 0 AND post.visible = 1
+				ORDER BY post.dateline ASC'),
+		'get_threadid_from_post' =>   array('querytype'=> 's',
+			'query_string' =>'SELECT thread.threadid, forumid FROM {TABLE_PREFIX}post AS post INNER JOIN {TABLE_PREFIX}thread AS thread
+				ON thread.threadid = post.threadid WHERE post.postid={postid} LIMIT 1'),
+		'delete_redirect_threads' => array('querytype'=> 'd',
+			'query_string' =>  'DELETE FROM {TABLE_PREFIX}thread WHERE pollid={threadid} AND open=10'),
+		'move_thread' => array('querytype'=> 'u',
+			'query_string' =>  'UPDATE {TABLE_PREFIX}thread SET forumid = {forumid} WHERE threadid={threadid}'),
 	);
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN=> $Revision=> 28823 $
 || ####################################################################
 \*======================================================================*/
+

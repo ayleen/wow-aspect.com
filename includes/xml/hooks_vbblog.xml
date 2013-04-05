@@ -3,12 +3,13 @@
 <hooks>
 
 	<hooktype type="general">
-		<hook>blog_fetch_bloginfo</hook>
 		<hook>blog_rules</hook>
 		<hook>blog_fetch_list_query</hook>
 		<hook>blog_fetch_customblockinfo</hook>
 		<hook>blog_fetch_comment_perm</hook>
 		<hook>blog_fetch_entry_perm</hook>
+		<hook>blog_fetch_bloginfo</hook>
+		<hook>blog_fetch_bloginfo_query</hook>
 	</hooktype>
 
 	<hooktype type="ajax">
@@ -99,6 +100,7 @@
 		<hook>blog_trackbackdata_presave</hook>
 		<hook>blog_trackbackdata_postsave</hook>
 		<hook>blog_trackbackdata_delete</hook>
+		<hook>blog_trackbackdata_presave_start</hook>
 	</hooktype>
 
 	<hooktype type="blog_data">
@@ -119,6 +121,12 @@
 		<hook>blog_textdata_delete</hook>
 		<hook>blog_user_notification_start</hook>
 		<hook>blog_user_notification_message</hook>
+		<hook>blog_latest_blogs_entry</hook>
+		<hook>blog_latest_blogs_query</hook>
+		<hook>blog_latest_comments_entry</hook>
+		<hook>blog_latest_comments_query</hook>
+		<hook>blog_rated_blogs_entry</hook>
+		<hook>blog_rated_blogs_query</hook>
 	</hooktype>
 
 	<hooktype type="blog_view">
@@ -206,6 +214,7 @@
 		<hook>blog_post_updateentry_edit</hook>
 		<hook>blog_post_updateentry_new</hook>
 		<hook>blog_post_updateentry_start</hook>
+		<hook>blog_post_updateentry_complete</hook>
 	</hooktype>
 
 	<hooktype type="blog_report">
@@ -243,4 +252,4 @@
 
 </hooks>
 
-<!-- CVS: $RCSfile$ - $Revision: 35841 $ -->
+<!-- CVS: $RCSfile$ - $Revision: 56533 $ -->

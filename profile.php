@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -82,8 +82,7 @@ $actiontemplates = array(
 		'modifyusergroups_joinrequestbit',
 		'modifyusergroups_memberbit',
 		'modifyusergroups_nonmemberbit',
-		'modifyusergroups_displaybit',
-		'modifyusergroups_groupleader',
+		'modifyusergroups_displaybit'
 	),
 	'editsignature' => array(
 		'modifysignature',
@@ -100,8 +99,7 @@ $actiontemplates = array(
 		'modifyprofilepic'
 	),
 	'joingroup' => array(
-		'modifyusergroups_requesttojoin',
-		'modifyusergroups_groupleader'
+		'modifyusergroups_requesttojoin'
 	),
 	'editattachments' => array(
 		'GENERIC_SHELL',
@@ -152,10 +150,6 @@ $actiontemplates['none'] =& $actiontemplates['editprofile'];
 // ######################### REQUIRE BACK-END ############################
 require_once('./global.php');
 require_once(DIR . '/includes/functions_user.php');
-
-// bootstrap framework
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -222,7 +216,7 @@ if ($_POST['do'] == 'dst')
 		$userdata->save();
 	}
 
-	eval(print_standard_redirect('redirect_dst'));
+	print_standard_redirect('redirect_dst');  
 }
 
 // ############################### toggle user css ###############################
@@ -254,7 +248,7 @@ if ($_REQUEST['do'] == 'switchusercss')
 	{
 		$vbulletin->url = fetch_seo_url('member', $userinfo);
 	}
-	eval(print_standard_redirect('redirect_usercss_toggled'));
+	print_standard_redirect('redirect_usercss_toggled');  
 }
 
 // ############################################################################
@@ -438,12 +432,12 @@ if ($_POST['do'] == 'updatepassword')
 	if ($activate)
 	{
 		$vbulletin->url = 'usercp.php' . $vbulletin->session->vars['sessionurl_q'];
-		eval(print_standard_redirect('redirect_updatethanks_newemail', true, true));
+		print_standard_redirect(array('redirect_updatethanks_newemail',$vbulletin->userinfo['username']), true, true);  
 	}
 	else
 	{
 		$vbulletin->url = 'usercp.php' . $vbulletin->session->vars['sessionurl_q'];
-		eval(print_standard_redirect('redirect_updatethanks', true, true));
+		print_standard_redirect(array('redirect_updatethanks',$vbulletin->userinfo['username']), true, true);  
 	}
 }
 else if ($_GET['do'] == 'updatepassword')
@@ -485,26 +479,26 @@ if ($_REQUEST['do'] == 'addlist')
 		{
 			if ($ouruser['friend'] == 'pending' OR $ouruser['friend'] == 'denied')
 			{	// We are pending friends
-				eval(print_standard_redirect('redirect_friendspending', true, true));
+				print_standard_redirect(array('redirect_friendspending',$userinfo['username']), true, true);  
 			}
 			else if ($ouruser['friend'] == 'yes')
 			{	// We are already friends
-				eval(print_standard_redirect('redirect_friendsalready', true, true));
+				print_standard_redirect(array('redirect_friendsalready',$userinfo['username']), true, true);  
 			}
 			else if ($vbulletin->GPC['userid'] == $vbulletin->userinfo['userid'])
 			{ // You can't be friends with yourself
-				eval(print_standard_redirect('redirect_friendswithself', true, true));
+				print_standard_redirect('redirect_friendswithself', true, true);  
 			}
 		}
 		else if ($ouruser)
 		{
 			if ($ouruser['friend'] == 'yes')
 			{
-				eval(print_standard_redirect('redirect_friendsalready', true, true));
+				print_standard_redirect(array('redirect_friendsalready',$userinfo['username']), true, true);  
 			}
 			else
 			{
-				eval(print_standard_redirect('redirect_contactsalready', true, true));
+				print_standard_redirect(array('redirect_contactsalready',$userinfo['username']), true, true);  
 			}
 		}
 	}
@@ -643,7 +637,7 @@ if ($_POST['do'] == 'doaddlist')
 	// No was clicked
 	if ($vbulletin->GPC['deny'])
 	{
-		eval(print_standard_redirect('action_cancelled'));
+		print_standard_redirect('action_cancelled');  
 	}
 
 	if ($vbulletin->GPC['userlist'] != 'ignore')
@@ -689,7 +683,7 @@ if ($_POST['do'] == 'doaddlist')
 					(" . $vbulletin->userinfo['userid'] . ", " . intval($userinfo['userid']) . ", 'ignore', 'no')
 			");
 			$users[] = $vbulletin->userinfo['userid'];
-			$redirect_phrase = 'redirect_addlist_ignore';
+			$redirect_phrase = array('redirect_addlist_ignore',$userinfo['username']);
 		break;
 		default:
 			standard_error(fetch_error('invalidid', 'list', $vbulletin->options['contactuslink']));
@@ -707,21 +701,21 @@ if ($_POST['do'] == 'doaddlist')
 			");
 			$users[] = $vbulletin->userinfo['userid'];
 		}
-		$redirect_phrase = 'redirect_addlist_contact';
+		$redirect_phrase = array('redirect_addlist_contact',$userinfo['username']);
 	}
 	else if ($vbulletin->GPC['userlist'] == 'friend')
 	{
 		if ($ouruser['friend'] == 'pending' OR $ouruser['friend'] == 'denied')
 		{	// We are pending friends
-			eval(print_standard_redirect('redirect_friendspending', true, true));
+			print_standard_redirect(array('redirect_friendspending',$userinfo['username']), true, true);  
 		}
 		else if ($ouruser['friend'] == 'yes')
 		{	// We are already friends
-			eval(print_standard_redirect('redirect_friendsalready', true, true));
+			print_standard_redirect(array('redirect_friendsalready',$userinfo['username']), true, true);  
 		}
 		else if ($vbulletin->GPC['userid'] == $vbulletin->userinfo['userid'])
 		{ // You can't be friends with yourself
-			eval(print_standard_redirect('redirect_friendswithself', true, true));
+			print_standard_redirect('redirect_friendswithself', true, true);  
 		}
 
 		// No slave here
@@ -757,7 +751,7 @@ if ($_POST['do'] == 'doaddlist')
 
 			$users[] = $vbulletin->userinfo['userid'];
 			$users[] = $userinfo['userid'];
-			$redirect_phrase = 'redirect_friendadded';
+			$redirect_phrase = array('redirect_friendadded',$userinfo['username']);
 		}
 		else
 		{
@@ -790,7 +784,7 @@ if ($_POST['do'] == 'doaddlist')
 			);
 
 			$users[] = $vbulletin->userinfo['userid'];
-			$redirect_phrase = 'redirect_friendrequested';
+			$redirect_phrase = array('redirect_friendrequested',$userinfo['username']);
 		}
 	}
 
@@ -802,7 +796,7 @@ if ($_POST['do'] == 'doaddlist')
 
 	($hook = vBulletinHook::fetch_hook('profile_doaddlist_complete')) ? eval($hook) : false;
 
-	eval(print_standard_redirect($redirect_phrase, true, true));
+	print_standard_redirect($redirect_phrase, true, true);  
 }
 
 if ($_POST['do'] == 'doremovelist')
@@ -828,7 +822,7 @@ if ($_POST['do'] == 'doremovelist')
 	// No was clicked
 	if ($vbulletin->GPC['deny'])
 	{
-		eval(print_standard_redirect('action_cancelled'));
+		print_standard_redirect('action_cancelled');  
 	}
 
 	$users = array();
@@ -923,7 +917,7 @@ if ($_POST['do'] == 'doremovelist')
 
 	($hook = vBulletinHook::fetch_hook('profile_doremovelist_complete')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_removelist_' . $vbulletin->GPC['userlist'], true, true));
+	print_standard_redirect(array('redirect_removelist_' . $vbulletin->GPC['userlist'],$userinfo['username']), true, true);  
 }
 
 // ############################### start update list ###############################
@@ -1536,7 +1530,7 @@ if ($_POST['do'] == 'updatelist')
 	}
 	else
 	{
-		eval(print_standard_redirect('updatelist_' . $vbulletin->GPC['userlist']));
+		print_standard_redirect('updatelist_' . $vbulletin->GPC['userlist']);  
 	}
 }
 
@@ -2043,7 +2037,7 @@ if ($_POST['do'] == 'updateprofile')
 	}
 
 	$vbulletin->url = 'profile.php?' . $vbulletin->session->vars['sessionurl'] . 'do=editprofile';
-	eval(print_standard_redirect('redirect_updatethanks', true, true));
+	print_standard_redirect(array('redirect_updatethanks',$vbulletin->userinfo['username']), true, true);  
 }
 
 // ############################### start edit connections ###############################
@@ -2251,14 +2245,21 @@ if ($_REQUEST['do'] == 'editoptions')
 	}
 	$show['maxpostsoptions'] = ($vbulletin->options['usermaxposts'] ? true : false);
 
-	if ($vbulletin->options['allowchangestyles'])
+	if (
+		$vbulletin->options['allowchangestyles']
+			OR
+		$vbulletin->options['mobilestyleid_advanced']
+			OR
+		$vbulletin->options['mobilestyleid_basic']		
+	)
 	{
 		$stylecount = 0;
 		if ($vbulletin->stylecache !== null)
 		{
-			$stylesetlist = construct_style_options(-1, '', true, false, $stylecount);
+			$stylesetlist1 = construct_style_options(-1, '', true, false, $stylecount);
+			$stylesetlist2 = construct_style_options(-2, '', $stylesetlist1 ? false : true, false, $stylecount);
 		}
-		$show['styleoption'] = iif($stylecount > 1, true, false);
+		$show['styleoption'] = $stylecount > 1 ? true : false;
 	}
 	else
 	{
@@ -2330,7 +2331,8 @@ if ($_REQUEST['do'] == 'editoptions')
 	$page_templater->register('postsdefaultselected', $postsdefaultselected);
 	$page_templater->register('selectvbcode', $selectvbcode);
 	$page_templater->register('checkvbcode', $checkvbcode);
-	$page_templater->register('stylesetlist', $stylesetlist);
+	$page_templater->register('stylesetlist1', $stylesetlist1);
+	$page_templater->register('stylesetlist2', $stylesetlist2);
 	$page_templater->register('template_hook', $template_hook);
 	$page_templater->register('threaddisplaymode', $threaddisplaymode);
 	$page_templater->register('timezoneoptions', $timezoneoptions);
@@ -2451,7 +2453,7 @@ if ($_POST['do'] == 'updateoptions')
 		vB_Template_Runtime::addStyleVar('languagecode', $globalgroup['languagecode']);
 	}
 
-	eval(print_standard_redirect('redirect_updatethanks', true, true, $userdata->fetch_field('languageid')));
+	print_standard_redirect(array('redirect_updatethanks',$vbulletin->userinfo['username']), true, true, $userdata->fetch_field('languageid'));  
 }
 
 // ############################################################################
@@ -2551,21 +2553,35 @@ if ($_POST['do'] == 'updatesignature')
 	}
 
 	// Max number of images in the sig if imgs are allowed.
-	if ($vbulletin->userinfo['permissions']['sigmaximages'])
+	if ($vbulletin->userinfo['permissions']['sigmaximages'] OR $vbulletin->userinfo['permissions']['sigmaxvideos'])
 	{
 		// Parsing the signature into BB code.
 		require_once(DIR . '/includes/class_bbcode_alt.php');
+		require_once(DIR . '/includes/functions_video.php');
+
 		$bbcode_parser = new vB_BbCodeParser_ImgCheck($vbulletin, fetch_tag_list());
 		$bbcode_parser->set_parse_userinfo($userinfo_sigpic, $vbulletin->userinfo['permissions']);
+		$signature = parse_video_bbcode($signature);
 		$parsedsig = $bbcode_parser->parse($signature, 'signature');
 
-		$imagecount = fetch_character_count($parsedsig, '<img');
-
 		// Count the images
-		if ($imagecount > $vbulletin->userinfo['permissions']['sigmaximages'])
+		if ($vbulletin->userinfo['permissions']['sigmaximages'])
 		{
-			$vbulletin->GPC['preview'] = true;
-			$errors[] = fetch_error('toomanyimages', $imagecount, $vbulletin->userinfo['permissions']['sigmaximages']);
+			$imagecount = fetch_character_count($parsedsig, '<img');
+			if ($imagecount > $vbulletin->userinfo['permissions']['sigmaximages'])
+			{
+				$vbulletin->GPC['preview'] = true;
+				$errors[] = fetch_error('toomanyimages', $imagecount, $vbulletin->userinfo['permissions']['sigmaximages']);
+			}
+		}
+		if ($vbulletin->userinfo['permissions']['sigmaxvideos'])
+		{
+			$videocount = fetch_character_count($parsedsig, '<video />');
+			if ($videocount > $vbulletin->userinfo['permissions']['sigmaxvideos'])
+			{
+				$vbulletin->GPC['preview'] = true;
+				$errors[] = fetch_error('toomanyvideos', $videocount, $vbulletin->userinfo['permissions']['sigmaxvideos']);
+			}
 		}
 	}
 
@@ -2687,7 +2703,7 @@ if ($_POST['do'] == 'updatesignature')
 		{
 			$vbulletin->url = 'usercp.php' . $vbulletin->session->vars['sessionurl_q'];
 		}
-		eval(print_standard_redirect('redirect_updatethanks'));
+		print_standard_redirect(array('redirect_updatethanks',$vbulletin->userinfo['username']));  
 	}
 }
 
@@ -2747,7 +2763,7 @@ if ($_POST['do'] == 'updatesigpic')
 	($hook = vBulletinHook::fetch_hook('profile_updatesigpic_complete')) ? eval($hook) : false;
 
 	$vbulletin->url = 'profile.php?' . $vbulletin->session->vars['sessionurl'] . 'do=editsignature#sigpic';
-	eval(print_standard_redirect('redirect_updatethanks'));
+	print_standard_redirect(array('redirect_updatethanks',$vbulletin->userinfo['username']));  
 }
 
 // ############################ start edit signature ##########################
@@ -3309,7 +3325,7 @@ if ($_POST['do'] == 'updateavatar')
 	$userdata->save();
 
 	$vbulletin->url = 'profile.php?' . $vbulletin->session->vars['sessionurl'] . 'do=editavatar';
-	eval(print_standard_redirect('redirect_updatethanks'));
+	print_standard_redirect(array('redirect_updatethanks',$vbulletin->userinfo['username']));  
 
 }
 
@@ -3365,7 +3381,7 @@ if ($_POST['do'] == 'updateprofilepic')
 	($hook = vBulletinHook::fetch_hook('profile_updateprofilepic_complete')) ? eval($hook) : false;
 
 	$vbulletin->url = 'profile.php?' . $vbulletin->session->vars['sessionurl'] . 'do=editprofilepic';
-	eval(print_standard_redirect('redirect_updatethanks'));
+	print_standard_redirect(array('redirect_updatethanks',$vbulletin->userinfo['username']));  
 }
 
 // ############################### start choose displayed usergroup ###############################
@@ -3416,7 +3432,7 @@ if ($_POST['do'] == 'updatedisplaygroup')
 
 			$userdata->save();
 
-			eval(print_standard_redirect('usergroup_displaygroupupdated'));
+			print_standard_redirect(array('usergroup_displaygroupupdated',$display_usergroup['title']));  
 		}
 		else
 		{
@@ -3484,7 +3500,7 @@ if ($_POST['do'] == 'leavegroup')
 
 			$userdata->save();
 
-			eval(print_standard_redirect('usergroup_nolongermember'));
+			print_standard_redirect('usergroup_nolongermember');  
 		}
 	}
 
@@ -3506,7 +3522,7 @@ if ($_POST['do'] == 'insertjoinrequest')
 	if ($request = $db->query_first("SELECT * FROM " . TABLE_PREFIX . "usergrouprequest WHERE userid=" . $vbulletin->userinfo['userid'] . " AND usergroupid=" . $vbulletin->GPC['usergroupid']))
 	{
 		// request already exists, just say okay...
-		eval(print_standard_redirect('usergroup_requested'));
+		print_standard_redirect('usergroup_requested');  
 	}
 	else
 
@@ -3519,7 +3535,7 @@ if ($_POST['do'] == 'insertjoinrequest')
 			VALUES
 				(" . $vbulletin->userinfo['userid'] . ", " . $vbulletin->GPC['usergroupid'] . ", '" . $db->escape_string($vbulletin->GPC['reason']) . "', " . TIMENOW . ")
 		");
-		eval(print_standard_redirect('usergroup_requested'));
+		print_standard_redirect('usergroup_requested');  
 	}
 
 }
@@ -3550,18 +3566,23 @@ if ($_POST['do'] == 'joingroup')
 				INNER JOIN " . TABLE_PREFIX . "user AS user USING(userid)
 				WHERE ugl.usergroupid = $usergroupid
 			");
-			if ($db->num_rows($leaders))
-			{
-				// group is moderated: show join request page
 
-				$_groupleaders = array();
+			if ($db->num_rows($leaders))
+			{ // group is moderated: show join request page
+				$clc = 0;
+				$groupleaders = array();
 				while ($leader = $db->fetch_array($leaders))
 				{
-					$templater = vB_Template::create('modifyusergroups_groupleader');
-						$templater->register('leader', $leader);
-					$_groupleaders[] = $templater->render();
+					$clc++;
+					$leader['comma'] = $vbphrase['comma_space'];
+					$groupleaders[$clc] = $leader;
 				}
-				$groupleaders = implode(', ', $_groupleaders);
+
+				// Last element
+				if ($clc) 
+				{
+					$groupleaders[$clc]['comma'] = '';
+				}
 
 				$navbits['profile.php?' . $vbulletin->session->vars['sessionurl'] . 'do=editusergroups'] = $vbphrase['group_memberships'];
 				$navbits[''] = $vbphrase['join_request'];
@@ -3590,7 +3611,7 @@ if ($_POST['do'] == 'joingroup')
 				$userdata->save();
 
 				$usergroupname = $usergroup['title'];
-				eval(print_standard_redirect('usergroup_welcome'));
+				print_standard_redirect(array('usergroup_welcome',$usergroupname));  
 			}
 
 		}
@@ -3721,18 +3742,24 @@ if ($_REQUEST['do'] == 'editusergroups')
 			foreach ($groups['notmember'] AS $usergroupid => $usergroup)
 			{
 				$joinrequested = 0;
-				exec_switch_bg();
+				$groupleaders = array();
 				if (is_array($leaders["$usergroupid"]))
 				{
-					$_groupleaders = array();
+					$clc = 0;
+					$ismoderated = 1;
 					foreach ($leaders["$usergroupid"] AS $leader)
 					{
-						$templater = vB_Template::create('modifyusergroups_groupleader');
-						$templater->register('leader', $leader);
-					$_groupleaders[] = $templater->render();
+						$clc++;
+						$leader['comma'] = $vbphrase['comma_space'];
+						$groupleaders[$clc] = $leader;
 					}
-					$ismoderated = 1;
-					$groupleaders = implode(', ', $_groupleaders);
+
+					// Last element
+					if ($clc) 
+					{
+						$groupleaders[$clc]['comma'] = '';
+					}
+
 					if (isset($requests["$usergroupid"]))
 					{
 						$joinrequest = $requests["$usergroupid"];
@@ -3742,10 +3769,8 @@ if ($_REQUEST['do'] == 'editusergroups')
 					}
 				}
 				else
-
 				{
 					$ismoderated = 0;
-					$groupleaders = '';
 				}
 
 				($hook = vBulletinHook::fetch_hook('profile_editusergroups_nonmemberbit')) ? eval($hook) : false;
@@ -3909,7 +3934,7 @@ if ($_POST['do'] == 'deleteusergroups')
 			}
 
 			$vbulletin->url = 'memberlist.php?' . $vbulletin->session->vars['sessionurl'] . 'usergroupid=' . $vbulletin->GPC['usergroupid'];
-			eval(print_standard_redirect('redirect_removedusers'));
+			print_standard_redirect('redirect_removedusers');  
 		}
 		else
 		{
@@ -3964,7 +3989,7 @@ if ($_POST['do'] == 'deleteattachments')
 	($hook = vBulletinHook::fetch_hook('profile_deleteattachments_complete')) ? eval($hook) : false;
 
 	$vbulletin->url = 'profile.php?' . $vbulletin->session->vars['sessionurl'] . 'do=editattachments&amp;pp=' . $vbulletin->GPC['perpage'] . '&amp;page=' . $vbulletin->GPC['pagenumber'] . '&amp;showthumbs=' . $vbulletin->GPC['showthumbs'] . '&amp;u=' . $vbulletin->GPC['userid'];
-	eval(print_standard_redirect('redirect_attachdel'));
+	print_standard_redirect('redirect_attachdel');  
 
 }
 
@@ -4280,7 +4305,7 @@ if ($_POST['do'] == 'docustomize')
 	{
 		$usercss->save();
 		$vbulletin->url = "profile.php?"  . $vbulletin->session->vars['sessionurl'] . "do=customize";
-		eval(print_standard_redirect('usercss_saved'));
+		print_standard_redirect('usercss_saved');  
 	}
 	else if (!empty($usercss->error))
 	{
@@ -4497,9 +4522,6 @@ if ($_REQUEST['do'] == 'customize')
 
 	if ($usercssbits)
 	{
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 		$types = vB_Types::instance();
 		$contenttypeid = $types->getContentTypeID('vBForum_Album');
 
@@ -4708,7 +4730,7 @@ if ($_POST['do'] == 'doprivacy')
 	}
 
 	$vbulletin->url = "profile.php?"  . $vbulletin->session->vars['sessionurl'] . "do=privacy";
-	eval(print_standard_redirect('profile_privacy_saved'));
+	print_standard_redirect('profile_privacy_saved');  
 }
 
 // #######################################################################
@@ -4785,7 +4807,7 @@ if ($_POST['do'] == 'dismissnotice')
 		");
 	}
 
-	eval(print_standard_redirect('redirect_notice_dismissed'));
+	print_standard_redirect('redirect_notice_dismissed');  
 }
 
 // #############################################################################
@@ -4824,7 +4846,6 @@ if (!empty($page_templater))
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45788 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/

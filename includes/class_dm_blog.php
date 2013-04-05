@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -21,8 +21,8 @@ require_once(DIR . '/includes/functions_newpost.php');
 * Base data manager for blogs and blogtexts. Uninstantiable.
 *
 * @package	vBulletin
-* @version	$Revision: 44481 $
-* @date		$Date: 2011-06-15 10:15:36 -0700 (Wed, 15 Jun 2011) $
+* @version	$Revision: 62622 $
+* @date		$Date: 2012-05-15 16:58:45 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_Blog_Abstract extends vB_DataManager
 {
@@ -372,6 +372,7 @@ class vB_DataManager_Blog_Abstract extends vB_DataManager
 		}
 
 		$this->registry->options['maximages'] = $this->table == 'blog' ? $this->registry->options['vbblog_entrymaximages'] : $this->registry->options['vbblog_commentmaximages'];
+		$this->registry->options['maxvideos'] = $this->table == 'blog' ? $this->registry->options['vbblog_entrymaxvideos'] : $this->registry->options['vbblog_commentmaxvideos'];
 		if (!$this->verify_image_count('pagetext', 'allowsmilie', ($this->table == 'blog' ? 'blog_entry' : 'blog_comment'), 'blog_text'))
 		{
 			return false;
@@ -505,6 +506,7 @@ class vB_DataManager_Blog extends vB_DataManager_Blog_Abstract
 		'firstblogtextid'      => array(TYPE_UINT,       REQ_NO),
 		'userid'               => array(TYPE_UINT,       REQ_NO,    VF_METHOD),
 		'dateline'             => array(TYPE_UNIXTIME,   REQ_AUTO),
+		'postercount'          => array(TYPE_UINT,       REQ_AUTO),
 		'comments_visible'     => array(TYPE_UINT,       REQ_AUTO),
 		'comments_moderation'  => array(TYPE_UINT,       REQ_NO),
 		'comments_deleted'     => array(TYPE_UINT,       REQ_NO),
@@ -649,37 +651,28 @@ class vB_DataManager_Blog extends vB_DataManager_Blog_Abstract
 				vb_Search_Indexcontroller_Queue::indexQueue('vBBlog', 'BlogComment', 'delete_group', $blogid);
 
 				/* NOTE: There queries are all used in the post delete function in class_dm_blog_user.php, if you add another please add it there too */
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_categoryuser WHERE blogid = $blogid
-				");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "blog_categoryuser WHERE blogid = $blogid");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "blog_deletionlog WHERE primaryid = $blogid AND type = 'blogid'");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "blog_moderation WHERE primaryid = $blogid AND type = 'blogid'");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "blog_pinghistory WHERE blogid = $blogid");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "blog_rate WHERE blogid = $blogid");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "blog_read WHERE blogid = $blogid");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "blog_subscribeentry WHERE blogid = $blogid");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "blog_tachyentry WHERE blogid = $blogid");
 
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_deletionlog WHERE primaryid = $blogid AND type = 'blogid'
+				$textids = array();
+				$comments = $db->query_read("
+					SELECT blogtextid
+					FROM " . TABLE_PREFIX . "blog_text
+					WHERE blogid = $blogid
 				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_moderation WHERE primaryid = $blogid AND type = 'blogid'
-				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_pinghistory WHERE blogid = $blogid
-				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_rate WHERE blogid = $blogid
-				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_read WHERE blogid = $blogid
-				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_subscribeentry WHERE blogid = $blogid
-				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_tachyentry WHERE blogid = $blogid
-				");
+				while ($comment = $db->fetch_array($comments))
+				{
+					$textids[] = $comment['blogtextid'];
+				}
+				$activity = new vB_ActivityStream_Manage('blog', 'comment');
+				$activity->set('contentid', $textids);
+				$activity->delete();
 
 				// 4.0 doesn't like aliases, 4.1 requires the alias be used :rolleyes:!!!
 				$db->query_write("
@@ -692,13 +685,8 @@ class vB_DataManager_Blog extends vB_DataManager_Blog_Abstract
 					WHERE " . TABLE_PREFIX . "blog_text.blogid = $blogid
 				");
 
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_trackback WHERE blogid = $blogid
-				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "blog_views WHERE blogid = $blogid
-				");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "blog_trackback WHERE blogid = $blogid");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "blog_views WHERE blogid = $blogid");
 
 				$db->query_write("
 					DELETE FROM " . TABLE_PREFIX . "blog_hash
@@ -710,18 +698,16 @@ class vB_DataManager_Blog extends vB_DataManager_Blog_Abstract
 				$content = vB_Taggable_Content_Item::create($this->registry, "vBBlog_BlogEntry", $blogid);
 				$content->delete_tag_attachments();
 
-				require_once(DIR . '/includes/class_bootstrap_framework.php');
-				require_once(DIR . '/vb/types.php');
-				vB_Bootstrap_Framework::init();
 				$contenttypeid = vB_Types::instance()->getContentTypeID('vBBlog_BlogEntry');
 
 				$attachdata =& datamanager_init('Attachment', $this->registry, ERRTYPE_SILENT, 'attachment');
 				$attachdata->condition = "a.contentid = $blogid AND a.contenttypeid = " . intval($contenttypeid);
 				$attachdata->delete(true, false);
 
-				$db->query_write("
-					DELETE  FROM " . TABLE_PREFIX . "blog WHERE blogid = $blogid
-				");
+				$db->query_write("DELETE  FROM " . TABLE_PREFIX . "blog WHERE blogid = $blogid");
+				$activity = new vB_ActivityStream_Manage('blog', 'entry');
+				$activity->set('contentid', $blogid);
+				$activity->delete();
 
 				if (!$this->info['skip_moderator_log'])
 				{
@@ -762,9 +748,6 @@ class vB_DataManager_Blog extends vB_DataManager_Blog_Abstract
 
 				if (!$this->info['keep_attachments'])
 				{
-					require_once(DIR . '/includes/class_bootstrap_framework.php');
-					require_once(DIR . '/vb/types.php');
-					vB_Bootstrap_Framework::init();
 					$contenttypeid = vB_Types::instance()->getContentTypeID('vBBlog_BlogEntry');
 
 					$attachdata =& datamanager_init('Attachment', $this->registry, ERRTYPE_SILENT, 'attachment');
@@ -915,8 +898,8 @@ class vB_DataManager_Blog extends vB_DataManager_Blog_Abstract
 * Class to do data save/delete operations for BLOGs
 *
 * @package	vBulletin
-* @version	$Revision: 44481 $
-* @date		$Date: 2011-06-15 10:15:36 -0700 (Wed, 15 Jun 2011) $
+* @version	$Revision: 62622 $
+* @date		$Date: 2012-05-15 16:58:45 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_BlogText extends vB_DataManager_Blog_Abstract
 {
@@ -1006,12 +989,12 @@ class vB_DataManager_BlogText extends vB_DataManager_Blog_Abstract
 			else
 			{
 				//if feels like chaning the format of this url is a bad idea, so we'll force it to basic.
-				//we don't have the blog title and we won't use it for basic urls anyway, but if we switch 
+				//we don't have the blog title and we won't use it for basic urls anyway, but if we switch
 				//the format we'll need to fix that.
 				require_once(DIR . '/includes/class_friendly_url.php');
-				$akismet_url = vB_Friendly_Url::fetchLibrary($vbulletin, 'blog|nosession|bburl', 
+				$akismet_url = vB_Friendly_Url::fetchLibrary($this->registry, 'blog|nosession|bburl',
 					array('userid' => $this->fetch_field('bloguserid')));
-				$akismet_url = $akismet_url->get_url(FRIENDLY_URL_OFF);		
+				$akismet_url = $akismet_url->get_url(FRIENDLY_URL_OFF);
 
 				$akismet_key = $this->info['akismet_key'];
 			}
@@ -1073,6 +1056,32 @@ class vB_DataManager_BlogText extends vB_DataManager_Blog_Abstract
 			{
 				$blog->set('comments_visible', 'comments_visible + 1', false);
 
+				/*
+				 * Yes this will miss one unqiue user if this very post is their
+				 * first. I choose to take this over running this query after the save
+				 * which means I have to run a second update query on thread. This value
+				 * is only used for the activity stream popularity where exactness
+				 * is not required.
+				 */
+				if (!in_coventry($userid, true))
+				{
+					require_once(DIR . '/includes/functions_bigthree.php');
+					$coventry = fetch_coventry('string');
+					$uniques = $this->registry->db->query_first("
+						SELECT COUNT(DISTINCT(userid)) AS total
+						FROM " . TABLE_PREFIX . "blog_text
+						WHERE
+							blogid = $blogid
+								AND
+							state = 'visible'
+							" . ($coventry ? "AND userid NOT IN ($coventry)" : "") . "
+					");
+					if (!$uniques['total'])
+					{
+						$uniques['total'] = 1;
+					}
+					$blog->set('postercount', $uniques['total']);
+				}
 
 				if (in_coventry($userid, true))
 				{
@@ -1267,7 +1276,7 @@ class vB_DataManager_BlogText extends vB_DataManager_Blog_Abstract
 
 							($hook = vBulletinHook::fetch_hook('blog_post_notification_message')) ? eval($hook) : false;
 
-							//these will get automagically used by the email phrase when the eval below is triggered. 
+							//these will get automagically used by the email phrase when the eval below is triggered.
 							$blog_entry_url = fetch_seo_url('entry|bburl|nosession|js', $this->info['blog'], array('goto' => 'newpost'));
 							$blog_unsub_url = fetch_seo_url('blogsub|nosession|js|bburl', array(), array(
 								'do' => 'unsubscribe',
@@ -1334,6 +1343,16 @@ class vB_DataManager_BlogText extends vB_DataManager_Blog_Abstract
 
 		// Email blog owner here based on their settings
 
+		if (!$this->condition)
+		{
+			$activity = new vB_ActivityStream_Manage('blog', 'comment');
+			$activity->set('contentid', $blogtextid);
+			$activity->set('userid', $userid);
+			$activity->set('dateline', $this->fetch_field('dateline'));
+			$activity->set('action', 'create');
+			$activity->save();
+		}
+
 		($hook = vBulletinHook::fetch_hook('blog_textdata_postsave')) ? eval($hook) : false;
 	}
 
@@ -1377,6 +1396,10 @@ class vB_DataManager_BlogText extends vB_DataManager_Blog_Abstract
 				{
 					blog_moderator_action($this->existing, 'comment_x_by_y_removed', array($this->existing['title'], $this->existing['username']));
 				}
+
+				$activity = new vB_ActivityStream_Manage('blog', 'comment');
+				$activity->set('contentid', $blogtextid);
+				$activity->delete();
 			}
 			else
 			{
@@ -1434,8 +1457,8 @@ class vB_DataManager_BlogText extends vB_DataManager_Blog_Abstract
 * Class to do data save options for Blogs
 *
 * @package	vBulletin
-* @version	$Revision: 44481 $
-* @date		$Date: 2011-06-15 10:15:36 -0700 (Wed, 15 Jun 2011) $
+* @version	$Revision: 62622 $
+* @date		$Date: 2012-05-15 16:58:45 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_Blog_Firstpost extends vB_DataManager_Blog
 {
@@ -1459,6 +1482,7 @@ class vB_DataManager_Blog_Firstpost extends vB_DataManager_Blog
 		'pending'              => array(TYPE_UINT,       REQ_NO),
 		'postedby_userid'      => array(TYPE_UINT,       REQ_NO,    VF_METHOD),
 		'postedby_username'    => array(TYPE_UINT,       REQ_NO),
+		'notify'			   => array(TYPE_UINT, 		 REQ_NO),
 		// shared fields
 		'blogid'               => array(TYPE_UINT,       REQ_INCR,  VF_METHOD, 'verify_nonzero'),
 		'userid'               => array(TYPE_UINT,       REQ_NO,    VF_METHOD),
@@ -1713,6 +1737,12 @@ class vB_DataManager_Blog_Firstpost extends vB_DataManager_Blog
 			}
 		}
 
+		if ($this->fetch_field('state') == 'draft' AND $this->info['notify'])
+		{
+			$this->error('cant_notify_drafts_entries');
+			return false;
+		}
+
 		// Check flood time
 		if ($this->fetch_field('pending') AND $this->registry->options['floodchecktime'] > 0 AND empty($this->info['skip_floodcheck']) AND !can_moderate_blog() AND $this->fetch_field('userid'))
 		{
@@ -1825,6 +1855,17 @@ class vB_DataManager_Blog_Firstpost extends vB_DataManager_Blog
 			$userdata->save();
 		}
 
+		// Insert Activity
+		if (((!$this->condition AND !$this->fetch_field('pending')) OR $this->info['send_notification']) AND ($this->fetch_field('state') == 'visible' OR $this->fetch_field('state') == 'moderation'))
+		{
+			$activity = new vB_ActivityStream_Manage('blog', 'entry');
+			$activity->set('contentid', $blogid);
+			$activity->set('userid', $postedby_userid);
+			$activity->set('dateline', $this->fetch_field('dateline'));
+			$activity->set('action', 'create');
+			$activity->save();
+		}
+
 		// Send Email Notification
 		if (((!$this->condition AND !$this->fetch_field('pending')) OR $this->info['send_notification']) AND ($this->fetch_field('state') == 'visible' OR $this->fetch_field('state') == 'moderation') AND $this->registry->options['enableemail'])
 		{
@@ -1898,7 +1939,7 @@ class vB_DataManager_Blog_Firstpost extends vB_DataManager_Blog
 			vbmail_start();
 
 			$setoptions = $this->fetch_field('options');
-			
+
 
 
 			$evalemail = array();
@@ -2001,7 +2042,7 @@ class vB_DataManager_Blog_Firstpost extends vB_DataManager_Blog
 
 				($hook = vBulletinHook::fetch_hook('blog_user_notification_message')) ? eval($hook) : false;
 
-				//this will automagically be used when we evail the email phrases below.  
+				//this will automagically be used when we evail the email phrases below.
 				$blog_url = fetch_seo_url('blog|nosession|js|bburl', array('userid' => $this->fetch_field('userid'), 'blog_title' => $blogtitle));
 				$blog_unsub_url = fetch_seo_url('blogsub|nosession|js|bburl', array(), array(
 					'do' => 'unsubscribe',
@@ -2056,8 +2097,7 @@ class vB_DataManager_Blog_Firstpost extends vB_DataManager_Blog
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 44481 $
+|| # SVN: $Revision: 62622 $
 || ####################################################################
 \*======================================================================*/
 ?>

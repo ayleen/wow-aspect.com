@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -47,6 +47,16 @@ class vBForum_Search_SearchController_NewPost extends vB_Search_SearchController
 			$excluded_forumids = $notequals_filter['forumid'];
 		}
 
+		foreach ($forumids as $forumid) 
+		{
+			$forum = & $vbulletin->forumcache["$forumid"];
+
+			if($forum['link'] OR !($forum['options'] & $vbulletin->bf_misc_forumoptions['indexposts']))
+			{
+				$excluded_forumids[] = $forumid;
+			}
+		}
+			
 		$forumids = array_diff($forumids, $excluded_forumids, $user->getUnsearchableForums());
 
 		$results = array();
@@ -237,7 +247,6 @@ class vBForum_Search_SearchController_NewPost extends vB_Search_SearchController
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28694 $
 || ####################################################################
 \*======================================================================*/

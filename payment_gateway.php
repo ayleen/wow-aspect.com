@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -34,9 +34,7 @@ $actiontemplates = array();
 // ######################### REQUIRE BACK-END ############################
 define('VB_AREA', 'Subscriptions');
 define('CWD', (($getcwd = getcwd()) ? $getcwd : '.'));
-define('VB_API', false);
 require_once(CWD . '/includes/init.php');
-
 require_once(DIR . '/includes/adminfunctions.php');
 require_once(DIR . '/includes/class_paid_subscription.php');
 
@@ -162,7 +160,7 @@ if (!empty($api) AND $api['active'])
 					{
 						$vbulletin->url = $vbulletin->options['bburl'] . '/payments.php';
 
-						eval(print_standard_redirect('payment_complete', true, true));
+						print_standard_redirect('payment_complete', true, true);  
 					}
 				}
 				else if ($apiobj->type == 2)
@@ -180,7 +178,7 @@ if (!empty($api) AND $api['active'])
 				if ($apiobj->display_feedback)
 				{
 					$vbulletin->url = $vbulletin->options['bburl'] . '/payments.php';
-					eval(print_standard_redirect('payment_complete', true, true));
+					print_standard_redirect('payment_complete', true, true);  
 				}
 			}
 			else
@@ -188,7 +186,7 @@ if (!empty($api) AND $api['active'])
 				if ($apiobj->display_feedback)
 				{
 					$vbulletin->url = $vbulletin->options['bburl'] . '/payments.php';
-					eval(print_standard_redirect('payment_complete', true, true));
+					print_standard_redirect('payment_complete', true, true);  
 				}
 			}
 		}
@@ -222,8 +220,7 @@ else
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 43914 $
+|| # CVS: $RCSfile$ - $Revision: 50189 $
 || ####################################################################
 \*======================================================================*/
 ?>

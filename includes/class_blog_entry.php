@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -405,7 +405,7 @@ class vB_Blog_Entry
 			$this->blog['permissions'] =& $this->factory->perm_cache["{$this->blog['userid']}"];
 		}
 
-		fetch_avatar_html($this->blog);
+		fetch_avatar_html($this->blog, true);
 		fetch_profilepic_html($this->blog);
 
 		$show['subscribelink'] = ($this->blog['userid'] != $this->registry->userinfo['userid'] AND $this->registry->userinfo['userid']);
@@ -649,7 +649,7 @@ class vB_Blog_Entry
 		}
 
 		$show['category'] = true;
-		$this->blog['categorybits'] = implode(', ', $categorybits);
+		$this->blog['categorybits'] = implode($vbphrase['comma_space'], $categorybits);
 
 		$show['trackback_moderation'] = ($this->blog['trackback_moderation'] AND ($this->blog['userid'] == $this->registry->userinfo['userid'] OR can_moderate_blog('canmoderatecomments'))) ? true : false;
 		$show['comment_moderation'] = ($this->blog['hidden'] AND ($this->blog['userid'] == $this->registry->userinfo['userid'] OR can_moderate_blog('canmoderatecomments'))) ? true : false;
@@ -877,8 +877,7 @@ class vB_Blog_Entry_External extends vB_Blog_Entry
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 41381 $
+|| # SVN: $Revision: 57655 $
 || ####################################################################
 \*======================================================================*/
 ?>

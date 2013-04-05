@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
    || #################################################################### ||
-   || # vBulletin Blog 4.1.5 Patch Level 1 
+   || # vBulletin Blog 4.2.0 Patch Level 3
    || # ---------------------------------------------------------------- # ||
-   || # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+   || # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
    || # This file may not be redistributed in whole or significant part. # ||
    || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
    || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -30,9 +30,7 @@ if (!count($phrasegroups))
 require_once('./global.php');
 require_once(DIR . '/includes/adminfunctions_cms.php');
 require_once(DIR . '/includes/functions_cms_layout.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
 require_once(DIR . '/packages/vbcms/contentmanager.php');
-vB_Bootstrap_Framework::init();
 
 if (!isset($vbulletin->userinfo['permissions']['cms']))
 {
@@ -186,19 +184,12 @@ switch($vbulletin->GPC['do'])
 		}
 		break;
 
-
-
 	case 'clear_cache':
+		/* This is now located in misc.php and called from the maintenance 
+		section, because the cache is now used by functions outside of the CMS.
+		Nothing should actually call this, but just in case, display a message. */
 		print_cp_header($vbphrase['vbcms']);
-		if (method_exists(vB_Cache::instance(), 'clean'))
-		{
-			vB_Cache::instance()->clean(false);
-			print_cp_message($vbphrase['cache_cleared']);
-		}
-		else
-		{
-			print_cp_message($vbphrase['no_cache_clean']);
-		}
+		print_cp_message($vbphrase['no_cache_clean']);
 		print_cp_footer();
 		break;
 
@@ -484,7 +475,6 @@ switch($vbulletin->GPC['do'])
 
 /*======================================================================*\
    || ####################################################################
-   || # 
    || # SVN: $Revision: 27874 $
    || ####################################################################
    \*======================================================================*/

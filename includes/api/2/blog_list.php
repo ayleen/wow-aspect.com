@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -17,8 +17,8 @@ $VB_API_WHITELIST = array(
 			'blogheader',
 			'featured_blogbits' => array(
 				'*' => array(
-					'blog' => $VB_API_WHITELIST_COMMON['blog'],
-					'show' => array('postcomment')
+					'blog' => $VB_API_WHITELIST_COMMON['blog'], 'status',
+					'show' => array('postcomment', 'status')
 				)
 			), 'display',
 			'recentblogbits' => array(
@@ -38,8 +38,8 @@ $VB_API_WHITELIST = array(
 			),
 			'blogbits' => array(
 				'*' => array(
-					'blog' => $VB_API_WHITELIST_COMMON['blog'],
-					'show' => array('postcomment')
+					'blog' => $VB_API_WHITELIST_COMMON['blog'], 'status',
+					'show' => array('postcomment', 'status')
 				)
 			), 'blogcategoryid', 'blogtype',
 			'categoryinfo', 'day', 'month', 'pagenav', 'selectedfilter',
@@ -63,7 +63,6 @@ vB_APICallback::instance()->add('result_prerender', 'api_result_prerender_2', 2)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35584 $
 || ####################################################################
 \*======================================================================*/

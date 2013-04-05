@@ -23,12 +23,12 @@
 	//	This is the type of the database server on which your vBulletin database will be located.
 	//	Valid options are mysql and mysqli, for slave support add _slave.  Try to use mysqli if you are using PHP 5 and MySQL 4.1+
 	// for slave options just append _slave to your preferred database type.
-$config['Database']['dbtype'] = 'mysql';
+$config['Database']['dbtype'] = 'mysqli';
 
 	//	****** DATABASE NAME ******
 	//	This is the name of the database where your vBulletin will be located.
 	//	This must be created by your webhost.
-$config['Database']['dbname'] = 'p28587_db';
+$config['Database']['dbname'] = 'wowaspect';
 
 	//	****** TABLE PREFIX ******
 	//	Prefix that your vBulletin tables have in the database.
@@ -53,14 +53,14 @@ $config['Database']['force_sql_mode'] = false;
 	//
 	//	Note: If you are using IIS 7+ and MySQL is on the same machine, you 
 	//	need to use 127.0.0.1 instead of localhost
-$config['MasterServer']['servername'] = 'p28587.mysql.ihc.ru';
+$config['MasterServer']['servername'] = 'eu-cdbr-azure-west-b.cloudapp.net';
 $config['MasterServer']['port'] = 3306;
 
 	//	****** MASTER DATABASE USERNAME & PASSWORD ******
 	//	This is the username and password you use to access MySQL.
 	//	These must be obtained through your webhost.
-$config['MasterServer']['username'] = 'p28587_db';
-$config['MasterServer']['password'] = 'E4GQbH';
+$config['MasterServer']['username'] = 'b0a1652be24736';
+$config['MasterServer']['password'] = 'fed50af9';
 
 	//	****** MASTER DATABASE PERSISTENT CONNECTIONS ******
 	//	This option allows you to turn persistent connections to MySQL on or off.

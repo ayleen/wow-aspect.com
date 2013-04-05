@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -84,6 +84,16 @@ function build_bbcode_video($checktable = false)
 
 	$final = implode("\r\n", $template);
 
+	$vbulletin->db->query_write("
+		DELETE FROM " . TABLE_PREFIX . "template
+		WHERE
+			title = 'bbcode_video'
+			AND
+			product IN ('', 'vbulletin')
+			AND
+			styleid = 0
+	");
+
 	require_once(DIR . '/includes/adminfunctions_template.php');
 	if ($exists = $vbulletin->db->query_first_slave("
 		SELECT templateid
@@ -121,6 +131,49 @@ function build_bbcode_video($checktable = false)
 					'" . $vbulletin->db->escape_string($vbulletin->userinfo['username']) . "',
 					'template',
 					'-1',
+					'bbcode_video',
+					'vbulletin',
+					'" . $vbulletin->options['templateversion'] . "'
+				)
+		");
+	}
+
+	if ($exists = $vbulletin->db->query_first_slave("
+		SELECT templateid
+		FROM " . TABLE_PREFIX . "template
+		WHERE
+			title = 'bbcode_video'
+				AND
+			product IN ('', 'vbulletin')
+				AND
+			styleid = -2
+		"))
+	{
+		$vbulletin->db->query_write("
+			UPDATE " . TABLE_PREFIX . "template
+			SET
+				template = '" . $vbulletin->db->escape_string(compile_template($final)) . "',
+				template_un = '" . $vbulletin->db->escape_string($final) . "',
+				dateline = " . TIMENOW . ",
+				username = '" . $vbulletin->db->escape_string($vbulletin->userinfo['username']) . "',
+				version = '" . $vbulletin->options['templateversion'] . "'
+			WHERE
+				templateid = $exists[templateid]
+		");
+	}
+	else
+	{
+		$vbulletin->db->query_write("
+			REPLACE INTO " . TABLE_PREFIX . "template
+				(template, template_un, dateline, username, templatetype, styleid, title, product, version)
+			VALUES
+				(
+					'" . $vbulletin->db->escape_string(compile_template($final)) . "',
+					'" . $vbulletin->db->escape_string($final) . "',
+					" . TIMENOW . ",
+					'" . $vbulletin->db->escape_string($vbulletin->userinfo['username']) . "',
+					'template',
+					'-2',
 					'bbcode_video',
 					'vbulletin',
 					'" . $vbulletin->options['templateversion'] . "'
@@ -444,7 +497,7 @@ function build_thread_counters($threadid)
 		LEFT JOIN " . TABLE_PREFIX . "user AS user ON (user.userid = post.userid)
 		WHERE post.threadid = $threadid AND
 			post.visible = 1
-		ORDER BY dateline, postid
+		ORDER BY dateline
 		LIMIT 1
 	");
 
@@ -459,6 +512,7 @@ function build_thread_counters($threadid)
 
 	$replies = $vbulletin->db->query_first("
 		SELECT
+			COUNT(DISTINCT(userid)) AS postercount,
 			SUM(IF(visible = 1, attach, 0)) AS attachsum,
 			SUM(IF(visible = 1, 1, 0)) AS visible,
 			SUM(IF(visible = 0, 1, 0)) AS hidden,
@@ -518,6 +572,20 @@ function build_thread_counters($threadid)
 		ORDER BY dateline DESC
 		LIMIT 1
 	");
+
+	$uniques = $vbulletin->db->query_first("
+		SELECT COUNT(DISTINCT(userid)) AS total
+		FROM " . TABLE_PREFIX . "post
+		WHERE
+			threadid = $threadid
+				AND
+			visible = 1
+			" . ($coventry ? "AND userid NOT IN ($coventry)" : "") . "
+	");
+	if (!$uniques['total'])
+	{
+		$uniques['total'] = 1;
+	}
 
 	if ($lastpost AND $coventry)
 	{
@@ -622,6 +690,7 @@ function build_thread_counters($threadid)
 	$threadman->set('lastpostid',   $lastpostid, true, false);
 	$threadman->set('votenum',      $ratings['votenum'], true, false);
 	$threadman->set('votetotal',    intval($ratings['votetotal']), true, false);
+	$threadman->set('postercount',  $uniques['total']);
 	$threadman->save();
 
 }
@@ -1102,8 +1171,6 @@ function delete_thread($threadid, $countposts = true, $physicaldel = true, $deli
 
 		if ($physicaldel)
 		{
-			delete_post_index($post['postid']); //remove search engine entries
-
 			// mark posts that are in the inline moderation cookie
 			if (!empty($plist["$post[postid]"]))
 			{
@@ -1142,9 +1209,6 @@ function delete_thread($threadid, $countposts = true, $physicaldel = true, $deli
 	{
 		if ($physicaldel OR (!$delinfo['keepattachments'] AND can_moderate($threadinfo['forumid'], 'canremoveposts')))
 		{
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			require_once(DIR . '/vb/types.php');
-			vB_Bootstrap_Framework::init();
 			$types = vB_Types::instance();
 			$contenttypeid = intval($types->getContentTypeID('vBForum_Post'));
 
@@ -1202,6 +1266,14 @@ function delete_thread($threadid, $countposts = true, $physicaldel = true, $deli
 		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "deletionlog WHERE type= 'post' AND primaryid IN (" . implode(", ", $postids) . ")");
 		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "podcastitem WHERE postid = " . intval($threadinfo['firstpostid']));
 
+		$activity = new vB_ActivityStream_Manage('forum', 'post');
+		$activity->set('contentid', $postids);
+		$activity->delete();
+
+		$activity = new vB_ActivityStream_Manage('cms', 'comment');
+		$activity->set('contentid', $postids);
+		$activity->delete();
+
 		// remove deleted posts from inline moderation cookie
 		if (!empty($removepostid) AND !headers_sent())
 		{
@@ -1239,6 +1311,10 @@ function delete_thread($threadid, $countposts = true, $physicaldel = true, $deli
 	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "subscribethread WHERE threadid = $threadid");
 	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "tachythreadpost WHERE threadid = $threadid");
 	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "tachythreadcounter WHERE threadid = $threadid");
+
+	$activity = new vB_ActivityStream_Manage('forum', 'thread');
+	$activity->set('contentid', $threadid);
+	$activity->delete();
 
 	require_once(DIR . '/includes/class_taggablecontent.php');
 	$content = vB_Taggable_Content_Item::create($vbulletin, "vBForum_Thread",	$threadid, $threadinfo);
@@ -1341,9 +1417,6 @@ function delete_post($postid, $countposts = true, $threadid = 0, $physicaldel = 
 		{
 			if ($physicaldel OR (!$delinfo['keepattachments'] AND can_moderate($threadinfo['forumid'], 'canremoveposts')))
 			{
-				require_once(DIR . '/includes/class_bootstrap_framework.php');
-				require_once(DIR . '/vb/types.php');
-				vB_Bootstrap_Framework::init();
 				$types = vB_Types::instance();
 				$contenttypeid = intval($types->getContentTypeID('vBForum_Post'));
 
@@ -1430,7 +1503,7 @@ function delete_post($postid, $countposts = true, $threadid = 0, $physicaldel = 
 				FROM " . TABLE_PREFIX . "post
 				WHERE threadid = $postinfo[threadid] AND
 				parentid = $postid
-				ORDER BY dateline, postid
+				ORDER BY dateline
 				LIMIT 1
 			"))
 			{
@@ -1457,8 +1530,6 @@ function delete_post($postid, $countposts = true, $threadid = 0, $physicaldel = 
 		$deletiondata->delete();
 		unset($deletiondata, $deletioninfo);
 
-
-		delete_post_index($postid);
 		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "post WHERE postid = $postid");
 		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "postparsed WHERE postid = $postid");
 		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "editlog WHERE postid = $postid");
@@ -1466,6 +1537,15 @@ function delete_post($postid, $countposts = true, $threadid = 0, $physicaldel = 
 		//$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "reputation WHERE postid = $postid");
 		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "moderation WHERE primaryid = $postid AND type = 'reply'");
 		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "spamlog WHERE postid = $postid");
+
+		$activity = new vB_ActivityStream_Manage('forum', 'post');
+		$activity->set('contentid', $postid);
+		$activity->delete();
+
+		$activity = new vB_ActivityStream_Manage('cms', 'comment');
+		$activity->set('contentid', $postid);
+		$activity->delete();
+
 	}
 }
 
@@ -1509,221 +1589,6 @@ function is_index_word($word)
 
 }
 
-// ###################### Start indexpost #######################
-//legacy search code -- need to hunt down and remove calls to this function, but
-//for now we'll nerf it so it doesn't cause errors.
-function build_post_index($postid, $foruminfo, $firstpost = -1, $post = false)
-{
-/*
-	global $vbulletin;
-
-	if ($vbulletin->options['fulltextsearch'])
-	{
-		return;
-	}
-
-	if (!empty($post['postid']))
-	{
-		$postid = $post['postid'];
-	}
-
-	$postid = intval($postid);
-	if (!$postid)
-	{
-		// no postid, don't know what to do anyway
-		return;
-	}
-
-	if ($foruminfo['indexposts'])
-	{
-		global $vbulletin;
-		static $firstpst;
-
-		if (is_array($post))
-		{
-			if (isset($post['threadtitle']))
-			{
-				$threadinfo = array('title' => $post['threadtitle']);
-			}
-		}
-		else
-		{
-			$post = $vbulletin->db->query_first("
-				SELECT postid, post.title, pagetext, post.threadid, thread.title AS threadtitle
-				FROM " . TABLE_PREFIX . "post AS post
-				INNER JOIN " . TABLE_PREFIX . "thread AS thread USING(threadid)
-				WHERE postid = $postid
-			");
-			$threadinfo = array('title' => $post['threadtitle']);
-		}
-
-		if (isset($firstpst["$post[threadid]"]))
-		{
-			if ($firstpst["$post[threadid]"] == $postid)
-			{
-				$firstpost = 1;
-			}
-			else
-			{
-				$firstpost = 0;
-			}
-		}
-
-		if ($firstpost == -1)
-		{
-			$getfirstpost = $vbulletin->db->query_first("
-				SELECT MIN(postid) AS postid
-				FROM " . TABLE_PREFIX . "post
-				WHERE threadid = " . intval($post['threadid'])
-			);
-			if ($getfirstpost['postid'] == $postid)
-			{
-				$firstpost = 1;
-			}
-			else
-			{
-				$firstpost = 0;
-			}
-		}
-
-
-		$allwords = '';
-
-		if ($firstpost)
-		{
-			if (!is_array($threadinfo))
-			{
-				$threadinfo = $vbulletin->db->query_first("
-					SELECT title
-					FROM " . TABLE_PREFIX . "thread
-					WHERE threadid = $post[threadid]
-				");
-			}
-
-			$firstpst["$post[threadid]"] = $postid;
-			$words = fetch_postindex_text($threadinfo['title']);
-			$wordarray = split_string($words);
-			$allwords .= implode(' ', $wordarray);
-
-			foreach ($wordarray AS $word)
-			{
-				#$scores["$word"] += $vbulletin->options['threadtitlescore'];
-				$intitle["$word"] = 2;
-				$scores["$word"]++;
-			}
-		}
-
-		$words = fetch_postindex_text($post['title']);
-		$wordarray = split_string($words);
-		$allwords .= ' ' . implode(' ', $wordarray);
-
-		foreach ($wordarray AS $word)
-		{
-			#$scores["$word"] += $vbulletin->options['posttitlescore'];
-			if (empty($intitle["$word"]))
-			{
-				$intitle["$word"] = 1;
-			}
-			$scores["$word"]++;
-		}
-
-		$words = fetch_postindex_text($post['pagetext']);
-
-		$wordarray = split_string($words);
-		$allwords .= ' ' . implode(' ', $wordarray);
-
-		foreach ($wordarray AS $word)
-		{
-			$scores["$word"]++;
-		}
-
-		$getwordidsql = "title IN ('" . str_replace(" ", "','", $allwords) . "')";
-		$words = $vbulletin->db->query_read_slave("SELECT wordid, title FROM " . TABLE_PREFIX . "word WHERE $getwordidsql");
-		while ($word = $vbulletin->db->fetch_array($words))
-		{
-			$word['title'] = vbstrtolower($word['title']);
-			$wordcache["$word[title]"] = $word['wordid'];
-		}
-		$vbulletin->db->free_result($words);
-
-		$insertsql = '';
-		$newwords = '';
-		$newtitlewords = '';
-
-		foreach ($scores AS $word => $score)
-		{
-			if (!is_index_word($word))
-			{
-				unset($scores["$word"]);
-				continue;
-			}
-
-			// prevent score going over 255 for overflow control
-			if ($score > 255)
-			{
-				$scores["$word"] = 255;
-			}
-			// make sure intitle score is set
-			$intitle["$word"] = intval($intitle["$word"]);
-
-			if ($word)
-			{
-				if (isset($wordcache["$word"]))
-				{ // Does this word already exist in the word table?
-					$insertsql .= ", (" . $vbulletin->db->escape_string($wordcache["$word"]) . ", $postid, $score, $intitle[$word])"; // yes so just add a postindex entry for this post/word
-					unset($scores["$word"], $intitle["$word"]);
-				}
-				else
-				{
-					$newwords .= $word . ' '; // No so add it to the word table
-				}
-			}
-		}
-
-		if (!empty($insertsql))
-		{
-			$insertsql = substr($insertsql, 1);
-			$vbulletin->db->query_write("
-				REPLACE INTO " . TABLE_PREFIX . "postindex
-				(wordid, postid, score, intitle)
-				VALUES
-				$insertsql
-			");
-		}
-
-		$newwords = trim($newwords);
-		if ($newwords)
-		{
-			$insertwords = "('" . str_replace(" ", "'),('", $newwords) . "')";
-			$vbulletin->db->query_write("INSERT IGNORE INTO " . TABLE_PREFIX . "word (title) VALUES $insertwords");
-			$selectwords = "title IN ('" . str_replace(" ", "','", $newwords) . "')";
-
-			$scoressql = 'CASE title';
-			foreach ($scores AS $word => $score)
-			{
-				$scoressql .= " WHEN '" . $vbulletin->db->escape_string($word) . "' THEN $score";
-			}
-			$scoressql .= ' ELSE 1 END';
-
-			$titlesql = 'CASE title';
-			foreach($intitle AS $word => $intitlescore)
-			{
-				$titlesql .= " WHEN '" . $vbulletin->db->escape_string($word) . "' THEN $intitlescore";
-			}
-			$titlesql .= ' ELSE 0 END';
-
-			$vbulletin->db->query_write("
-				INSERT IGNORE INTO " . TABLE_PREFIX . "postindex
-				(wordid, postid, score, intitle)
-				SELECT DISTINCT wordid, $postid, $scoressql, $titlesql
-				FROM " . TABLE_PREFIX . "word
-				WHERE $selectwords
-			");
-		}
-	}
-*/
-}
-
 // ###################### Start searchtextstrip #######################
 function fetch_postindex_text($text)
 {
@@ -1764,54 +1629,6 @@ function fetch_postindex_text($text)
 	$text = preg_replace($find, $replace, $text);
 
 	return trim(vbstrtolower($text));
-}
-
-// ###################### Start unindexpost #######################
-function delete_post_index($postid, $title = '', $pagetext = '')
-{
-/*
-	global $vbulletin;
-
-	if ($vbulletin->options['fulltextsearch'])
-	{
-		return;
-	}
-
-	$postid = intval($postid);
-	// get the data
-	if (empty($pagetext))
-	{
-		$post = $vbulletin->db->query_first_slave("
-			SELECT postid, threadid, title, pagetext
-			FROM " . TABLE_PREFIX . "post
-			WHERE postid = $postid
-		");
-	}
-	else
-	{
-		$post['postid'] = $postid;
-		$post['title'] = $title;
-		$post['pagetext'] = $pagetext;
-	}
-
-	// get word ids from table
-	$allwords = $post['title'] . ' ' . $post['pagetext'];
-	$allwords = fetch_postindex_text($allwords);
-
-	$getwordidsql = "title IN ('" . str_replace(" ", "','", $allwords) . "')";
-	$words = $vbulletin->db->query_read_slave("SELECT wordid, title FROM " . TABLE_PREFIX . "word WHERE $getwordidsql");
-
-	if ($vbulletin->db->num_rows($words))
-	{
-		$wordids = '';
-		while ($word = $vbulletin->db->fetch_array($words))
-		{
-			$wordids .= ',' . $word['wordid'];
-		}
-
-		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "postindex WHERE wordid IN (0$wordids) AND postid = " . $post['postid']);
-	}
-*/
 }
 
 // ###################### Start saveuserstats #######################
@@ -2012,7 +1829,7 @@ function undelete_thread($threadid, $countposts = true, $threadinfo = NULL)
 	$deletiondata =& datamanager_init('Deletionlog_ThreadPost', $vbulletin, ERRTYPE_SILENT, 'deletionlog');
 	$deletioninfo = array('type' => 'thread', 'primaryid' => $threadid);
 	$deletiondata->set_existing($deletioninfo);
-   $deletiondata->delete();
+	$deletiondata->delete();
 	unset($deletiondata, $deletioninfo);
 
 	$threadman =& datamanager_init('Thread', $vbulletin, ERRTYPE_SILENT, 'threadpost');
@@ -2203,12 +2020,13 @@ function delete_post_cache_threads($threadarray)
 	$threadarray = array_map('intval', $threadarray);
 
 	$posts = array();
+
 	$post_sql = $vbulletin->db->query_read("
-		SELECT post.postid
+		SELECT postid
 		FROM " . TABLE_PREFIX . "post AS post
-		INNER JOIN " . TABLE_PREFIX . "postparsed AS postparsed ON (post.postid = postparsed.postid)
-		WHERE post.threadid IN (" . implode(',', $threadarray) . ")
- 	");
+		WHERE threadid IN (" . implode(',', $threadarray) . ")
+	");
+
 	while ($post = $vbulletin->db->fetch_array($post_sql))
 	{
 		$posts[] = $post['postid'];
@@ -2225,7 +2043,6 @@ function delete_post_cache_threads($threadarray)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45237 $
+|| # CVS: $RCSfile$ - $Revision: 62621 $
 || ####################################################################
 \*======================================================================*/

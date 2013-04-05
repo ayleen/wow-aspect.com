@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ?2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ?2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -82,7 +82,7 @@ class vBCms_Controller_Content extends vBCms_Controller
 
 	/**
 	 * Authorise the current user for the current action. If the type of view is
-	 * View or Preview, we just need canview privilege. If it's anything else
+	 * View, Preview, or Rate, we just need canview privilege. If it's anything else
 	 * then we need canedit
 	 */
 	protected function authorizeAction()
@@ -114,8 +114,8 @@ class vBCms_Controller_Content extends vBCms_Controller
 			return;
 		}
 
-		//If this is a rate and the user is logged in, we're done
-		if ($this->action == 'Rate' AND intval(vB::$vbulletin->userinfo['userid']))
+		//If this is rate, we're done
+		if ($this->action == 'Rate')
 		{
 			return;
 		}
@@ -157,9 +157,9 @@ class vBCms_Controller_Content extends vBCms_Controller
 	public function actionView()
 	{
 		//Load cached values as appropriate
+		$metacache_key = 'vbcms_view_data_' . $this->node->getNodeId();
 		if (! $this->precache_loaded)
 		{
-			$metacache_key = 'vbcms_view_data_' . $this->node->getNodeId();
 			vB_Cache::instance()->restoreCacheInfo($metacache_key);
 			$this->precache_loaded = true;
 
@@ -183,6 +183,8 @@ class vBCms_Controller_Content extends vBCms_Controller
 
 		// Check this user's permissions
 		$this->authorizeAction();
+
+		($hook = vBulletinHook::fetch_hook('vbcms_nodeview_start')) ? eval($hook) : false;
 
 		// We need the content, but if it's a save it could change the layout.
 		// So we need to get the content before we get the layout where it goes
@@ -220,11 +222,16 @@ class vBCms_Controller_Content extends vBCms_Controller
 			{
 				$widgets = vBCms_Widget::getWidgetCollection($this->layout->getWidgetIds(), vBCms_Item_Widget::INFO_CONFIG, $this->node->getId());
 				$widgets = vBCms_Widget::getWidgetControllers($widgets, true, $this->content);
-				$contenttypeid = $this->node->getContentTypeId();
+				$contenttypeid = $this->node->getContentTypeID();
+
+				($hook = vBulletinHook::fetch_hook('vbcms_widgets_start')) ? eval($hook) : false;
+
 				// Get the widget views
 				$widget_views = array();
 				foreach($widgets AS $widgetid => $widget)
 				{
+					($hook = vBulletinHook::fetch_hook('vbcms_process_widget_start')) ? eval($hook) : false;
+
 					try
 					{
 						$widgetview = $widget->getPageView();
@@ -249,11 +256,15 @@ class vBCms_Controller_Content extends vBCms_Controller
 							$widget_views[$widgetid] = 'Exception: ' . $e;
 						}
 					}
+
+					($hook = vBulletinHook::fetch_hook('vbcms_process_widget_complete')) ? eval($hook) : false;
 				}
 
 				// Assign the widgets to the layout view
 				$layout->widgets = $widget_views;
 			}
+
+			($hook = vBulletinHook::fetch_hook('vbcms_widgets_complete')) ? eval($hook) : false;
 		}
 
 		// Assign the layout view to the page view
@@ -284,6 +295,8 @@ class vBCms_Controller_Content extends vBCms_Controller
 		$view->toolbar = $this->getToolbarView();
 
 		vB_Cache::instance()->saveCacheInfo($metacache_key);
+
+		($hook = vBulletinHook::fetch_hook('vbcms_nodeview_complete')) ? eval($hook) : false;
 
 		// Render view and return
 		return $view->render(true);
@@ -391,6 +404,7 @@ class vBCms_Controller_Content extends vBCms_Controller
 	 */
 	public function actionEditPage()
 	{
+		global $vbphrase;
 		require_once DIR . '/packages/vbcms/contentmanager.php';
 
 		// Create the page view
@@ -418,7 +432,12 @@ class vBCms_Controller_Content extends vBCms_Controller
 		$view->showscripts = vBCms_ContentManager::showJs('.');
 		// Add general page info
 		$view->setBreadcrumbInfo($this->node->getBreadcrumbInfo());
-		$view->setPageTitle($this->content->getTitle());
+		$title = $this->content->getTitle();
+		if (!$title)
+		{
+			$title = $vbphrase['new_article'];
+		}
+		$view->setPageTitle($title);
 		$view->pagedescription = $this->content->getDescription();
 		$view->published = $this->node->isPublished();
 
@@ -965,7 +984,7 @@ class vBCms_Controller_Content extends vBCms_Controller
 			{
 				require_once(DIR . '/includes/functions_misc.php');
 			}
-			$xml->add_tag('message', fetch_phrase('redirect_blog_rate_add', 'frontredirect', 'redirect_'));
+			$xml->add_tag('message', fetch_phrase('redirect_article_rate_add', 'frontredirect', 'redirect_'));
 		}
 		else	// Already voted error...
 		{
@@ -973,7 +992,7 @@ class vBCms_Controller_Content extends vBCms_Controller
 			{
 				set_bbarray_cookie('cms_rate', $rating['nodeid'], $rating['vote'], 1);
 			}
-			$xml->add_tag('error', fetch_error('blog_rate_voted'));
+			$xml->add_tag('error', fetch_error('article_rate_voted'));
 		}
 		$xml->close_group();
 		$xml->print_xml();
@@ -992,7 +1011,6 @@ class vBCms_Controller_Content extends vBCms_Controller
 	 */
 	protected function getToolbarView($edit_mode = false)
 	{
-		global $vbulletin;
 		global $vbphrase;
 
 		if (!$this->content->canCreate() AND !$this->content->canEdit() AND !$this->content->canPublish())
@@ -1008,7 +1026,7 @@ class vBCms_Controller_Content extends vBCms_Controller
 		$view->edit_mode = $edit_mode;
 		$view->page_url = vB_Router::getURL();
 		$view->access = ($this->content->publicCanView() ?
-			$vbphrase['public'] : $vbphrase['public']);
+			$vbphrase['public'] : $vbphrase['private']);
 
 		// Setup a new route to get URLs
 		$route = new vBCms_Route_Content();
@@ -1102,20 +1120,8 @@ class vBCms_Controller_Content extends vBCms_Controller
 		// Create the standard vB templater
 		$templater = new vB_Templater_vB();
 
-		$styleid =  $this->node->getStyleId();
-		if (empty($styleid))
-		{
-			if (isset(vB::$vbulletin->session->vars['styleid']))
-			{
-				$styleid = vB::$vbulletin->session->vars['styleid'];
-			}
-			else
-			{
-				$styleid = intval(vB::$vbulletin->options['styleid']);
-			}
-		}
 		global $bootstrap;
-		$bootstrap->force_styleid($styleid);
+		$bootstrap->force_styleid($this->node->getStyleId());
 		$bootstrap->load_style();
 		
 		// Register the templater to be used for XHTML
@@ -1144,7 +1150,6 @@ class vBCms_Controller_Content extends vBCms_Controller
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 29533 $
 || ####################################################################
 \*======================================================================*/

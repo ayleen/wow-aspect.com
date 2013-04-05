@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -45,9 +45,18 @@ class vB_Cache_Observer_Db extends vB_Cache_Observer
 	 * Events that have been triggered
 	 * The array is in the form $event => true
 	 *
-	 * @var bool
+	 * @var array
 	 */
 	protected $triggered_events = array();
+
+
+	/**
+	 * Events that have been purged
+	 * The array is in the form $event => true
+	 *
+	 * @var array
+	 */
+	protected $purged_events = array();
 
 
 
@@ -112,10 +121,51 @@ class vB_Cache_Observer_Db extends vB_Cache_Observer
 		}
 		
 		$events = (array)$events;
-		
+
 		foreach ($events AS $event)
 		{
-			$this->triggered_events[strval($event)] = true;
+			if (!is_array($event))
+			{
+				$this->triggered_events[strval($event)] = true;
+			}
+			else
+			{
+				foreach ($event AS $subevent)
+				{
+					$this->triggered_events[strval($subevent)] = true;
+				}
+			}
+		}
+	}
+
+
+	/**
+	 * Builds list of events to be purged.
+	 *
+	 * @param array | string $event						- The id of the event
+	 */
+	public function eventPurge($events)
+	{
+		if (empty($events))
+		{
+			return;
+		}
+		
+		$events = (array)$events;
+
+		foreach ($events AS $event)
+		{
+			if (!is_array($event))
+			{
+				$this->purged_events[strval($event)] = true;
+			}
+			else
+			{
+				foreach ($event AS $subevent)
+				{
+					$this->purged_events[strval($subevent)] = true;
+				}
+			}
 		}
 	}
 
@@ -195,10 +245,10 @@ class vB_Cache_Observer_Db extends vB_Cache_Observer
 				}
 				else
 				{
-				$event = vB::$db->escape_string($event);
-				$values[] = "('$key', '$event')";
+					$event = vB::$db->escape_string($event);
+					$values[] = "('$key', '$event')";
+				}
 			}
-		}
 		}
 
 		if (!sizeof($values))
@@ -260,10 +310,53 @@ class vB_Cache_Observer_Db extends vB_Cache_Observer
 
 
 	/**
+	 * Purges cache entries associated with events.
+	 *
+	 * @return bool								- Whether any events were purged
+	 */
+	protected function eventsPurged()
+	{
+		if (!sizeof($this->purged_events))
+		{
+			return;
+		}
+
+		$events = array();
+
+		foreach (array_keys($this->purged_events) AS $event)
+		{
+			$events[] = vB::$vbulletin->db->escape_string($event);
+		}
+
+		if (!sizeof($events))
+		{
+			return;
+		}
+
+		$result = vB::$vbulletin->db->query_read("
+			SELECT cacheid
+			FROM " . TABLE_PREFIX . "cacheevent
+			WHERE event IN ('" . implode("','", $events) . "')"
+		);
+
+		while ($entry = vB::$vbulletin->db->fetch_array($result))
+		{
+			$this->cache->purge($entry['cacheid']);
+		}
+
+		$this->purged_events = array();
+
+		return true;
+	}
+
+
+	/**
 	 * Purges events that are no longer associated.
 	 */
 	protected function purgeEvents()
 	{
+		$this->eventsPurged();
+		
 		if (!sizeof($this->purged_entries))
 		{
 			return;
@@ -286,7 +379,6 @@ class vB_Cache_Observer_Db extends vB_Cache_Observer
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28694 $
 || ####################################################################
 \*======================================================================*/

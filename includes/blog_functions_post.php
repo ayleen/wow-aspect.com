@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -215,6 +215,7 @@ function process_blog_preview($blog, $type, $attachments = NULL)
 	require_once(DIR . '/includes/class_bbcode_blog.php');
 	$bbcode_parser = new vB_BbCodeParser_Blog($vbulletin, fetch_tag_list());
 	$bbcode_parser->set_parse_userinfo($vbulletin->userinfo, $vbulletin->userinfo['permissions']);
+	$bbcode_parser->containerid = $blog['blogid'];
 	$bbcode_parser->attachments = $attachments;
 
 	$postpreview = '';
@@ -250,31 +251,6 @@ function process_blog_preview($blog, $type, $attachments = NULL)
 	}
 
 	return $postpreview;
-}
-
-/**
-* Converts the newpost_attachmentbit template for use with javascript/construct_phrase
-*
-* @return	string
-*/
-function prepare_blog_newpost_attachmentbit()
-{
-	// do not globalize $session or $attach!
-
-	$attach = array(
-		'imgpath'      => '%1$s',
-		'attachmentid' => '%3$s',
-		'dateline'     => '%4$s',
-		'filename'     => '%5$s',
-		'filesize'     => '%6$s'
-	);
-	$session['sessionurl'] = '%2$s';
-
-	$templater = vB_Template::create('blog_entry_editor_attachment');
-		$templater->register('attach', $attach);
-	$template = $templater->render();
-
-	return addslashes_js($template, "'");
 }
 
 /**
@@ -323,7 +299,6 @@ function construct_publish_select($blog, $dateline = NULL)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 27303 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -44,7 +44,6 @@ $actiontemplates = array(
 		'posticonbit',
 		'posticons'
 	),
-	'deleteposts'  => array('threadadmin_deleteposts'),
 	'deletethread' => array('threadadmin_deletethread'),
 	'managepost'   => array('threadadmin_managepost'),
 	'mergethread'  => array('threadadmin_mergethread'),
@@ -87,7 +86,6 @@ function construct_postings_nav($foruminfo, $threadinfo)
 		case 'copythread':	$navbits[''] = $vbphrase['copy_thread']; break;
 		case 'editthread':   $navbits[''] = $vbphrase['edit_thread']; break;
 		case 'deletethread': $navbits[''] = $vbphrase['delete_thread']; break;
-		case 'deleteposts':  $navbits[''] = $vbphrase['delete_posts']; break;
 		case 'mergethread':  $navbits[''] = $vbphrase['merge_threads']; break;
 	}
 
@@ -100,7 +98,6 @@ switch ($_REQUEST['do'])
 {
 	case 'openclosethread':
 	case 'dodeletethread':
-	case 'dodeleteposts':
 	case 'docopythread':
 	case 'domovethread':
 	case 'updatethread':
@@ -108,7 +105,6 @@ switch ($_REQUEST['do'])
 	case 'stick':
 	case 'removeredirect':
 	case 'deletethread':
-	case 'deleteposts':
 	case 'movethread':
 	case 'copythread':
 	case 'editthread':
@@ -264,7 +260,7 @@ if ($_POST['do'] == 'openclosethread')
 	}
 
 	$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-	eval(print_standard_redirect('redirect_openclose', true, true));
+	print_standard_redirect(array('redirect_openclose',$action), true, true);
 
 }
 
@@ -299,7 +295,7 @@ if ($_REQUEST['do'] == 'deletethread')
 			if (!$threadinfo['open'])
 			{
 				$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-				eval(print_standard_redirect('redirect_threadclosed'));
+				print_standard_redirect('redirect_threadclosed');
 			}
 			// make sure this thread is owned by the user trying to delete it
 			if (!is_first_poster($threadid))
@@ -314,6 +310,8 @@ if ($_REQUEST['do'] == 'deletethread')
 
 	// draw nav bar
 	$navbits = construct_postings_nav($foruminfo, $threadinfo);
+
+	($hook = vBulletinHook::fetch_hook('threadmanage_deletethread')) ? eval($hook) : false;
 
 	$page_templater = vB_Template::create('threadadmin_deletethread');
 		$page_templater->register('threadid', $threadid);
@@ -359,7 +357,7 @@ if ($_POST['do'] == 'dodeletethread')
 			if (!$threadinfo['open'])
 			{
 				$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-				eval(print_standard_redirect('redirect_threadclosed'));
+				print_standard_redirect('redirect_threadclosed');
 			}
 			if (!is_first_poster($threadinfo['threadid']))
 			{
@@ -395,13 +393,16 @@ if ($_POST['do'] == 'dodeletethread')
 
 	$threadman =& datamanager_init('Thread', $vbulletin, ERRTYPE_STANDARD, 'threadpost');
 	$threadman->set_existing($threadinfo);
+
+	($hook = vBulletinHook::fetch_hook('threadmanage_dodeletethread')) ? eval($hook) : false;
+
 	$threadman->delete($foruminfo['countposts'], $physicaldel, $delinfo);
 	unset($threadman);
 
 	build_forum_counters($threadinfo['forumid']);
 
 	$vbulletin->url = fetch_seo_url('forum', $foruminfo);
-	eval(print_standard_redirect('redirect_deletethread'));
+	print_standard_redirect('redirect_deletethread');
 
 }
 
@@ -464,7 +465,7 @@ if ($_REQUEST['do'] == 'movethread' OR $_REQUEST['do'] == 'copythread')
 			if (!$threadinfo['open'] AND !($forumperms & $vbulletin->bf_ugp_forumpermissions['canopenclose']))
 			{
 				$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-				eval(print_standard_redirect('redirect_threadclosed', true, true));
+				print_standard_redirect('redirect_threadclosed', true, true);
 			}
 			if (!is_first_poster($threadinfo['threadid']))
 			{
@@ -494,6 +495,8 @@ if ($_REQUEST['do'] == 'movethread' OR $_REQUEST['do'] == 'copythread')
 
 	// draw nav bar
 	$navbits = construct_postings_nav($foruminfo, $threadinfo);
+
+	($hook = vBulletinHook::fetch_hook('threadmanage_move_copy_thread')) ? eval($hook) : false;
 
 	$page_templater = vB_Template::create('threadadmin_movethread');
 		$page_templater->register('moveforumbits', $moveforumbits);
@@ -557,7 +560,7 @@ if ($_POST['do'] == 'domovethread' OR $_POST['do'] == 'docopythread')
 			if (!$threadinfo['open'] AND !($forumperms & $vbulletin->bf_ugp_forumpermissions['canopenclose']))
 			{
 				$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-				eval(print_standard_redirect('redirect_threadclosed', true, true));
+				print_standard_redirect('redirect_threadclosed', true, true);
 			}
 			if (!is_first_poster($threadid))
 			{
@@ -915,7 +918,7 @@ if ($_POST['do'] == 'domovethread' OR $_POST['do'] == 'docopythread')
 				SELECT post.*,
 					deletionlog.userid AS deleteduserid, deletionlog.username AS deletedusername, deletionlog.reason AS deletedreason,
 					NOT ISNULL(deletionlog.primaryid) AS isdeleted, deletionlog.dateline AS deleteddateline,
-					moderation.dateline AS moderateddateine
+					moderation.dateline AS moderateddateline
 				FROM " . TABLE_PREFIX . "post AS post
 				LEFT JOIN " . TABLE_PREFIX . "deletionlog AS deletionlog ON (deletionlog.primaryid = post.postid AND deletionlog.type = 'post')
 				LEFT JOIN " . TABLE_PREFIX . "moderation AS moderation ON (moderation.primaryid = post.postid AND moderation.type = 'reply')
@@ -927,9 +930,7 @@ if ($_POST['do'] == 'domovethread' OR $_POST['do'] == 'docopythread')
 			$userbyuserid = array();
 			$postarray = array();
 			$postassoc = array();
-
 			$deleteinfo = array();
-			$hiddeninfo = array();
 
 			while ($post = $db->fetch_array($posts))
 			{
@@ -1003,11 +1004,7 @@ if ($_POST['do'] == 'domovethread' OR $_POST['do'] == 'docopythread')
 					continue;
 				}
 
-				if (!$post['visible'])
-				{
-					$hiddeninfo[] = "($newpostid, 'post', " . (!empty($post['moderateddateline']) ? $post['moderateddateline'] : TIMENOW) . ")";
-				}
-				else if ($post['visible'] == 2)
+				if ($post['visible'] == 2)
 				{
 					$deleteinfo[] = "($newpostid, 'post', " . intval($post['deleteduserid']) . ", '" . $db->escape_string($post['deletedusername']) . "', '". $db->escape_string($post['deletedreason']) . "', " . intval($post['deleteddateline']) . ")";
 				}
@@ -1016,21 +1013,10 @@ if ($_POST['do'] == 'domovethread' OR $_POST['do'] == 'docopythread')
 				$parentids .= ",$oldpostid"; // doubles as a list of original post IDs
 				$postassoc["$oldpostid"] = $newpostid; // same as $postarray, but set in all cases; for attachments
 
-				// Source forum doesn't indexposts so we must generate these new words
-				if (!$foruminfo['indexposts'] AND $destforuminfo['indexposts'])
+				if ($foruminfo['indexposts'] AND $destforuminfo['indexposts'])
 				{
-					build_post_index($newpostid, $destforuminfo);
-				}
-				else if ($foruminfo['indexposts'] AND $destforuminfo['indexposts'])
-				{
-					if ($update_post_title == true)
+					if (!$update_post_title)
 					{
-						// we have a new title for this post, so it needs to be reindexed
-						build_post_index($newpostid, $destforuminfo);
-					}
-					else
-					{
-						// Source forum indexes posts so we can duplicate the words we already have
 						$postarray["$oldpostid"] = $newpostid;
 					}
 				}
@@ -1050,9 +1036,6 @@ if ($_POST['do'] == 'domovethread' OR $_POST['do'] == 'docopythread')
 				}
 			}
 
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			require_once(DIR . '/vb/types.php');
-			vB_Bootstrap_Framework::init();
 			$types = vB_Types::instance();
 			$contenttypeid = $types->getContentTypeID('vBForum_Post');
 
@@ -1103,18 +1086,6 @@ if ($_POST['do'] == 'domovethread' OR $_POST['do'] == 'docopythread')
 					$postcopy->setr('pagetext', $pagetext, true, false);
 					$postcopy->save();
 				}
-			}
-
-			// Insert Moderated Posts
-			if (!empty($hiddeninfo))
-			{
-				/*insert query*/
-				$db->query_write("
-					INSERT INTO " . TABLE_PREFIX . "moderation
-					(primaryid, type, dateline)
-					VALUES
-					" . implode(', ', $hiddeninfo) . "
-				");
 			}
 
 			// Insert Deleted Posts
@@ -1223,23 +1194,6 @@ if ($_POST['do'] == 'domovethread' OR $_POST['do'] == 'docopythread')
 		}
 	}
 
-/*
-//obsolete
-	if ($updatetitle)
-	{
-		// Reindex first post to set up title properly.
-		$getfirstpost = $db->query_first_slave("
-			SELECT postid, title, pagetext
-			FROM " . TABLE_PREFIX . "post
-			WHERE threadid = $threadid
-			ORDER BY dateline, postid
-			LIMIT 1
-		");
-		delete_post_index($getfirstpost['postid'], $getfirstpost['title'], $getfirstpost['pagetext']);
-		build_post_index($getfirstpost['postid'] , $foruminfo);
-	}
-*/
-
 	build_forum_counters($threadinfo['forumid']);
 	if ($threadinfo['forumid'] != $destforuminfo['forumid'])
 	{
@@ -1258,7 +1212,7 @@ if ($_POST['do'] == 'domovethread' OR $_POST['do'] == 'docopythread')
 	($hook = vBulletinHook::fetch_hook('threadmanage_move_complete')) ? eval($hook) : false;
 
 	$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-	eval(print_standard_redirect('redirect_movethread'));
+	print_standard_redirect('redirect_movethread');
 }
 
 // ############################### start manage post ###############################
@@ -1297,6 +1251,8 @@ if ($_REQUEST['do'] == 'managepost')
 		// draw nav bar
 		$navbits = construct_postings_nav($foruminfo, $threadinfo);
 	}
+
+	($hook = vBulletinHook::fetch_hook('threadmanage_managepost')) ? eval($hook) : false;
 
 	$page_templater = vB_Template::create('threadadmin_managepost');
 		$page_templater->register('postid', $postid);
@@ -1407,6 +1363,8 @@ if ($_REQUEST['do'] == 'editthread')
 		$show['options'] = true;
 	}
 
+	($hook = vBulletinHook::fetch_hook('threadmanage_editthread')) ? eval($hook) : false;
+
 	$page_templater = vB_Template::create('threadadmin_editthread');
 		$page_templater->register('logbits', $logbits);
 		$page_templater->register('openchecked', $openchecked);
@@ -1491,33 +1449,30 @@ if ($_POST['do'] == 'updatethread')
 				unset($deletionman, $deletioninfo);
 			}
 			$threaddeleted = 0;
-		}
 
-		if ($threaddeleted != 1 AND !$vbulletin->GPC['keepattachments'])
-		{
-			// want to remove attachments
-			$postids = array();
-			$posts = $db->query_read("
-				SELECT post.postid
-				FROM " . TABLE_PREFIX . "post AS post
-				WHERE post.threadid = $threadinfo[threadid]
-			");
-			while ($post = $db->fetch_array($posts))
+			if (!$vbulletin->GPC['keepattachments'])
 			{
-				$postids[] = $post['postid'];
-			}
+				// want to remove attachments
+				$postids = array();
+				$posts = $db->query_read("
+					SELECT post.postid
+					FROM " . TABLE_PREFIX . "post AS post
+					WHERE post.threadid = $threadinfo[threadid]
+				");
+				while ($post = $db->fetch_array($posts))
+				{
+					$postids[] = $post['postid'];
+				}
 
-			if (!empty($postids))
-			{
-				require_once(DIR . '/includes/class_bootstrap_framework.php');
-				require_once(DIR . '/vb/types.php');
-				vB_Bootstrap_Framework::init();
-				$types = vB_Types::instance();
-				$contenttypeid = $types->getContentTypeID('vBForum_Post');
+				if (!empty($postids))
+				{
+					$types = vB_Types::instance();
+					$contenttypeid = $types->getContentTypeID('vBForum_Post');
 
-				$attachdata =& datamanager_init('Attachment', $vbulletin, ERRTYPE_SILENT, 'attachment');
-				$attachdata->condition = "a.contentid IN (" . implode(",", $postids) . ") AND a.contenttypeid = $contenttypeid";
-				$attachdata->delete(true, false);
+					$attachdata =& datamanager_init('Attachment', $vbulletin, ERRTYPE_SILENT, 'attachment');
+					$attachdata->condition = "a.contentid IN (" . implode(",", $postids) . ") AND a.contenttypeid = $contenttypeid";
+					$attachdata->delete(true, false);
+				}
 			}
 		}
 	}
@@ -1549,12 +1504,10 @@ if ($_POST['do'] == 'updatethread')
 				SELECT *
 				FROM " . TABLE_PREFIX . "post
 				WHERE threadid = $threadinfo[threadid]
-				ORDER BY dateline, postid
+				ORDER BY dateline
 				LIMIT 1
 			");
 			$getfirstpost['threadtitle'] =& $vbulletin->GPC['title'];
-			delete_post_index($getfirstpost['postid'], $getfirstpost['title'], $getfirstpost['pagetext']);
-			build_post_index($getfirstpost['postid'] , $foruminfo, 1, $getfirstpost);
 
 			$threadman->set_info('skip_moderator_log', true);
 			$threadman->set('open', $vbulletin->GPC['open']);
@@ -1637,7 +1590,7 @@ if ($_POST['do'] == 'updatethread')
 		$threadinfo['title'] = htmlspecialchars_uni($vbulletin->GPC['title']);
 		$vbulletin->url = fetch_seo_url('thread', $threadinfo);
 	}
-	eval(print_standard_redirect('redirect_editthread'));
+	print_standard_redirect('redirect_editthread');
 }
 
 // ############################### start merge threads ###############################
@@ -1663,6 +1616,8 @@ if ($_REQUEST['do'] == 'mergethread')
 
 	// draw nav bar
 	$navbits = construct_postings_nav($foruminfo, $threadinfo);
+
+	($hook = vBulletinHook::fetch_hook('threadmanage_mergethread')) ? eval($hook) : false;
 
 	$page_templater = vB_Template::create('threadadmin_mergethread');
 		$page_templater->register('threadid', $threadid);
@@ -1799,14 +1754,14 @@ if ($_POST['do'] == 'domergethread')
 		SELECT *
 		FROM " . TABLE_PREFIX . "post
 		WHERE threadid = $threadinfo[threadid]
-		ORDER BY dateline, postid
+		ORDER BY dateline
 		LIMIT 1
 	");
 	$mrgthrd_firstpost = $db->query_first_slave("
 		SELECT *
 		FROM " . TABLE_PREFIX . "post
 		WHERE threadid = $mergethreadinfo[threadid]
-		ORDER BY dateline, postid
+		ORDER BY dateline
 		LIMIT 1
 	");
 
@@ -2121,12 +2076,6 @@ if ($_POST['do'] == 'domergethread')
 	}
 	unset($merge_thread);
 
-	// update postindex for the 2 posts who's titles may have changed (first post of each thread)
-	delete_post_index($thrd_firstpost['postid']);
-	delete_post_index($mrgthrd_firstpost['postid']);
-	build_post_index($thrd_firstpost['postid'] , $foruminfo);
-	build_post_index($mrgthrd_firstpost['postid'] , $foruminfo);
-
 	build_thread_counters($threadinfo['threadid']);
 	build_forum_counters($threadinfo['forumid']);
 	if ($mergethreadinfo['forumid'] != $threadinfo['forumid'])
@@ -2134,12 +2083,14 @@ if ($_POST['do'] == 'domergethread')
 		build_forum_counters($mergethreadinfo['forumid']);
 	}
 
+	vB_ActivityStream_Populate_Forum_Thread::rebuild_thread(array($threadinfo['threadid'], $mergethreadinfo['threadid']));
+
 	log_moderator_action($threadinfo, 'thread_merged_with_x', $mergethreadinfo['title']);
 
 	($hook = vBulletinHook::fetch_hook('threadmanage_merge_complete')) ? eval($hook) : false;
 
 	$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-	eval(print_standard_redirect('redirect_mergethread'));
+	print_standard_redirect('redirect_mergethread');
 
 }
 
@@ -2184,7 +2135,7 @@ if ($_POST['do'] == 'stick')
 	}
 
 	$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-	eval(print_standard_redirect('redirect_sticky', true, true));
+	print_standard_redirect(array('redirect_sticky',$action), true, true);
 }
 
 // ############################### start remove redirects ###############################
@@ -2216,7 +2167,7 @@ if ($_POST['do'] == 'removeredirect')
 	($hook = vBulletinHook::fetch_hook('threadmanage_removeredirect')) ? eval($hook) : false;
 
 	$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-	eval(print_standard_redirect('redirects_removed', true, true));
+	print_standard_redirect('redirects_removed', true, true);
 }
 
 // ############################### start manage post ###############################
@@ -2275,7 +2226,7 @@ if ($_POST['do'] == 'domanagepost')
 		build_forum_counters($threadinfo['forumid']);
 	}
 
-	($hook = vBulletinHook::fetch_hook('threadmanage_managepost')) ? eval($hook) : false;
+	($hook = vBulletinHook::fetch_hook('threadmanage_domanagepost')) ? eval($hook) : false;
 
 	if ($postdeleted != 1)
 	{
@@ -2286,7 +2237,7 @@ if ($_POST['do'] == 'domanagepost')
 		$vbulletin->url = fetch_seo_url('thread', $threadinfo);
 	}
 
-	eval(print_standard_redirect('redirect_post_manage'));
+	print_standard_redirect('redirect_post_manage');
 }
 
 // ############################### start moderate thread ###############################
@@ -2304,14 +2255,14 @@ if ($_POST['do'] == 'moderatethread')
 			approve_thread($threadid, $foruminfo['countposts'], true, $threadinfo);
 			build_forum_counters($threadinfo['forumid']);
 
-			eval(print_standard_redirect('thread_approved'));
+			print_standard_redirect('thread_approved');
 		}
 		else
 		{
 			unapprove_thread($threadid, $foruminfo['countposts'], true, $threadinfo);
 			build_forum_counters($threadinfo['forumid']);
 
-			eval(print_standard_redirect('thread_unapproved'));
+			print_standard_redirect('thread_unapproved');
 		}
 	}
 }
@@ -2338,7 +2289,6 @@ if (!empty($page_templater))
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44505 $
+|| # CVS: $RCSfile$ - $Revision: 62690 $
 || ####################################################################
 \*======================================================================*/

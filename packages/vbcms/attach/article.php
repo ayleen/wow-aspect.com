@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
    || #################################################################### ||
-   || # vBulletin 4.1.5 Patch Level 1 
+   || # vBulletin 4.2.0 Patch Level 3
    || # ---------------------------------------------------------------- # ||
-   || # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+   || # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
    || # This file may not be redistributed in whole or significant part. # ||
    || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
    || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -20,8 +20,8 @@ require_once(DIR . '/includes/blog_functions.php');
  * Class for displaying a vBulletin article attachment
  *
  * @package 		vBulletin
- * @version		$Revision: 42792 $
- * @date 		$Date: 2011-04-11 14:03:47 -0700 (Mon, 11 Apr 2011) $
+ * @version		$Revision: 60418 $
+ * @date 		$Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  *
  */
 class vB_Attachment_Display_Single_vBCMS_Article extends vB_Attachment_Display_Single
@@ -110,8 +110,8 @@ class vB_Attachment_Display_Single_vBCMS_Article extends vB_Attachment_Display_S
  * Class for display of multiple vBulletin blog entry attachments
  *
  * @package 		vBulletin
- * @version		$Revision: 42792 $
- * @date 		$Date: 2011-04-11 14:03:47 -0700 (Mon, 11 Apr 2011) $
+ * @version		$Revision: 60418 $
+ * @date 		$Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  *
  */
 class vB_Attachment_Display_Multiple_vBCMS_Article extends vB_Attachment_Display_Multiple
@@ -227,8 +227,8 @@ class vB_Attachment_Display_Multiple_vBCMS_Article extends vB_Attachment_Display
  * Class for storing an article attachment
  *
  * @package 		vBulletin
- * @version		$Revision: 42792 $
- * @date 		$Date: 2011-04-11 14:03:47 -0700 (Mon, 11 Apr 2011) $
+ * @version		$Revision: 60418 $
+ * @date 		$Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  *
  */
 class vB_Attachment_Store_vBCMS_Article extends vB_Attachment_Store
@@ -269,8 +269,6 @@ class vB_Attachment_Store_vBCMS_Article extends vB_Attachment_Store
 	 */
 	public function verify_permissions($info = array())
 	{
-		global $vbulletin;
-
 		if ($info['contentid'])
 		{
 			$this->contentid = $info['contentid'];
@@ -337,8 +335,8 @@ class vB_Attachment_Store_vBCMS_Article extends vB_Attachment_Store
  * Class for deleting a vBulletin blog entry attachment
  *
  * @package 		vBulletin
- * @version		$Revision: 42792 $
- * @date 		$Date: 2011-04-11 14:03:47 -0700 (Mon, 11 Apr 2011) $
+ * @version		$Revision: 60418 $
+ * @date 		$Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  *
  */
 class vB_Attachment_Dm_vBCMS_Article extends vB_Attachment_Dm
@@ -453,8 +451,8 @@ class vB_Attachment_Dm_vBCMS_Article extends vB_Attachment_Dm
  * Class for handing the attachment upload
  *
  * @package 		vBulletin
- * @version		$Revision: 42792 $
- * @date 		$Date: 2011-04-11 14:03:47 -0700 (Mon, 11 Apr 2011) $
+ * @version		$Revision: 60418 $
+ * @date 		$Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  *
  */
 class vB_Attachment_Upload_Displaybit_vBCMS_Article extends vB_Attachment_Upload_Displaybit
@@ -471,9 +469,9 @@ class vB_Attachment_Upload_Displaybit_vBCMS_Article extends vB_Attachment_Upload
 	public function process_display_template($attach, $values = array(), $disablecomment = false)
 	{
 		$attach['extension'] = strtolower(file_extension($attach['filename']));
-		$attach['filename']  = htmlspecialchars_uni($attach['filename']);
+		$attach['filename']  = fetch_censored_text(htmlspecialchars_uni($attach['filename'], false));
 		$attach['filesize']  = vb_number_format($attach['filesize'], 1, true);
-		$attach['imgpath']   = vB_Template_Runtime::fetchStyleVar('imgdir_attach') . "/$attach[extension].gif";
+		$attach['imgpath']   = $this->fetch_imgpath($attach['extension']);
 
 		$templater = vB_Template::create('newpost_attachmentbit');
 			$templater->register('attach', $attach);
@@ -482,8 +480,7 @@ class vB_Attachment_Upload_Displaybit_vBCMS_Article extends vB_Attachment_Upload
 }
 /*======================================================================*\
    || ####################################################################
-   || # 
-   || # CVS: $RCSfile$ - $Revision: 42792 $
+   || # CVS: $RCSfile$ - $Revision: 60418 $
    || ####################################################################
    \*======================================================================*/
 ?>

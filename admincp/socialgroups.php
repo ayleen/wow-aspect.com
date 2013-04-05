@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 40911 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62098 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('socialgroups', 'search');
@@ -24,8 +24,6 @@ $specialtemplates = array();
 require_once('./global.php');
 require_once(DIR . '/includes/class_socialgroup_search.php');
 require_once(DIR . '/includes/functions_socialgroup.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 if (!can_administer('canadminthreads'))
 {
@@ -300,7 +298,8 @@ if ($_POST['do'] == 'updatecategory')
 	$vbulletin->input->clean_array_gpc('p', array(
 		'socialgroupcategoryid' => TYPE_UINT,
 		'title' => TYPE_STR,
-		'description' => TYPE_STR
+		'description' => TYPE_STR,
+		'displayorder' => TYPE_UINT
 	));
 
 	$sgcatdata = datamanager_init('SocialGroupCategory', $vbulletin);
@@ -328,6 +327,7 @@ if ($_POST['do'] == 'updatecategory')
 
 	$sgcatdata->set('title', $vbulletin->GPC['title']);
 	$sgcatdata->set('description', $vbulletin->GPC['description']);
+	$sgcatdata->set('displayorder', $vbulletin->GPC['displayorder']);
 
 	$sgcatdata->save();
 
@@ -361,6 +361,7 @@ if ($_REQUEST['do'] == 'editcategory')
 
 	print_input_row($vbphrase['title'], 'title', $category['title']);
 	print_textarea_row($vbphrase['description'], 'description', $category['description']);
+	print_input_row($vbphrase['display_order'], 'displayorder', $category['displayorder']);
 	print_submit_row();
 }
 
@@ -418,6 +419,40 @@ if ($_POST['do'] == 'killcategory')
 	{
 		print_stop_message('invalid_social_group_category_specified');
 	}
+}
+
+// #######################################################################
+if ($_REQUEST['do'] == 'categoriesquickupdate')
+{
+
+	$vbulletin->input->clean_array_gpc('p', array('order' => TYPE_ARRAY_INT));
+
+	if (is_array($vbulletin->GPC['order']))
+	{
+		$groupcategories = $db->query_read("SELECT * FROM " . TABLE_PREFIX . "socialgroupcategory");
+		while ($groupcategory = $db->fetch_array($groupcategories))
+		{
+			if (!isset($vbulletin->GPC['order']["$groupcategory[socialgroupcategoryid]"]))
+			{
+				continue;
+			}
+
+			$displayorder = $vbulletin->GPC['order']["$groupcategory[socialgroupcategoryid]"];
+			if ($groupcategory['displayorder'] != $displayorder)
+			{
+				$groupcategorydm =& datamanager_init('Socialgroupcategory', $vbulletin, ERRTYPE_SILENT);
+				$groupcategorydm->set_existing($groupcategory);
+				$groupcategorydm->setr('displayorder', $displayorder);
+				$groupcategorydm->save();
+				unset($groupcategorydm);
+			}
+		}
+	}
+
+	build_forum_permissions();
+
+	define('CP_REDIRECT', 'socialgroups.php?do=categories');
+	print_stop_message('saved_display_order_successfully');
 }
 
 // #############################################################################
@@ -478,6 +513,7 @@ if ($_REQUEST['do'] == 'categories')
 		"$vbphrase[title] / $vbphrase[description]",
 		$vbphrase['social_groups'],
 		$vbphrase['creator'],
+		$vbphrase['display_order'],
 		$vbphrase['controls']
 	), true);
 
@@ -494,7 +530,7 @@ if ($_REQUEST['do'] == 'categories')
 		SELECT socialgroupcategory.*, user.username
 		FROM " . TABLE_PREFIX . "socialgroupcategory AS socialgroupcategory
 		INNER JOIN " .TABLE_PREFIX . "user AS user ON(user.userid = socialgroupcategory.creatoruserid)
-		ORDER BY socialgroupcategory.title
+		ORDER BY socialgroupcategory.displayorder, socialgroupcategory.title
 	");
 
 	$category_count = $db->num_rows($categoriesresult);
@@ -510,6 +546,7 @@ if ($_REQUEST['do'] == 'categories')
 				"<a href=\"socialgroups.php?" . $vbulletin->session->vars['sessionurl'] . "do=editcategory&amp;socialgroupcategoryid=$category[socialgroupcategoryid]\">$category[title]</a> <small>$category[description]</small>",
 				"<a href=\"socialgroups.php?" . $vbulletin->session->vars['sessionurl'] . "do=dosearch&amp;category=$category[socialgroupcategoryid]\">" . vb_number_format($groupcounts["$category[socialgroupcategoryid]"]) . "</a>",
 				"<a href=\"user.php?" . $vbulletin->session->vars['sessionurl'] . "do=edit&amp;userid=$category[creatoruserid]\">$category[username]</a>",
+				"<input type=\"text\" class=\"bginput\" name=\"order[$category[socialgroupcategoryid]]\" value=\"$category[displayorder]\" tabindex=\"1\" size=\"3\" title=\"" . $vbphrase['edit_display_order'] . "\" />",
 				'<div class="smallfont">' .
 				construct_link_code($vbphrase['edit'], "socialgroups.php?" . $vbulletin->session->vars['sessionurl'] . "do=editcategory&amp;socialgroupcategoryid=" . $category['socialgroupcategoryid']) .
 				construct_link_code($vbphrase['delete'], "socialgroups.php?" . $vbulletin->session->vars['sessionurl'] . "do=deletecategory&amp;socialgroupcategoryid=" . $category['socialgroupcategoryid']) .
@@ -518,15 +555,7 @@ if ($_REQUEST['do'] == 'categories')
 		}
 	}
 
-	?>
-	<tr>
-		<td colspan="4" class="tfoot" align="center">
-			<input type="button" class="button" value="<?php echo $vbphrase['add_new_category']; ?>" onClick="window.location = 'socialgroups.php?<?php echo $vbulletin->session->vars['sessionurl']; ?>do=editcategory'" />
-		</td>
-	</tr>
-	<?php
-
-	print_table_footer();
+	print_table_footer(5, "<input type=\"submit\" class=\"button\" tabindex=\"1\" value=\"" . $vbphrase['save_display_order'] . "\" accesskey=\"s\" />" . construct_button_code($vbphrase['add_new_category'], "socialgroups.php?" . $vbulletin->session->vars['sessionurl'] . "do=editcategory"));
 }
 
 // Print Footer
@@ -534,8 +563,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 40911 $
+|| # SVN: $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

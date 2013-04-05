@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
 * Class that provides payment verification and form generation functions
 *
 * @package	vBulletin
-* @version	$Revision: 32878 $
-* @date		$Date: 2009-10-28 11:38:49 -0700 (Wed, 28 Oct 2009) $
+* @version	$Revision: 58238 $
+* @date		$Date: 2012-01-25 15:38:12 -0800 (Wed, 25 Jan 2012) $
 *
 * @abstract
 *
@@ -263,12 +263,6 @@ class vB_PaidSubscription
 
 		// now lets add the appropriate terms
 		$time = strtotime("$formatted + $length " . $units_full["$units"]);
-
-		// Protect against possible errors with PHP 5.1.x
-		if ($time <= 0)
-		{
-			trigger_error('strtotime returned an invalid value, upgrade PHP to at least 5.1.2', E_USER_ERROR);
-		}
 
 		return $time;
 	}
@@ -801,8 +795,7 @@ class vB_PaidSubscription
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 58238 $
 || ####################################################################
 \*======================================================================*/
 ?>

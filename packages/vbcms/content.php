@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -457,7 +457,7 @@ abstract class vBCms_Content extends vB_Content
 		$view->publish_phrase = new vB_Phrase('vbcms', 'page_not_published');
 
 		// Get comments
-		if ((self::VIEW_PAGE == $viewtype) AND (vB::$vbulletin->options['vbcmsforumid'] > 0) AND $this->content->isPublished() AND !$this->isSection())
+		if (self::VIEW_PAGE == $viewtype AND vB::$vbulletin->options['vbcmsforumid'] > 0 AND $this->content->isPublished() AND !$this->isSection())
 		{
 			try
 			{
@@ -479,7 +479,6 @@ abstract class vBCms_Content extends vB_Content
 				}
 			}
 		}
-
 
 		// Check if the user has voted
 		$check = true;
@@ -576,12 +575,6 @@ abstract class vBCms_Content extends vB_Content
 	public function getNodeLeft()
 	{
 		$this->loadContent();
-//		if (!$this->nodeleft)
-//		{
-//			$record = vB::$vbulletin->db->query_first("SELECT nodeleft FROM " . TABLE_PREFIX . "cms_node
-//			WHERE nodeid = " . $this->nodeid );
-//			$this->nodeleft = $record['nodeleft'];
-//		}
 		return $this->content->getNodeLeft();
 	}
 
@@ -589,12 +582,6 @@ abstract class vBCms_Content extends vB_Content
 	public function getNodeRight()
 	{
 		$this->loadContent();
-		//		if (!$this->nodeleft)
-		//		{
-		//			$record = vB::$vbulletin->db->query_first("SELECT nodeleft FROM " . TABLE_PREFIX . "cms_node
-		//			WHERE nodeid = " . $this->nodeid );
-		//			$this->nodeleft = $record['nodeleft'];
-		//		}
 		return $this->content->getNodeRight();
 	}
 
@@ -641,7 +628,7 @@ abstract class vBCms_Content extends vB_Content
 		// is made in item_content, which knows the internals of this item.
 		$this->assertContent();
 
-		if (!isset($vbulletin->userinfo['permissions']['cms']))
+		if (!isset(vB::$vbulletin->userinfo['permissions']['cms']))
 		{
 			vBCMS_Permissions::getUserPerms();
 		}
@@ -658,7 +645,7 @@ abstract class vBCms_Content extends vB_Content
 		//See canView for the logic
 		$this->assertContent();
 
-		if (! isset($vbulletin->userinfo['permissions']['cms']))
+		if (! isset(vB::$vbulletin->userinfo['permissions']['cms']))
 		{
 			vBCMS_Permissions::getUserPerms();
 		}
@@ -817,7 +804,8 @@ abstract class vBCms_Content extends vB_Content
 	{
 		$this->assertContent();
 
-		if ($this->use_item AND $this->content)
+		if ($this->use_item AND $this->content AND $this->content->getSetPublish()
+			AND ($this->content->getPublishDate() <= TIMENOW))
 		{
 			return $this->content->getAssociatedThreadId();
 		}
@@ -833,17 +821,34 @@ abstract class vBCms_Content extends vB_Content
 	 */
 	protected function getAssociatedThread()
 	{
+		//first verify that we are in a published state
+		if (!$this->content->getSetPublish() OR ($this->content->getPublishDate() > TIMENOW))
+		{
+			return false;
+		}
 
-		// Get the thread
+		if ($this->content->getClass() == 'Article')
+		{
+			$movethread = $this->content->getMoveThread();
+			$keepthread = $this->content->getKeepThread();
+		}
+		else
+		{
+			$movethread = false;
+			$keepthread = false;
+		}
+
 		// Resolve the thread id
-		if (intval(vB::$vbulletin->options['vbcmsforumid'])  AND intval($this->content->getSetPublish())
+		if (intval(vB::$vbulletin->options['vbcmsforumid']) > 0 
+			AND intval($this->content->getSetPublish())
+			AND ($this->content->getPublishDate() <= TIMENOW)
 			AND intval($this->content->getComments_Enabled()))
 		{
 			$threadid = $this->content->getAssociatedThreadId();
 
 			if (!$threadid)
 			{
-				$threadid = $this->associateThread();
+				$threadid = $this->associateThread($keepthread, $movethread);
 
 				//If we failed here, there's something wrong. Probably the forum id is invalid.
 				if (!$threadid)
@@ -858,7 +863,7 @@ abstract class vBCms_Content extends vB_Content
 			if (!$thread)
 			{
 				//Try again
-				$threadid = $this->associateThread();
+				$threadid = $this->associateThread($keepthread, $movethread);
 
 				//If we failed here, there's something wrong. Probably the forum id is invalid.
 				if (!$threadid)
@@ -883,25 +888,129 @@ abstract class vBCms_Content extends vB_Content
 		return $thread;
 	}
 
+	/** This function moves a thread to the CMS Comments thread
+	*
+	*	@param	integer
+	*
+	***/
+	protected function moveThreadToComments($threadid, $forumid)
+	{
+		//Delete any redirects for this thread
+		vB_dB_Assertor::assertQuery('delete_redirect_threads', array('threadid' => $threadid));
+
+		// update canview status of thread subscriptions
+		require_once DIR . '/includes/functions_databuild.php';
+		update_subscriptions(array('threadids' => array($threadid)));
+
+		// kill the post cache for these threads
+		delete_post_cache_threads(array($threadid));
+		vB_dB_Assertor::assertQuery('move_thread', array('threadid' => $threadid, 'forumid' => $forumid));
+	}
+
 
 	/**
 	 * Associate a new thread with this content, and clean the cache entry for the content
 	 *
+	 *	@param	bool (Post promotions only) Use the posts current thread as the comment thread.
+	 *	@param	bool (Post promotions only) Move the current thread to the CMS comments forum. 
+	 *
 	 * @return int								- The threadid of the new thread
 	 */
-	protected function associateThread()
+	protected function associateThread($keepthread = false, $movethread = false)
 	{
-		if ($id = $this->createAssociatedThread(vB::$vbulletin->options['vbcmsforumid'], $this->content))
+		//If it isn't published, do nothing
+		if (!$this->content->getSetPublish() 
+			OR ($this->content->getPublishDate() > TIMENOW))
 		{
-			if (!$this->content->setAssociatedThread($id))
+			return false;
+		}
+
+		// CMS Comments are not enabled.
+		if(!(vB::$vbulletin->options['vbcmsforumid'] > 0))
+		{
+			return false;
+		}
+
+		// We already have a thread, dont create another.
+		if ($this->getAssociatedThreadId())
+		{
+			vB_Cache::instance()->eventPurge('cms_comments_add_' . $this->content->getNodeId());
+			return false;
+		}
+
+		if ($this->content->getClass() == 'Article')
+		{
+			$postid = $this->content->getPostId();
+			$threadid = $this->content->getThreadId();
+		}
+		else
+		{
+			$postid = false;
+			$threadid = false;
+		}
+
+			if ($threadid)
+			{
+				vB_dB_Assertor::init(vB::$db, vB::$vbulletin->userinfo);
+			$threadresult = vB_dB_Assertor::assertQuery('get_threadid_from_post', array('postid' => $postid), false);
+			$threadinfo = $threadresult->current();
+			$threadforumid = $threadinfo['forumid'];
+
+			if($movethread)
+			{
+				$forumid = vB::$vbulletin->options['vbcmsforumid'];
+				}
+			else
+			{
+				$forumid = $threadforumid;
+			}
+		}
+		else
+		{
+			$keepthread = false;
+			$movethread = false;
+			$forumid = vB::$vbulletin->options['vbcmsforumid'];
+		}
+
+		//This might be set to keep the existing thread.
+		//Skip if the thread is already in use by a node.
+		if ($keepthread AND !get_nodeFromThreadid($threadid))
+		{
+			if ($movethread AND $forumid AND $threadid)
+			{
+				$this->moveThreadToComments($threadid, $forumid);
+
+				build_forum_counters($forumid);
+				build_forum_counters($threadforumid);
+			}
+
+			$this->content->setAssociatedThread($threadid);
+			return;
+		}
+		else if ($id = $this->createAssociatedThread($forumid, $this->content))
+		{
+			if ($this->content->setAssociatedThread($id))
+			{
+				build_forum_counters($forumid);
+			}
+			else
 			{
 				throw new vB_Exception_Content('Could not set comments thread for content');
 			}
-
-			// clean the article cache
-			vB_Cache::instance()->event($this->content->getContentCacheEvent());
-			vB_Cache::instance()->cleanNow();
 		}
+		else
+		{
+			return false;
+		}
+
+		// clean the article cache
+		vB_Cache::instance()->eventPurge(array(
+			'cms_comments_add_' . $this->content->getNodeId(),
+			$this->content->getCacheEvents(),
+			$this->content->getContentCacheEvent(),
+		));
+		
+		vB_Cache::instance()->cleanNow();
 
 		return $id;
 	}
@@ -927,6 +1036,7 @@ abstract class vBCms_Content extends vB_Content
 		//$dataman->set('prefixid', $post['prefixid']);
 
 		// set info
+		$dataman->set_info('skip_activitystream', true);
 		$dataman->set_info('preview', '');
 		$dataman->set_info('parseurl', true);
 		$dataman->set_info('posthash', '');
@@ -997,8 +1107,8 @@ abstract class vBCms_Content extends vB_Content
 		$coventry = fetch_coventry('string');
 		$getpostids = vB::$db->query_read("
 			SELECT post.postid
-			FROM " . TABLE_PREFIX . "post AS post JOIN
-				 " . TABLE_PREFIX . "thread AS thread ON post.threadid = thread.threadid
+			FROM " . TABLE_PREFIX . "post AS post 
+			INNER JOIN " . TABLE_PREFIX . "thread AS thread ON post.threadid = thread.threadid
 			$hook_query_joins
 			WHERE post.threadid = $threadid
 				AND post.visible = 1
@@ -1298,7 +1408,7 @@ abstract class vBCms_Content extends vB_Content
 	protected function cleanContentCache()
 	{
 		$events = $this->getCleanCacheEvents();
-		vB_Cache::instance()->event($events);
+		vB_Cache::instance()->eventPurge($events);
 		vB_Cache::instance()->cleanNow();
 	}
 
@@ -1349,7 +1459,6 @@ abstract class vBCms_Content extends vB_Content
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28694 $
 || ####################################################################
 \*======================================================================*/

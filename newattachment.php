@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -20,12 +20,13 @@ define('THIS_SCRIPT', 'newattachment');
 define('CSRF_PROTECTION', true);
 
 $flashstrings = array(
-	'shockwave flash',
-	'adobe flash player 10'
+	'^shockwave flash$',
+	'^adobe flash player \d+$'
 );
 
-if (in_array(strtolower($_SERVER['HTTP_USER_AGENT']), $flashstrings) AND $_SERVER['REQUEST_METHOD'] == 'POST' AND $_POST['ajax'] == 1 AND $_POST['do'] == 'manageattach')
+if (preg_match('/(' . implode('|', $flashstrings) . ')/si', $_SERVER['HTTP_USER_AGENT']) AND $_SERVER['REQUEST_METHOD'] == 'POST' AND $_POST['ajax'] == 1 AND $_POST['do'] == 'manageattach')
 {
+
 	define('NOCHECKSTATE', 1);
 	define('SKIP_SESSIONCREATE', true);
 }
@@ -168,7 +169,7 @@ if ($_POST['do'] == 'manageattach')
 			$errorlist = '';
 			foreach ($attachlib->errors AS $error)
 			{
-				$filename = htmlspecialchars_uni($error['filename']);
+				$filename = fetch_censored_text(htmlspecialchars_uni($error['filename'], false));
 				$errormessage = $error['error'] ? $error['error'] : $vbphrase["$error[errorphrase]"];
 				$templater = vB_Template::create('newattachment_errormessage');
 					$templater->register('errormessage', $errormessage);
@@ -195,7 +196,7 @@ $attachdisplaylib =& vB_Attachment_Upload_Displaybit_Library::fetch_library($vbu
 while ($attach = $db->fetch_array($currentattaches))
 {
 	$attach['extension'] = strtolower(file_extension($attach['filename']));
-	$attach['filename'] = htmlspecialchars_uni($attach['filename']);
+	$attach['filename'] = fetch_censored_text(htmlspecialchars_uni($attach['filename'], false));
 	$attachcount++;
 	$totalsize += intval($attach['filesize']);
     $attach['filesize_formatted'] = vb_number_format($attach['filesize'], 1, true);
@@ -381,7 +382,7 @@ if ($show['ajaxupload'])
 		$xml->add_group('uploaderrors');
 		foreach ($attachlib->errors AS $error)
 		{
-			$filename = htmlspecialchars_uni($error['filename']);
+			$filename = fetch_censored_text(htmlspecialchars_uni($error['filename'], false));
 			$errormessage = $error['error'] ? $error['error'] : $vbphrase["$error[errorphrase]"];
 			$xml->add_tag('uploaderror', "$filename: $errormessage");
 			if ($vbulletin->GPC['flash'])
@@ -446,7 +447,6 @@ if ($show['ajaxform'])
 		$templater->register('attachsize', $attachsize);
 		$templater->register('totalsize', $totalsize);
 		$templater->register('attach_username', $attach_username);
-		$templater->register('yui_version', YUI_VERSION);
 		$templater->register('auth_type', (
 												empty($_SERVER['AUTH_USER'])
 													AND
@@ -460,6 +460,7 @@ if ($show['ajaxform'])
 
 $templater = vB_Template::create('newattachment');
 	$templater->register_page_templates();
+	$templater->register('ajaxbaseurl', VB_URL_BASE_PATH);
 	$templater->register('attachinput', $attachinput);
 	$templater->register('attachkeybits', $attachkeybits);
 	$templater->register('attachlimit', $attachlimit);
@@ -492,7 +493,6 @@ function fetch_hidden_value($key, $value)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40651 $
+|| # CVS: $RCSfile$ - $Revision: 59308 $
 || ####################################################################
 \*======================================================================*/

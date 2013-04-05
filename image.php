@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -205,6 +205,7 @@ else if ($vbulletin->GPC['userid'])
 	{
 		($hook = vBulletinHook::fetch_hook('image_exists')) ? eval($hook) : false;
 
+		header('Pragma:'); // VBIV-8269 
 		header('Cache-control: max-age=31536000');
 		header('Expires: ' . gmdate('D, d M Y H:i:s', (TIMENOW + 31536000)) . ' GMT');
 		header('Content-disposition: inline; filename=' . $imageinfo['filename']);
@@ -252,6 +253,7 @@ else if ($vbulletin->GPC['groupid'])
 	{
 		($hook = vBulletinHook::fetch_hook('image_exists')) ? eval($hook) : false;
 
+		header('Pragma:'); // VBIV-8269 
 		header('Cache-control: max-age=31536000');
 		header('Expires: ' . gmdate('D, d M Y H:i:s', (TIMENOW + 31536000)) . ' GMT');
 		header('Content-disposition: inline; filename=' . $imageinfo['filename']);
@@ -286,8 +288,7 @@ else if ($vbulletin->GPC['groupid'])
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44868 $
+|| # CVS: $RCSfile$ - $Revision: 47204 $
 || ####################################################################
 \*======================================================================*/
 ?>

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -69,7 +69,6 @@ $actiontemplates = array(
 		'blog_sidebar_user_block_tagcloud',
 		'blog_sidebar_user_block_visitors',
 		'blog_sidebar_user_block_custom',
-		'memberinfo_visitorbit',
 		'blog_tag_cloud_link',
 	),
 	'deletecomment'   => array(
@@ -90,7 +89,6 @@ $actiontemplates = array(
 		'blog_sidebar_user_block_tagcloud',
 		'blog_sidebar_user_block_visitors',
 		'blog_sidebar_user_block_custom',
-		'memberinfo_visitorbit',
 		'blog_tag_cloud_link',
 	),
 	'deleteentry'     => array(
@@ -112,7 +110,6 @@ $actiontemplates = array(
 		'blog_sidebar_user_block_tagcloud',
 		'blog_sidebar_user_block_visitors',
 		'blog_sidebar_user_block_custom',
-		'memberinfo_visitorbit',
 		'blog_tag_cloud_link',
 	),
 	'deletepcomment'   => array(
@@ -385,7 +382,7 @@ if ($_POST['do'] == 'clearcomment')
 
 	($hook = vBulletinHook::fetch_hook('blog_inlinemod_clearcomment')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_commentlist_cleared', true, $forceredirect));
+	print_standard_redirect('redirect_inline_commentlist_cleared', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'clearpcomment')
@@ -394,7 +391,7 @@ if ($_POST['do'] == 'clearpcomment')
 
 	($hook = vBulletinHook::fetch_hook('blog_inlinemod_clearpcomment')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_commentlist_cleared', true, $forceredirect));
+	print_standard_redirect('redirect_inline_commentlist_cleared', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'cleartrackback')
@@ -403,7 +400,7 @@ if ($_POST['do'] == 'cleartrackback')
 
 	($hook = vBulletinHook::fetch_hook('blog_inlinemod_cleartrackback')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_trackbacklist_cleared', true, $forceredirect));
+	print_standard_redirect('redirect_inline_trackbacklist_cleared', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'clearentry')
@@ -412,7 +409,7 @@ if ($_POST['do'] == 'clearentry')
 
 	($hook = vBulletinHook::fetch_hook('blog_inlinemod_clearentry')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_entrylist_cleared', true, $forceredirect));
+	print_standard_redirect('redirect_inline_entrylist_cleared', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'approvetrackback' OR $_POST['do'] == 'unapprovetrackback')
@@ -544,11 +541,11 @@ if ($_POST['do'] == 'approvetrackback' OR $_POST['do'] == 'unapprovetrackback')
 
 	if ($approve)
 	{
-		eval(print_standard_redirect('redirect_inline_approvedtrackbacks', true, $forceredirect));
+		print_standard_redirect('redirect_inline_approvedtrackbacks', true, $forceredirect);  
 	}
 	else
 	{
-		eval(print_standard_redirect('redirect_inline_unapprovedtrackbacks', true, $forceredirect));
+		print_standard_redirect('redirect_inline_unapprovedtrackbacks', true, $forceredirect);  
 	}
 }
 
@@ -684,11 +681,11 @@ if ($_POST['do'] == 'approvecomment' OR $_POST['do'] == 'unapprovecomment')
 
 	if ($approve)
 	{
-		eval(print_standard_redirect('redirect_inline_approvedcomments', true, $forceredirect));
+		print_standard_redirect('redirect_inline_approvedcomments', true, $forceredirect);  
 	}
 	else
 	{
-		eval(print_standard_redirect('redirect_inline_unapprovedcomments', true, $forceredirect));
+		print_standard_redirect('redirect_inline_unapprovedcomments', true, $forceredirect);  
 	}
 }
 
@@ -861,11 +858,11 @@ if ($_POST['do'] == 'approveentry' OR $_POST['do'] == 'unapproveentry')
 
 	if ($approve)
 	{
-		eval(print_standard_redirect('redirect_inline_approvedposts', true, $forceredirect));
+		print_standard_redirect('redirect_inline_approvedposts', true, $forceredirect);  
 	}
 	else
 	{
-		eval(print_standard_redirect('redirect_inline_unapprovedposts', true, $forceredirect));
+		print_standard_redirect('redirect_inline_unapprovedposts', true, $forceredirect);  
 	}
 }
 
@@ -1043,7 +1040,7 @@ if ($_POST['do'] == 'dodeletetrackback')
 
 	($hook = vBulletinHook::fetch_hook('blog_inlinemod_dodeletetrackbacks')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_deletedtrackbacks', true, $forceredirect));
+	print_standard_redirect('redirect_inline_deletedtrackbacks', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'deletecomment')
@@ -1279,7 +1276,7 @@ if ($_POST['do'] == 'dodeletecomment')
 
 	($hook = vBulletinHook::fetch_hook('blog_inlinemod_dodeletecomments')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_deletedcomments', true, $forceredirect));
+	print_standard_redirect('redirect_inline_deletedcomments', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'undeletecomment')
@@ -1388,7 +1385,7 @@ if ($_POST['do'] == 'undeletecomment')
 
 	($hook = vBulletinHook::fetch_hook('blog_inlinemod_undeletecomments')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_undeletedcomments', true, $forceredirect));
+	print_standard_redirect('redirect_inline_undeletedcomments', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'deleteentry')
@@ -1621,7 +1618,7 @@ if ($_POST['do'] == 'dodeleteentry')
 
 	($hook = vBulletinHook::fetch_hook('blog_inlinemod_dodeleteentries')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_deletedentries', true, $forceredirect));
+	print_standard_redirect('redirect_inline_deletedentries', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'undeleteentry')
@@ -1744,7 +1741,7 @@ if ($_POST['do'] == 'undeleteentry')
 
 	($hook = vBulletinHook::fetch_hook('blog_inlinemod_undeleteentries')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_undeletedentries', true, $forceredirect));
+	print_standard_redirect('redirect_inline_undeletedentries', true, $forceredirect);  
 }
 
 if ($userinfo)
@@ -1781,8 +1778,7 @@ print_output($templater->render());
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 40911 $
+|| # SVN: $Revision: 53471 $
 || ####################################################################
 \*======================================================================*/
 ?>

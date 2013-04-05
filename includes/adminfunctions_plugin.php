@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -21,10 +21,92 @@
 */
 function delete_product($productid, $compliant_35 = false, $for_product_upgrade = false)
 {
-	global $vbulletin;
+	global $vbulletin, $stylecache;
 
 	$productid = $vbulletin->db->escape_string($productid);
+	
+	$check = $vbulletin->db->query_first("SELECT productid FROM " . TABLE_PREFIX . "product WHERE productid = '$productid'");
 
+	// not installed ...
+	if (!$check['productid'])
+	{
+		return false;
+	}
+	
+	// Stylevars were introduced in vB4
+	if (version_compare($vbulletin->options['templateversion'], 4, '>='))
+	{
+		require_once(DIR . '/includes/adminfunctions_template.php');
+	
+		$standardstyleids = array(-1);
+		$mobilestyleids = array(-2);
+		if (!$for_product_upgrade)
+		{
+			cache_styles();
+			foreach($stylecache AS $styleid => $style)
+			{
+				if ($style['type'] == 'standard')
+				{
+					$standardstyleids[] = $styleid;
+				}
+				else
+				{
+					$mobilestyleids[] = $styleid;
+				}
+			}
+		}
+		
+		$stylevarids = array();
+		$stylevarinfo = get_stylevars_for_export($productid, "-1");
+		foreach ($stylevarinfo['stylevardfns'] AS $key => $value)
+		{
+			foreach ($value AS $x => $stylevar)
+			{
+				$stylevarids[] = $stylevar['stylevarid'];
+			}
+		}
+		
+		if ($stylevarids)
+		{
+			$vbulletin->db->query_write("
+				DELETE FROM " . TABLE_PREFIX . "stylevardfn
+				WHERE stylevarid IN ('" . implode("', '", $stylevarids) . "') AND styleid = -1
+			");
+			$vbulletin->db->query_write("
+				DELETE FROM " . TABLE_PREFIX . "stylevar
+				WHERE
+					stylevarid IN ('" . implode("', '", $stylevarids) . "')
+						AND
+					styleid IN (" . implode(",", $standardstyleids) . ")
+			");		
+		}
+		
+		$stylevarids = array();
+		$stylevarinfo = get_stylevars_for_export($productid, "-2");
+		foreach ($stylevarinfo['stylevardfns'] AS $key => $value)
+		{
+			foreach ($value AS $x => $stylevar)
+			{
+				$stylevarids[] = $stylevar['stylevarid'];
+			}
+		}
+
+		if ($stylevarids)
+		{
+			$vbulletin->db->query_write("
+				DELETE FROM " . TABLE_PREFIX . "stylevardfn
+				WHERE stylevarid IN ('" . implode("', '", $stylevarids) . "') AND styleid = -2
+			");
+			$vbulletin->db->query_write("
+				DELETE FROM " . TABLE_PREFIX . "stylevar
+				WHERE
+					stylevarid IN ('" . implode("', '", $stylevarids) . "')
+						AND
+					styleid IN (" . implode(",", $mobilestyleids) . ")
+			");		
+		}	
+	}
+			
 	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "product WHERE productid = '$productid'");
 	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "productcode WHERE productid = '$productid'");
 	if ($compliant_35 == false)
@@ -36,7 +118,8 @@ function delete_product($productid, $compliant_35 = false, $for_product_upgrade 
 	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "phrase WHERE product = '$productid' AND languageid = -1");
 	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "phrasetype WHERE product = '$productid'");
 
-	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "template WHERE product = '$productid' AND styleid = -10");
+	$styleids = array(-10,-20);
+	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "template WHERE product = '$productid' AND styleid IN (" . implode(',', $styleids) . ")");
 	if ($for_product_upgrade)
 	{
 		$vbulletin->db->query_write("
@@ -44,16 +127,33 @@ function delete_product($productid, $compliant_35 = false, $for_product_upgrade 
 			FROM " . TABLE_PREFIX . "template AS t1
 			INNER JOIN " . TABLE_PREFIX . "template AS t2 ON (t1.title = t2.title AND t2.product = '$productid' AND t2.styleid = -1)
 			WHERE t1.styleid = -10
-		");
+		");	
 		$vbulletin->db->query_write("
-			UPDATE " . TABLE_PREFIX . "template SET
+			UPDATE " . TABLE_PREFIX . "template
+			SET
 				styleid = -10
-			WHERE product = '$productid' AND styleid = -1
+			WHERE
+				product = '$productid' AND styleid = -1
 		");
+		
+		$vbulletin->db->query_write("
+			DELETE t1
+			FROM " . TABLE_PREFIX . "template AS t1
+			INNER JOIN " . TABLE_PREFIX . "template AS t2 ON (t1.title = t2.title AND t2.product = '$productid' AND t2.styleid = -2)
+			WHERE t1.styleid = -20
+		");			
+		$vbulletin->db->query_write("
+			UPDATE " . TABLE_PREFIX . "template
+			SET
+				styleid = -20
+			WHERE
+				product = '$productid' AND styleid = -2
+		");		
 	}
 	else
 	{
-		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "template WHERE product = '$productid' AND styleid = -1");
+		$styleids = array(-1,-2);
+		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "template WHERE product = '$productid' AND styleid IN (" . implode(',', $styleids) . ")");
 
 		$ids = array();
 
@@ -81,6 +181,8 @@ function delete_product($productid, $compliant_35 = false, $for_product_upgrade 
 				$attachdata->delete(true, false);
 			}
 		}
+
+		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "navigation WHERE productid = '$productid'");
 	}
 
 	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "setting WHERE product = '$productid' AND volatile = 1");
@@ -93,12 +195,10 @@ function delete_product($productid, $compliant_35 = false, $for_product_upgrade 
 		$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "faq WHERE product = '$productid' AND volatile = 1");
 	}
 
-	$vbulletin->db->hide_errors();
 	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "moderatorlog WHERE product = '$productid'");
-	$vbulletin->db->show_errors();
+	
+	return true;
 }
-
-
 
 function get_product_export_xml($productid)
 {
@@ -119,6 +219,7 @@ function get_product_export_xml($productid)
 	require_once(DIR . '/includes/class_xml.php');
 	$xml = new vB_XML_Builder($vbulletin);
 
+	// -1 means also export -2
 	$export_styleid = -1;
 	$export_languageids = array(-1, 0);
 
@@ -126,7 +227,7 @@ function get_product_export_xml($productid)
 	$xml->add_group(
 		'product', array(
 		'productid' => strtolower($product_details['productid']),
-		'active' => $product_details['active']
+		'active'    => $product_details['active']
 	)); // Parent for product
 
 	$xml->add_tag('title', $product_details['title']);
@@ -203,9 +304,9 @@ function get_product_export_xml($productid)
 	//you'd end up with templates from multiple styles with no attempt to handle duplicates
 	//and no requirement that the styles in question were parents/children of each other.
 	if ($export_styleid == -1)
-	{
-		$sqlcondition = "styleid = -1";
-		$parentlist = "-1";
+	{	// -1 means also export -2
+		$sqlcondition = "styleid IN (-1, -2)";
+		$parentlist = "-1,-2";
 	}
 	else
 	{
@@ -221,14 +322,19 @@ function get_product_export_xml($productid)
 
 	// ############## templates
 	$gettemplates = $vbulletin->db->query_read("
-		SELECT title, templatetype, username, dateline, version, product,
+		SELECT
+			title, templatetype, username, dateline, version, product, styleid, 
 			IF(templatetype = 'template', template_un, template) AS template
 		FROM " . TABLE_PREFIX . "template
-		WHERE product = '" . $vbulletin->db->escape_string($productid) . "'
-			AND $sqlcondition
-		ORDER BY title
+		WHERE
+			product = '" . $vbulletin->db->escape_string($productid) . "'
+				AND
+			$sqlcondition
+		ORDER BY
+			title
 	");
 
+	$mobile_templates = array();
 	$xml->add_group('templates');
 
 	while ($template = $vbulletin->db->fetch_array($gettemplates))
@@ -240,23 +346,56 @@ function get_product_export_xml($productid)
 			$template['version'] = $product_details['version'];
 		}
 
+		if ($template['styleid'] == -2)
+		{
+			$mobile_templates[] = $template;
+			continue;
+		}
+		
 		$xml->add_tag('template', $template['template'], array(
-			'name' => htmlspecialchars($template['title']),
+			'name'         => htmlspecialchars($template['title']),
 			'templatetype' => $template['templatetype'],
-			'date' => $template['dateline'],
-			'username' => $template['username'],
-			'version' => htmlspecialchars_uni($template['version'])
+			'date'         => $template['dateline'],
+			'username'     => $template['username'],
+			'version'      => htmlspecialchars_uni($template['version'])
 		), true);
 	}
 
-	$xml->close_group();
+	$xml->close_group('templates');
+	
+	if ($mobile_templates)
+	{
+		$xml->add_group('templates_mobile');
+		foreach ($mobile_templates AS $template)
+		{
+			$xml->add_tag('template', $template['template'], array(
+				'name'         => htmlspecialchars($template['title']),
+				'templatetype' => $template['templatetype'],
+				'date'         => $template['dateline'],
+				'username'     => $template['username'],
+				'version'      => htmlspecialchars_uni($template['version'])
+			), true);			
+		}
+		$xml->close_group('templates_mobile');
+		unset($mobile_templates);
+	}
 
 	// ############## Stylevars
-	$stylevarinfo = get_stylevars_for_export($productid, $parentlist, true);
+	require_once(DIR . '/includes/adminfunctions_template.php');
+	if ($export_styleid == -1)
+	{
+		$stylevarinfo = get_stylevars_for_export($productid, -1);
+		$stylevarinfo_mobile = get_stylevars_for_export($productid, -2);
+		$stylevar_cache_mobile = $stylevarinfo_mobile['stylevars'];
+		$stylevar_dfn_cache_mobile = $stylevarinfo_mobile['stylevardfns'];		
+	}
+	else
+	{
+		$stylevarinfo = get_stylevars_for_export($productid, $parentlist);
+	}
 	$stylevar_cache = $stylevarinfo['stylevars'];
 	$stylevar_dfn_cache = $stylevarinfo['stylevardfns'];
-
-
+	
 	$xml->add_group('stylevardfns');
 	foreach ($stylevar_dfn_cache AS $stylevargroupname => $stylevargroup)
 	{
@@ -265,32 +404,67 @@ function get_product_export_xml($productid)
 		{
 			$xml->add_tag('stylevar', '',
 				array(
-					'name' => htmlspecialchars($stylevar['stylevarid']),
-					'datatype' => $stylevar['datatype'],
-					'validation' => base64_encode($stylevar['validation']),
-					'failsafe' => base64_encode($stylevar['failsafe'])
+					'name'       => htmlspecialchars($stylevar['stylevarid']),
+					'datatype'   => $stylevar['datatype'],
+					'validation' => vb_base64_encode($stylevar['validation']),
+					'failsafe'   => vb_base64_encode($stylevar['failsafe'])
 				)
 			);
 		}
-		$xml->close_group();
+		$xml->close_group('stylevargroup');
 	}
-	$xml->close_group();
+	$xml->close_group('stylevardfns');
 	unset($stylevar_dfn_cache);
-
-
+		
 	$xml->add_group('stylevars');
 	foreach ($stylevar_cache AS $stylevarid => $stylevar)
 	{
 		$xml->add_tag('stylevar', '',
 			array(
 				'name' => htmlspecialchars($stylevar['stylevarid']),
-				'value' => base64_encode($stylevar['value'])
+				'value' => vb_base64_encode($stylevar['value'])
 			)
 		);
 	}
-	$xml->close_group();
-	unset($stylevar_dfn_cache);
+	$xml->close_group('stylevars');
+	unset($stylevar_cache);
 
+	if ($stylevar_dfn_cache_mobile)
+	{
+		$xml->add_group('stylevardfns_mobile');		
+		foreach ($stylevar_dfn_cache_mobile AS $stylevargroupname => $stylevargroup)
+		{
+			$xml->add_group('stylevargroup', array('name' => $stylevargroupname));
+			foreach($stylevargroup AS $stylevar)
+			{
+				$xml->add_tag('stylevar', '',
+					array(
+						'name'       => htmlspecialchars($stylevar['stylevarid']),
+						'datatype'   => $stylevar['datatype'],
+						'validation' => vb_base64_encode($stylevar['validation']),
+						'failsafe'   => vb_base64_encode($stylevar['failsafe'])
+					)
+				);
+			}
+			$xml->close_group('stylegroup');
+		}
+		$xml->close_group('stylevardfns_mobile');
+		unset($stylevar_dfn_cache_mobile);
+
+		$xml->add_group('stylevars_mobile');
+		foreach ($stylevar_cache_mobile AS $stylevarid => $stylevar)
+		{
+			$xml->add_tag('stylevar', '',
+				array(
+					'name'  => htmlspecialchars($stylevar['stylevarid']),
+					'value' => vb_base64_encode($stylevar['value'])
+				)
+			);
+		}
+		$xml->close_group('stylevars_mobile');
+		unset($stylevar_cache_mobile);	
+	}
+	
 	// ############## plugins
 
 	$xml->add_group('plugins');
@@ -554,6 +728,88 @@ function get_product_export_xml($productid)
 
 	$vbulletin->db->free_result($faq_results);
 
+	// Navigation Data //
+
+	$xml->add_group('navigation');
+
+	$navdata = $vbulletin->db->query_read_slave("
+		SELECT *
+		FROM " . TABLE_PREFIX . "navigation
+		WHERE productid = '" . $vbulletin->db->escape_string($productid) . "'
+		AND state & " . NAV_DELETED . " = 0
+		ORDER BY navtype, parent, displayorder
+	");
+
+	while ($nav = $vbulletin->db->fetch_array($navdata))
+	{
+		$row = array(
+			'name' => $nav['name'],
+			'date' => $nav['dateline'],
+			'username' => $nav['username'],
+			'version' => $nav['version'],
+		);
+
+		$taglist = array();
+		expand_navigation_state($nav);
+		
+		switch ($nav['navtype'])
+		{
+			case 'tab':
+				$taglist = array(
+					'active' => $nav['active'],
+					'show' => $nav['showperm'],
+					'scripts' => $nav['scripts'],
+					'displayorder' => $nav['displayorder'],
+					'url' => $nav['url'],
+				);
+				break;
+
+			case 'menu':
+				$taglist = array(
+					'active' => $nav['active'],
+					'show' => $nav['showperm'],
+					'parent' => $nav['parent'],
+					'displayorder' => $nav['displayorder'],
+				);
+				break;
+
+			case 'link':
+				$taglist = array(
+					'active' => $nav['active'],
+					'show' => $nav['showperm'],
+					'parent' => $nav['parent'],
+					'displayorder' => $nav['displayorder'],
+					'url' => $nav['url'],
+				);
+				break;
+		}
+
+		if ($nav['protected'])
+		{
+			if ($nav['default'])
+			{
+				$taglist['default'] = 1;
+			}
+		}
+		else
+		{
+			if (substr($nav['product'],0,2) == 'vb')
+			{
+				continue;
+			}
+		}
+
+		$xml->add_group($nav['navtype'], $row);
+
+		foreach($taglist AS $key => $value)
+		{
+			$xml->add_tag($key, $value);
+		}
+
+		$xml->close_group($nav['navtype']);
+	}
+
+	$xml->close_group('navigation');
 
 	// ############## Finish up
 	$xml->close_group();
@@ -573,20 +829,7 @@ function get_product_export_xml($productid)
 */
 function install_product($xml, $allow_overwrite)
 {
-	global $vbphrase;
-	global $vbulletin;
-	global $db;
-
-	/*
-		// Preferred code replacement - surely to break many existing product installs
-
-		require_once(DIR . '/includes/class_upgrade_product.php');
-		$product = new vB_Upgrade_Product($vbulletin, $vbphrase, $allow_overwrite);
-		$product->parse($xml);
-		$product->import_dependencies();
-		$product->install();
-		return $product->post_install();
-	*/
+	global $vbphrase, $vbulletin, $db;
 
 	require_once(DIR . '/includes/class_bitfield_builder.php');
 	require_once(DIR . '/includes/class_xml.php');
@@ -998,75 +1241,18 @@ function install_product($xml, $allow_overwrite)
 	// ############## import templates
 	if (is_array($arr['templates']['template']))
 	{
-		$querybits = array();
-		$querytemplates = 0;
-
-		$templates =& $arr['templates']['template'];
-		if (!isset($templates[0]))
-		{
-			$templates = array($templates);
-		}
-
-		foreach ($templates AS $template)
-		{
-			$title = $db->escape_string($template['name']);
-			$template['template'] = $db->escape_string($template['value']);
-			$template['username'] = $db->escape_string($template['username']);
-			$template['templatetype'] = $db->escape_string($template['templatetype']);
-			$template['date'] = intval($template['date']);
-
-			if ($template['templatetype'] != 'template')
-			{
-				// template is a special template
-				$querybits[] = "(-1, '$template[templatetype]', '$title', '$template[template]', '', $template[date], '$template[username]', '" . $db->escape_string($template['version']) . "', '" . $db->escape_string($info['productid']) . "')";
-			}
-			else
-			{
-				// template is a standard template
-				$querybits[] = "(-1, '$template[templatetype]', '$title', '" . $db->escape_string(compile_template($template['value'])) . "', '$template[template]', $template[date], '$template[username]', '" . $db->escape_string($template['version']) . "', '" . $db->escape_string($info['productid']) . "')";
-			}
-
-			if (++$querytemplates % 20 == 0)
-			{
-				/*insert query*/
-				$db->query_write("
-					REPLACE INTO " . TABLE_PREFIX . "template
-						(styleid, templatetype, title, template, template_un, dateline, username, version, product)
-					VALUES
-						" . implode(',', $querybits) . "
-				");
-				$querybits = array();
-			}
-
-			// Send some output to the browser inside this loop so certain hosts
-			// don't artificially kill the script. See bug #34585
-			if (VB_AREA != 'Upgrade' AND VB_AREA != 'Install')
-			{
-				echo ' ';
-				vbflush();
-			}
-		}
-
-		// insert any remaining templates
-		if (!empty($querybits))
-		{
-			/*insert query*/
-			$db->query_write("
-				REPLACE INTO " . TABLE_PREFIX . "template
-					(styleid, templatetype, title, template, template_un, dateline, username, version, product)
-				VALUES
-					" . implode(',', $querybits) . "
-			");
-		}
-		unset($querybits);
-
-		$rebuild['templates'] = true;
+		xml_import_templates($arr['templates']['template'], -1, $info, $rebuild);
 	}
 
+	if (is_array($arr['templates_mobile']['template']))
+	{
+		xml_import_templates($arr['templates_mobile']['template'], -2, $info, $rebuild);
+	}	
+	
 	// ############## import stylevars
 	if (is_array($arr['stylevardfns']['stylevargroup']))
 	{
-		xml_import_stylevar_definitions($arr['stylevardfns'], $info['productid']);
+		xml_import_stylevar_definitions($arr['stylevardfns'], $info['productid'], -1);
 	}
 
 	if (is_array($arr['stylevars']['stylevar']))
@@ -1074,6 +1260,16 @@ function install_product($xml, $allow_overwrite)
 		xml_import_stylevars($arr['stylevars'], -1);
 	}
 
+	if (is_array($arr['stylevardfns_mobile']['stylevargroup']))
+	{
+		xml_import_stylevar_definitions($arr['stylevardfns_mobile'], $info['productid'], -2);
+	}
+
+	if (is_array($arr['stylevars_mobile']['stylevar']))
+	{
+		xml_import_stylevars($arr['stylevars_mobile'], -2);
+	}	
+	
 	// ############## import hooks/plugins
 	if (is_array($arr['plugins']['plugin']))
 	{
@@ -1397,6 +1593,10 @@ function install_product($xml, $allow_overwrite)
 		}
 	}
 
+	$info['username'] = $vbulletin->userinfo['username'];
+
+	import_navigation($arr, $info);
+
 	// Check if the plugin system is disabled. If it is, enable it.
 	if (!$vbulletin->options['enablehooks'])
 	{
@@ -1447,10 +1647,14 @@ function install_product($xml, $allow_overwrite)
 	}
 	if ($rebuild['templates'])
 	{
-		if ($error = build_all_styles(0, 0, ''))
+		if ($error = build_all_styles(0, 0, '', false, 'mobile'))
 		{
 			return $error;
 		}
+		if ($error = build_all_styles(0, 0, '', false, 'standard'))
+		{
+			return $error;
+		}		
 	}
 	if ($rebuild['phrases'])
 	{
@@ -1608,9 +1812,329 @@ function setup_default_admin_permissions($permission_field, $permissions, $useri
 	);
 }
 
+function import_navigation($arr, $info)
+{
+	global $db;
+
+	$default = '';
+	$data = array();
+	$result = array();
+	$master = array();
+	$edited = array();
+	$zaplist = array();
+
+	$product =& $info['productid'];
+	$navarray =& $arr['navigation'];
+
+	$protected = substr($product,0,2) == 'vb' ? 1 : 0 ;
+	$install = $info['process'] == 'Install' ? true : false ;
+
+	if (empty($navarray) OR !is_array($navarray))
+	{
+		return;
+	}
+
+	/* The XML class doesnt create an array 
+	  if there is only one entry, so we have to */
+	foreach($navarray AS $type => $data)
+	{
+		if (!isset($data[0]))
+		{
+			$navarray[$type] = array($navarray[$type]);
+		}
+	}
+
+	$common = array(
+		'install' => $install,
+		'dateline' => TIMENOW,
+		'productid' => $product,
+		'version' => $info['version'],
+		'username' => $info['username'],
+	);	
+
+	// Get current elements
+	$edit = $db->query_read_slave("
+		SELECT name, state
+		FROM " . TABLE_PREFIX . "navigation 
+		WHERE productid = '" . $db->escape_string($product) . "'
+	");
+
+	while ($data = $db->fetch_array($edit))
+	{
+		$edited[$data['name']] = ($data['state'] & NAV_EDITED) ? true : false;
+	}
+
+	// ### Import Tabs ###
+	if (is_array($navarray['tab']))
+	{
+		foreach($navarray['tab'] AS $tab)
+		{
+			$name = $tab['name'];
+			if ($install OR !$edited[$name])
+			{
+				$data[$name]['type'] = 'tab';
+				$data[$name]['url'] = $tab['url'];
+				$data[$name]['showperm'] = $tab['show'];
+				$data[$name]['displayorder'] = $tab['displayorder'];
+				$data[$name]['parent'] = ''; // Tabs have no parent
+				$data[$name]['productid'] = $product;
+				$data[$name]['scripts'] = $tab['scripts'];
+
+				$data[$name]['edited'] = 0;
+				$data[$name]['deleted'] = 0;
+				$data[$name]['default'] = 0;
+				$data[$name]['active'] = $tab['active'];
+				$data[$name]['protected'] = $protected;
+
+				if ($tab['default'] AND !$default)
+				{
+					$default = $name;	
+				}
+				
+				$zaplist[] = "'" . $db->escape_string($name) . "'";
+			}
+			$master[] = "'" . $db->escape_string($name) . "'";
+		}
+	}
+
+	// ### Import Menus ###
+	if (is_array($navarray['menu']))
+	{
+		foreach($navarray['menu'] AS $menu)
+		{
+			$name = $menu['name'];
+			if ($install OR !$edited[$name])
+			{
+				$data[$name]['type'] = 'menu';
+				$data[$name]['url'] = ''; // Menus have no url
+				$data[$name]['showperm'] = $menu['show'];
+				$data[$name]['displayorder'] = $menu['displayorder'];
+				$data[$name]['parent'] = $menu['parent'];
+				$data[$name]['productid'] = $product;
+				$data[$name]['scripts'] = ''; // Only tabs have this
+
+				$data[$name]['edited'] = 0;
+				$data[$name]['deleted'] = 0;
+				$data[$name]['default'] = 0;
+				$data[$name]['active'] = $menu['active'];
+				$data[$name]['protected'] = $protected;
+
+				if ($menu['default'] AND !$default)
+				{
+					$default = $name;	
+				}
+				
+				$zaplist[] = "'" . $db->escape_string($name) . "'";
+			}
+			$master[] = "'" . $db->escape_string($name) . "'";
+		}
+	}
+
+	// ### Import Links ###
+	if (is_array($navarray['link']))
+	{
+		foreach($navarray['link'] AS $link)
+		{
+			$name = $link['name'];
+			if ($install OR !$edited[$name])
+			{
+				$data[$name]['type'] = 'link';
+				$data[$name]['url'] = $link['url'];
+				$data[$name]['showperm'] = $link['show'];
+				$data[$name]['displayorder'] = $link['displayorder'];
+				$data[$name]['parent'] =  $link['parent'];
+				$data[$name]['productid'] = $product;
+				$data[$name]['scripts'] = ''; // Only tabs have this
+
+				$data[$name]['edited'] = 0;
+				$data[$name]['deleted'] = 0;
+				$data[$name]['default'] = 0;
+				$data[$name]['active'] = $link['active'];
+				$data[$name]['protected'] = $protected;
+
+				if ($link['default'] AND !$default)
+				{
+					$default = $name;	
+				}
+				
+				$zaplist[] = "'" . $db->escape_string($name) . "'";
+			}
+			$master[] = "'" . $db->escape_string($name) . "'";
+		}
+	}
+
+	/* Delete anything assigned to the product if it hasnt just been imported above.
+	   Exclude 'vbulletin' from this as it will have the normal custom elements */
+	if ($product != 'vbulletin' AND $master)
+	{
+		$db->query_write("
+			DELETE FROM " . TABLE_PREFIX . "navigation 
+			WHERE productid = '" . $db->escape_string($product) . "'
+			AND name NOT IN (" . implode(',', $master) . ") 
+		");
+	}
+
+	/* Delete any unprotected elements that already exist, 
+	   whatever product they are currently assigned to */
+	if ($zaplist)
+	{
+		$db->query_write("
+			DELETE FROM " . TABLE_PREFIX . "navigation 
+			WHERE name IN (" . implode(',', $zaplist) . ")
+			AND ((state & " . NAV_PROTECTED . ") = 0 OR $protected = 1);
+		");
+	}
+
+	if ($install AND $default)
+	{
+		$data[$default]['default'] = 1;
+	}
+	else if ($protected)
+	{
+		set_navigation_default($data, $default);
+	}
+
+	if ($insert = get_navigation_sql($common, $data))
+	{
+		$db->query_write($insert);
+	}
+}
+
+function set_navigation_default(&$data, $target = '')
+{
+	global $db;
+
+	if(!$target)
+	{
+		return;
+	}
+
+	// Get current default
+	$def = $db->query_first_slave("
+		SELECT name
+		FROM " . TABLE_PREFIX . "navigation 
+		WHERE state & " . NAV_DEFAULT . " > 0
+	");
+
+	// If none exists, set it
+	if(!$def['name'])
+	{
+		$data[$target]['default'] = 1;
+	}
+}
+
+function get_navigation_sql($info, $data)
+{
+	global $db;
+	$sqldata = array();
+	
+	if($data)
+	{
+		foreach ($data AS $name => $row)
+		{
+			collapse_navigation_state($row);
+
+			$sqldata[] .= '(' .
+				"'" . $db->escape_string($name) . "'," .
+				"'" . $db->escape_string($row['productid']) . "'," .
+				"'" . $db->escape_string($row['type']) . "'," .
+				"'" . $db->escape_string($row['parent']) . "'," .
+				"'" . $db->escape_string($row['url']) . "'," .
+				"'" . $db->escape_string($row['scripts']) . "'," .
+				"'" . $db->escape_string($row['showperm']) . "'," .
+				''	. intval($row['displayorder']) . "," .
+				''	. intval($row['state']) . "," .
+				"'" . $db->escape_string($info['version']) . "'," .
+				"'" . $db->escape_string($info['username']) . "'," .
+				''	. intval($info['dateline']) . '' .
+			')';
+		}
+
+		/* Doesn't overwrite any existing entry
+		(basically something existing and protected) */
+		$sql = 'INSERT IGNORE INTO ' . TABLE_PREFIX . 'navigation
+				(name, productid, navtype, parent, url, scripts, 
+				showperm, displayorder, state, version, username, dateline)
+				VALUES ' . implode(',',$sqldata);
+
+		if ($sqldata)
+		{
+			return $sql;
+		}
+	}
+
+	return false;
+}
+
+function plugin_message($text, $crlf = 1, $red = 0, $delay = 1)
+{
+	if (!$red) 
+	{
+		$line = "<center>$text</center>";
+	}
+	else
+	{
+		$line = "<center><font color=\"red\">$text</font></center>";
+	}
+
+	echo $line . str_repeat('<br />', $crlf);
+	
+	vbflush(); 
+	sleep($delay);
+}
+
+function remove_products($products, $versions = array(), $echo = true, $disable_only = false, $reason = '')
+{
+	global $db, $vbphrase;
+
+	if (!$versions)
+	{
+		$versions = array();
+	}
+	
+	if ($disable_only) 
+	{
+		$reason = $db->escape_string($reason);
+		$products = array_map(array($db, 'escape_string'), $products);
+		$list = "'" . implode("','", $products) . "'";
+
+		$db->query_write("
+			UPDATE " . TABLE_PREFIX . "product	
+			SET active = 0, description = CONCAT('$reason', description)
+			WHERE productid IN ($list) AND active = 1
+		");
+	}
+	else
+	{
+		$first = true;
+
+		foreach ($products as $pid)
+		{
+			$result = delete_product($pid);
+
+			if ($result AND $echo) 
+			{
+				if ($first) 
+				{
+					$first = false; 
+					plugin_message($vbphrase['products_removed'],1,1,1);
+				} 
+
+				if ($versions[$pid])
+				{
+					plugin_message($versions[$pid]['title'].' - '.$versions[$pid]['version'],1,1,1);
+				}
+				else
+				{
+					plugin_message($versions[$pid]['title'],1,1,1);
+				}
+			} 
+		} 
+	}
+}
+
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40651 $
+|| # CVS: $RCSfile$ - $Revision: 62333 $
 || ####################################################################
 \*======================================================================*/

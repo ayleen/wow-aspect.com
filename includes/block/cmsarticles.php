@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -182,17 +182,10 @@ $options = vB_BlockType_cmsarticles::construct_section_chooser_options(fetch_phr
 			LIMIT 0," . intval($this->config['cmsarticles_limit']) . "
 		");
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
-
-		//$route = vB_Route::create('vBCms_Route_Content');
 		while ($row = $this->registry->db->fetch_array($results))
 		{
-		//	$route->node = $row['nodeid'] . (empty($row['url']) ? '' : '-' . $row['url']);
-		//	$row['url'] =  $route->getCurrentURL();
-
 			// trim the title after fetching the url and censor it
-			$row['title'] = htmlspecialchars_uni(fetch_trimmed_title(fetch_censored_text($row['title']), $this->config['cmsarticles_titlemaxchars']));
+			$row['title'] = fetch_trimmed_title(fetch_censored_text($row['title']), $this->config['cmsarticles_titlemaxchars']);
 			$row['date'] = vbdate($this->registry->options['dateformat'], $row['publishdate'], true);
 			$row['time'] = vbdate($this->registry->options['timeformat'], $row['publishdate']);
 
@@ -218,9 +211,6 @@ $options = vB_BlockType_cmsarticles::construct_section_chooser_options(fetch_phr
 
 		if ($articles)
 		{
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			vB_Bootstrap_Framework::init();
-
 			$route = vB_Route::create('vBCms_Route_Content');
 			foreach ($articles as $key => $row)
 			{
@@ -239,9 +229,7 @@ $options = vB_BlockType_cmsarticles::construct_section_chooser_options(fetch_phr
 
 	public static function construct_cat_chooser_options($topname = null)
 	{
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
 		require_once(DIR . '/packages/vbcms/contentmanager.php');
-		vB_Bootstrap_Framework::init();
 
 		$selectoptions = array();
 
@@ -263,9 +251,7 @@ $options = vB_BlockType_cmsarticles::construct_section_chooser_options(fetch_phr
 
 	public static function construct_section_chooser_options($topname = null)
 	{
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
 		require_once(DIR . '/packages/vbcms/contentmanager.php');
-		vB_Bootstrap_Framework::init();
 
 		$selectoptions = array();
 
@@ -274,14 +260,28 @@ $options = vB_BlockType_cmsarticles::construct_section_chooser_options(fetch_phr
 			$selectoptions['-1'] = $topname;
 		}
 
-		// get category options
-		$nodelist = vBCms_ContentManager::getNodes(1,
-				array('contenttypeid' => 'node2.contenttypeid = ' . vb_Types::instance()->getContentTypeID("vBCms_Section")));
+		// get section array
+		$nodelist = vBCms_ContentManager::getNodes(1);
 
-
-		foreach ($nodelist as $section)
+		foreach ($nodelist as $list)
 		{
-			$selectoptions[$section['nodeid']] = str_replace('&gt;', '>', $section['parent']) . $section['leaf'];
+			$node = 0;
+			$option = '';
+
+			foreach ($list as $section)
+			{
+				if (is_array($section))
+				{
+					$node = $section['nodeid'];
+					$option .= $section['title'];
+				}
+				else
+				{
+					$option .= $section . '&gt;';
+				}
+			}
+
+			$selectoptions[$node] = $option;
 		}
 
 		return $selectoptions;

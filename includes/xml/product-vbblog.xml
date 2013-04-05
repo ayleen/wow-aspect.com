@@ -3,9 +3,11 @@
 <product productid="vbblog" active="1">
 	<title>vBulletin Blog</title>
 	<description>Personal web log, integrated with vBulletin.</description>
-	<version>4.1.5</version>
+	<version>4.2.0</version>
+	<url />
+	<versioncheckurl />
 	<dependencies>
-		<dependency dependencytype="vbulletin" minversion="4.1.0 Beta 1" maxversion="4.2.0 Alpha 1" />
+		<dependency dependencytype="vbulletin" minversion="4.2.0" maxversion="4.3.0 Alpha 1" />
 	</dependencies>
 	<codes>
 		<code version="*">
@@ -87,6 +89,44 @@ if ($db_alter->fetch_table_info('usergroup'))
 		</code>
 	</codes>
 	<templates>
+		<template name="activitystream_blog_comment" templatetype="template" date="1337207664" username="freddie" version="4.2.0 Alpha 1"><![CDATA[<li class="activitybit blog_comment<vb:if condition="AS_PROFILE === true"> userprof_content userprof_content_border</vb:if>">
+	<vb:if condition="$userinfo['showavatar']">
+		<div class="avatar">
+			<img src="{vb:raw userinfo.avatarurl}" alt="{vb:rawphrase xs_avatar, {vb:raw userinfo.username}}" />
+		</div>
+	</vb:if>
+	<div class="content {vb:raw userinfo.avatarclass}">
+		<div class="datetime">
+			 <span class="date">{vb:raw activity.postdate}<vb:if condition="!$show['detailedtime']">,&nbsp;<span class="time">{vb:raw activity.posttime}</span></vb:if></span>
+		</div>
+		<div class="title">
+			<vb:if condition="$userinfo['userid']">
+				{vb:rawphrase x_commented_on_blog_entry_y_in_z, {vb:link member, {vb:raw userinfo}}, {vb:raw userinfo.username}, {vb:link entry, {vb:raw bloginfo}}, {vb:raw bloginfo.title}, {vb:link blog, {vb:raw bloginfo}}, {vb:raw bloginfo.blog_title}}
+			<vb:else />
+				{vb:rawphrase guest_x_commented_on_blog_entry_y_in_z, {vb:raw userinfo.username}, {vb:link entry, {vb:raw bloginfo}}, {vb:raw bloginfo.title}, {vb:link blog, {vb:raw bloginfo}}, {vb:raw bloginfo.blog_title}}			
+			</vb:if>
+		</div>
+		<div class="excerpt">{vb:raw blogtextinfo.preview}</div>		
+		<div class="fulllink"><a href="{vb:link entry, {vb:raw bloginfo}, {vb:raw pageinfo}}#comment{vb:raw blogtextinfo.blogtextid}">{vb:rawphrase see_more}</a></div>
+	</div>
+	<div class="views">{vb:rawphrase x_replies_y_views, {vb:raw bloginfo.comments_visible}, {vb:raw bloginfo.views}}</div>
+</li>]]></template>
+		<template name="activitystream_blog_entry" templatetype="template" date="1337179403" username="pmarsden" version="4.2.0 Alpha 1"><![CDATA[<li class="activitybit blog_entry<vb:if condition="AS_PROFILE === true"> userprof_content userprof_content_border</vb:if>">
+	<vb:if condition="$userinfo['showavatar']">
+		<div class="avatar">
+			<img src="{vb:raw userinfo.avatarurl}" alt="{vb:rawphrase xs_avatar, {vb:raw userinfo.username}}" />
+		</div>
+	</vb:if>
+	<div class="content {vb:raw userinfo.avatarclass}">
+		<div class="datetime">
+			 <span class="date">{vb:raw activity.postdate}<vb:if condition="!$show['detailedtime']">,&nbsp;<span class="time">{vb:raw activity.posttime}</span></vb:if></span>
+		</div>
+		<div class="title">{vb:rawphrase x_created_a_blog_entry_y_in_z, {vb:link member, {vb:raw userinfo}}, {vb:raw userinfo.username}, {vb:link entry, {vb:raw bloginfo}}, {vb:raw bloginfo.title}, {vb:link blog, {vb:raw bloginfo}}, {vb:raw bloginfo.blog_title}}</div>
+		<div class="excerpt">{vb:raw bloginfo.preview}</div>		
+		<div class="fulllink"><a href="{vb:link entry, {vb:raw bloginfo}}">{vb:rawphrase see_more}</a></div>
+	</div>
+	<div class="views">{vb:rawphrase x_replies_y_views, {vb:raw bloginfo.comments_visible}, {vb:raw bloginfo.views}}</div>
+</li>]]></template>
 		<template name="ad_bloglist_first_entry" templatetype="template" date="1272401736" username="ksours" version="4.0.4" />
 		<template name="ad_blogshowentry_after" templatetype="template" date="1272398077" username="ksours" version="4.0.4" />
 		<template name="ad_blogshowentry_before" templatetype="template" date="1272398088" username="ksours" version="4.0.4" />
@@ -283,7 +323,8 @@ if ($db_alter->fetch_table_info('usergroup'))
 {vb:raw footer}
 </body>
 </html>]]></template>
-		<template name="blog_blogpost_quote" templatetype="template" date="1250614025" username="admin" version="2.1.0"><![CDATA[[QUOTE={vb:raw originalposter}]{vb:raw pagetext}[/QUOTE]]]></template>
+		<template name="blog_blogpost_quote" templatetype="template" date="1316269709" username="freddie" version="4.1.8 Beta 1"><![CDATA[[QUOTE={vb:raw originalposter}]{vb:raw pagetext}[/QUOTE]
+]]></template>
 		<template name="blog_blog_row" templatetype="template" date="1292441382" username="ksours" version="4.1.1 Alpha 1"><![CDATA[<dl class="blogcatbit tr">
 	<dd class="bloglistinfo td">
 		<a class="blogstatus" rel="vB::AJAX" title="
@@ -347,12 +388,18 @@ if ($db_alter->fetch_table_info('usergroup'))
 <vb:else />
 	<a href="{vb:raw bookmarksite.link}" target="socialbookmark" title="{vb:rawphrase submit_entry_x_to_y, {vb:raw bloginfo.title}, {vb:raw bookmarksite.title}}">{vb:raw bookmarksite.title}</a>
 </vb:if>]]></template>
-		<template name="blog_comment" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<li class="postbit postbit-lite postcontainer" id="comment_{vb:raw response.blogtextid}">
+		<template name="blog_comment" templatetype="template" date="1332966003" username="pmarsden" version="4.1.12 Alpha 1"><![CDATA[<li class="postbit postbit-lite postcontainer <vb:if condition="!$avatarenabled['avatarenabled'] OR !$avatar_user_permission['avatar_user_permission']">noavatar</vb:if>" id="comment_{vb:raw response.blogtextid}">
 	<a name="comment{vb:raw response.blogtextid}"></a>
-	<vb:if condition="$show['avatar']">
-		<a href="{vb:link member, {vb:raw response}}" class="avatarlink"><img src="{vb:raw response.avatarurl}" alt="{vb:rawphrase xs_avatar, {vb:raw response.username}}"<vb:if condition="$response['avwidth'] > 60"> style="max-width:60px; height:auto; width:auto !important; width:60px"</vb:if>/></a>
-	<vb:else />
-		<a href="{vb:link member, {vb:raw response}}" class="avatarlink"><img src="{vb:stylevar imgdir_misc}/unknown.gif" alt="{vb:rawphrase xs_avatar, {vb:raw response.username}}" /></a>
+	<vb:if condition="$avatarenabled['avatarenabled'] AND $avatar_user_permission['avatar_user_permission']">
+		<vb:if condition="$response['userid']">
+			<vb:if condition="$show['avatar']">
+				<a href="{vb:link member, {vb:raw response}}" class="avatarlink"><img src="{vb:raw response.avatarurl}" alt="{vb:rawphrase xs_avatar, {vb:raw response.username}}"<vb:if condition="$response['avwidth'] > 60"> style="max-width:60px; height:auto; width:auto !important; width:60px"</vb:if>/></a>
+			<vb:else />
+				<a href="{vb:link member, {vb:raw response}}" class="avatarlink"><img src="{vb:stylevar imgdir_misc}/unknown.gif" alt="{vb:rawphrase xs_avatar, {vb:raw response.username}}" /></a>
+			</vb:if>
+		<vb:else />
+			<span class="avatarlink"><img src="{vb:stylevar imgdir_misc}/unknown.gif" alt="{vb:rawphrase xs_avatar, {vb:raw response.username}}" /></span>
+		</vb:if>
 	</vb:if>
 	<vb:if condition="$show['inlinemod']">
 	<span class="postbit-chkbox">
@@ -360,10 +407,14 @@ if ($db_alter->fetch_table_info('usergroup'))
 	</span>
 	</vb:if>
 	<vb:if condition="$show['moderation']"><p class="moderated shade">{vb:rawphrase this_message_is_moderated}</p></vb:if>
-	<div class="commenthead">
+	<div <vb:if condition="$avatarenabled['avatarenabled'] AND $avatar_user_permission['avatar_user_permission']">class="commenthead"</vb:if>>
 	<div class="postbithead">
 		<label for="comment_imod_checkbox_{vb:raw response.blogtextid}">
-		<a href="{vb:link member, {vb:raw response}}" class="username">{vb:raw response.musername}</a>
+		<vb:if condition="$response['userid']">
+			<a href="{vb:link member, {vb:raw response}}" class="username">{vb:raw response.musername}</a>
+		<vb:else />
+			<span class="username">{vb:raw response.musername}</span>
+		</vb:if>
 		-
 		<span class="postdate">{vb:raw response.date} <span class="time">{vb:raw response.time}</span></span>
 		</label>
@@ -489,7 +540,7 @@ if ($db_alter->fetch_table_info('usergroup'))
 	//-->
 	</script>
 </li>]]></template>
-		<template name="blog_comment_editor" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<script type="text/javascript" src="clientscript/vbulletin-editor.js?v={vb:raw vboptions.simpleversion}"></script>
+		<template name="blog_comment_editor" templatetype="template" date="1313107692" username="michael.lavaveshkul" version="4.1.7 Beta 1"><![CDATA[<script type="text/javascript" src="clientscript/vbulletin-editor.js?v={vb:raw vboptions.simpleversion}"></script>
 
 <div id="pagetitle">
 	<h1>{vb:rawphrase blog_entry}: <a href="{vb:link entry, {vb:raw bloginfo}}" title="{vb:raw bloginfo.title}">{vb:raw bloginfo.title_trimmed}</a></h1>
@@ -585,15 +636,17 @@ if ($db_alter->fetch_table_info('usergroup'))
 	</div>
 
 	<vb:if condition="$show['additional_options']">
-	<h2 class="blockhead">
-		{vb:rawphrase additional_options}
-	</h2>
-	<div id="collapseobj_newentry_options" class="blockbody formcontrols">
+	<h2 class="blockhead">{vb:rawphrase additional_options}</h2>
+	<div class="blockbody formcontrols">
 		<vb:if condition="$show['misc_options']">
-		<h3 class="blocksubhead">{vb:rawphrase miscellaneous_options}</h3>
 		<div class="blockrow">
-			<ul class="group checkradio">
-				<vb:if condition="$show['parseurl']"><li><label for="cb_parseurl"><input type="checkbox" name="parseurl" value="1" id="cb_parseurl" tabindex="1" {vb:raw checked.parseurl} /> {vb:rawphrase automatically_parse_links_in_text}</label></li></vb:if>
+			<label>{vb:rawphrase miscellaneous_options}:</label>
+			<ul class="checkradio group rightcol">
+				<vb:if condition="$show['parseurl']">
+				<li>
+					<label for="cb_parseurl"><input type="checkbox" name="parseurl" value="1" id="cb_parseurl" tabindex="1" {vb:raw checked.parseurl} /> {vb:rawphrase automatically_parse_links_in_text}</label><p class="description">{vb:rawphrase automatically_parse_links_description}</p>
+				</li>
+				</vb:if>
 				{vb:raw disablesmiliesoption}
 			</ul>
 		</div>
@@ -846,7 +899,7 @@ comment date: {vb:raw commentinfo.comment_date} {vb:raw commentinfo.comment_time
 		<input type="text" name="position[{vb:raw page.customblockid}]" value="{vb:raw page.displayorder}" size="3" class="bginput" tabindex="1" />
 	</dd>
 </dl>]]></template>
-		<template name="blog_cp_manage_custom_editor" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<div id="pagetitle">
+		<template name="blog_cp_manage_custom_editor" templatetype="template" date="1313107692" username="michael.lavaveshkul" version="4.1.7 Beta 1"><![CDATA[<div id="pagetitle">
 	<h1><vb:if condition="$show['block']">{vb:rawphrase custom_block}<vb:else />{vb:rawphrase custom_page}</vb:if><vb:if condition="$show['edit']">: {vb:raw sidebarinfo.title}</vb:if></h1>
 </div>
 
@@ -906,14 +959,28 @@ comment date: {vb:raw commentinfo.comment_date} {vb:raw commentinfo.comment_time
 			<input type="submit" class="button" name="preview" value="{vb:rawphrase preview}" tabindex="1" accesskey="r" />
 		</div>
 	</div>
-
+	<br />
 	<vb:if condition="$show['additional_options']">
-	<h3 class="blockhead">
-		{vb:rawphrase additional_options}
-	</h3>
+	<h3 class="blockhead">{vb:rawphrase additional_options}</h3>
 	<div class="blockbody formcontrols">
+		<vb:if condition="$show['misc_options']">
 		<div class="section">
-			<vb:if condition="$show['display_location']">
+			<div class="blockrow">
+				<label>{vb:rawphrase miscellaneous_options}:</label>
+				<ul class="checkradio group rightcol">
+					<vb:if condition="$show['parseurl']">
+					<li>
+						<label for="cb_parseurl"><input type="checkbox" name="parseurl" value="1" id="cb_parseurl" tabindex="1" {vb:raw checked.parseurl} /> {vb:rawphrase automatically_parse_links_in_text}</label><p class="description">{vb:rawphrase automatically_parse_links_description}</p>
+					</li>
+					</vb:if>
+					{vb:raw disablesmiliesoption}
+				</ul>
+			</div>
+		</div>
+		</vb:if>
+		<vb:if condition="$show['display_location']">
+		<h3 class="blocksubhead">{vb:rawphrase display_location}</h3>
+		<div class="section">
 			<div class="blockrow">
 				<label>{vb:rawphrase display_location}</label>
 				<select name="location" tabindex="1">
@@ -922,22 +989,8 @@ comment date: {vb:raw commentinfo.comment_date} {vb:raw commentinfo.comment_time
 					<option value="side" {vb:raw location.side}>{vb:rawphrase blog_side}</option>
 				</select>
 			</div>
-			</vb:if>
 		</div>
-
-			<vb:if condition="$show['misc_options']">
-			<h3 class="blocksubhead">{vb:rawphrase miscellaneous_options}</h3>
-			<div class="section">
-				<div class="blockrow">
-					<ul class="group checkradio">
-						<vb:if condition="$show['parseurl']">
-							<li><label for="cb_parseurl"><input type="checkbox" name="parseurl" value="1" id="cb_parseurl" tabindex="1" {vb:raw checked.parseurl} /> {vb:rawphrase automatically_parse_links_in_text}</label></li>
-						</vb:if>
-						{vb:raw disablesmiliesoption}
-					</ul>
-				</div>
-			</div>
-			</vb:if>
+		</vb:if>
 	</div>
 	<div class="blockfoot actionbuttons">
 		<div class="group">
@@ -1133,7 +1186,7 @@ comment date: {vb:raw commentinfo.comment_date} {vb:raw commentinfo.comment_time
 		</div>
 	</div>
 </li>]]></template>
-		<template name="blog_cp_manage_sidebar" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<form action="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_usercp.php?do=updatesidebar" method="post" name="form">
+		<template name="blog_cp_manage_sidebar" templatetype="template" date="1323210106" username="pmarsden" version="4.1.10 Alpha 1"><![CDATA[<form action="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_usercp.php?do=updatesidebar" method="post" name="form">
 	<div id="pagetitle">
 		<vb:if condition="$show['addblock']"><input type="submit" class="button pagetitleinfo" name="addblock" value="{vb:rawphrase add_custom_block}" tabindex="1" /></vb:if>
 		<h1>{vb:rawphrase blog_custom_blocks}</h1>
@@ -1154,10 +1207,10 @@ comment date: {vb:raw commentinfo.comment_date} {vb:raw commentinfo.comment_time
 				{vb:raw sidebarblockbits}
 			</div>
 		</div>
-		<div class="blockfoot actionbuttons">
-			<div class="group">
-				<input type="submit" class="button" tabindex="1" value="{vb:rawphrase update_block_order_status}" />
-			</div>
+	</div>
+	<div class="blockfoot actionbuttons">
+		<div class="group">
+			<input type="submit" class="button" tabindex="1" value="{vb:rawphrase update_block_order_status}" />
 		</div>
 	</div>
 
@@ -1567,7 +1620,7 @@ var cleargifurl = "clear.gif";
 	</div>
 </div>
 </vb:if>]]></template>
-		<template name="blog_cp_modify_options" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<div id="pagetitle">
+		<template name="blog_cp_modify_options" templatetype="template" date="1314058049" username="michael.lavaveshkul" version="4.1.7 Beta 1"><![CDATA[<div id="pagetitle">
 	<h1>{vb:rawphrase permissions_and_privacy}</h1>
 </div>
 
@@ -1580,8 +1633,8 @@ var cleargifurl = "clear.gif";
 		<vb:if condition="$show['allowcomments'] OR $show['moderatecomments']">
 		<h3 class="blocksubhead">{vb:rawphrase default_entry_options}</h3>
 		<div class="blockrow">
-			<p class="label">{vb:rawphrase when_posting_new_blog_entry_i_would_like_to}</p>
-			<ul class="group checkradio">
+			<label>{vb:rawphrase when_posting_new_blog_entry_i_would_like_to}</label>
+			<ul class="checkradio group rightcol">
 				<vb:if condition="$show['allowcomments']">
 				<li>
 					<label for="cb_allow_comments"><input type="checkbox" name="options[allowcomments]" id="cb_allow_comments" value="1" {vb:raw checked.allowcomments} tabindex="1" /> {vb:rawphrase allow_comments_to_be_posted}</label>
@@ -1607,8 +1660,8 @@ var cleargifurl = "clear.gif";
 	<vb:if condition="$show['privacy']">
 		<h3 class="blocksubhead">{vb:rawphrase permissions_and_privacy} {vb:rawphrase view_blog_warning}</h3>
 		<div class="blockrow">
-			<p class="label">{vb:rawphrase members_on_your_contact_list_may, {vb:raw session.sessionurl}}</p>
-			<ul class="group checkradio">
+			<label>{vb:rawphrase members_on_your_contact_list_may, {vb:raw session.sessionurl}}</label>
+			<ul class="checkradio group rightcol">
 				<li><label for="cb_buddy_canview"><input type="checkbox" name="options_buddy[canviewmyblog]" id="cb_buddy_canview" {vb:raw checked.buddy_canviewmyblog} value="1" tabindex="1" /> {vb:rawphrase view_your_blog_permission}</label></li>
 				<li><label for="cb_buddy_cancommentblog"><input type="checkbox" name="options_buddy[cancommentmyblog]" id="cb_buddy_cancommentblog" {vb:raw checked.buddy_cancommentmyblog} value="1" tabindex="1" /> {vb:rawphrase leave_comments_on_your_blog_entries_permission}</label></li>
 			</ul>
@@ -1616,8 +1669,8 @@ var cleargifurl = "clear.gif";
 			<input type="hidden" name="set_options[options_buddy_cancommentmyblog]" value="1" />
 		</div>
 		<div class="blockrow">
-			<p class="label">{vb:rawphrase members_on_your_ignore_list_may, {vb:raw session.sessionurl}"do=ignorelist"}</p>
-			<ul class="group checkradio">
+			<label>{vb:rawphrase members_on_your_ignore_list_may, {vb:raw session.sessionurl}"do=ignorelist"}</label>
+			<ul class="checkradio group rightcol">
 				<li><label for="cb_ignore_canview"><input type="checkbox" name="options_ignore[canviewmyblog]" id="cb_ignore_canview" {vb:raw checked.ignore_canviewmyblog} value="1" tabindex="1" /> {vb:rawphrase view_your_blog_permission}</label></li>
 				<li><label for="cb_ignore_cancommentblog"><input type="checkbox" name="options_ignore[cancommentmyblog]" id="cb_ignore_cancommentblog" {vb:raw checked.ignore_cancommentmyblog} value="1" tabindex="1" /> {vb:rawphrase leave_comments_on_your_blog_entries_permission}</label></li>
 			</ul>
@@ -1625,8 +1678,8 @@ var cleargifurl = "clear.gif";
 			<input type="hidden" name="set_options[options_ignore_cancommentmyblog]" value="1" />
 		</div>
 		<div class="blockrow">
-			<p class="label">{vb:rawphrase other_members_may}</p>
-			<ul class="group checkradio">
+			<label>{vb:rawphrase other_members_may}</label>
+			<ul class="checkradio group rightcol">
 				<li><label for="cb_member_canview"><input type="checkbox" name="options_member[canviewmyblog]" id="cb_member_canview" {vb:raw checked.member_canviewmyblog} value="1" tabindex="1" /> {vb:rawphrase view_your_blog_permission}</label></li>
 				<li><label for="cb_member_cancommentblog"><input type="checkbox" name="options_member[cancommentmyblog]" id="cb_member_cancommentblog" {vb:raw checked.member_cancommentmyblog} value="1" tabindex="1" /> {vb:rawphrase leave_comments_on_your_blog_entries_permission}</label></li>
 			</ul>
@@ -1635,7 +1688,7 @@ var cleargifurl = "clear.gif";
 		</div>
 		<div class="blockrow">
 			<label>{vb:rawphrase guests_may}</label>
-			<ul class="group checkradio">
+			<ul class="checkradio group rightcol">
 				<vb:if condition="$show['guestview']">
 					<li><label for="cb_guest_canview"><input type="checkbox" name="options_guest[canviewmyblog]" id="cb_guest_canview" {vb:raw checked.guest_canviewmyblog} value="1" tabindex="1" /> {vb:rawphrase view_your_blog_permission}</label></li>
 				<vb:else />
@@ -1658,15 +1711,14 @@ var cleargifurl = "clear.gif";
 	<vb:if condition="$show['akismet_key']">
 		<h3 class="blocksubhead">{vb:rawphrase spam_prevention}</h3>
 		<div class="blockrow">
-			<p class="description">{vb:rawphrase akismet_key_description}</p>
 			<label for="akismet_key">{vb:rawphrase wordpress_api_key}</label>
 			<div><input type="text" class="primary textbox" name="akismet_key" id="akismet_key" value="{vb:raw blog_akismet_key}" tabindex="1" /></div>
 			<input type="hidden" name="set_options[akismet_key]" value="1" />
+			<p class="description">{vb:rawphrase akismet_key_description}</p>
 		</div>
 	</vb:if>
 		<h3 class="blocksubhead">{vb:rawphrase default_subscription_mode} {vb:rawphrase blog_entries}</h3>
 		<div class="blockrow">
-			<p class="description">{vb:rawphrase auto_subscribe_blog_entry_description, {vb:link blogsub, '', 'do=entrylist'}}</p>
 			<label for="subscribeown">{vb:rawphrase default_subscription_mode}</label>
 			<select name="subscribeown" id="subscribeown" tabindex="1">
 				<option value="none" {vb:raw subscribeownchecked.none}>{vb:rawphrase do_not_subscribe}</option>
@@ -1674,10 +1726,10 @@ var cleargifurl = "clear.gif";
 				<option value="email" {vb:raw subscribeownchecked.email}>{vb:rawphrase instant_email_notification}</option>
 			</select>
 			<input type="hidden" name="set_options[subscribeown]" value="1" />
+			<p class="description">{vb:rawphrase auto_subscribe_blog_entry_description, {vb:link blogsub, '', 'do=entrylist'}}</p>
 		</div>
 		<h3 class="blocksubhead">{vb:rawphrase default_subscription_mode} {vb:rawphrase blog_comments}</h3>
 		<div class="blockrow">
-			<p class="description">{vb:rawphrase auto_subscribe_blog_comment_description, {vb:link blogsub, '', 'do=entrylist'}}</p>
 			<label for="subscribeothers">{vb:rawphrase default_subscription_mode}</label>
 			<select name="subscribeothers" id="subscribeothers" tabindex="1">
 				<option value="none" {vb:raw subscribeotherschecked.none}>{vb:rawphrase do_not_subscribe}</option>
@@ -1685,6 +1737,7 @@ var cleargifurl = "clear.gif";
 				<option value="email" {vb:raw subscribeotherschecked.email}>{vb:rawphrase instant_email_notification}</option>
 			</select>
 			<input type="hidden" name="set_options[subscribeothers]" value="1" />
+			<p class="description">{vb:rawphrase auto_subscribe_blog_comment_description, {vb:link blogsub, '', 'do=entrylist'}}</p>
 		</div>
 	</div>
 	<div class="blockfoot actionbuttons">
@@ -1698,7 +1751,7 @@ var cleargifurl = "clear.gif";
 	<input type="hidden" name="securitytoken" value="{vb:raw bbuserinfo.securitytoken}" />
 	<input type="hidden" name="do" value="updateoptions" />
 </form>]]></template>
-		<template name="blog_cp_modify_profile" templatetype="template" date="1310508124" username="michael.lavaveshkul" version="4.1.5 Beta 1"><![CDATA[<div id="pagetitle">
+		<template name="blog_cp_modify_profile" templatetype="template" date="1326235251" username="pmarsden" version="4.1.11 Alpha 1"><![CDATA[<div id="pagetitle">
 	<h1>{vb:raw vbphrase.blog_title_and_description}</h1>
 </div>
 
@@ -1713,12 +1766,16 @@ var cleargifurl = "clear.gif";
 		</div>
 		
 		<vb:if condition="$postpreview">
-		<h2 class="blockhead">{vb:rawphrase preview}</h2>
-		<div class="section">
-			<div class="blockrow">
+			<vb:if condition="$show['errors']">
 				{vb:raw postpreview}
-			</div>
-		</div>
+			<vb:else />
+				<h2 class="blockhead">{vb:rawphrase preview}</h2>
+				<div class="section">
+					<div class="blockrow">
+						{vb:raw postpreview}
+					</div>
+				</div>
+			</vb:if>
 		</vb:if>
 
 		<!-- title field -->
@@ -1736,20 +1793,6 @@ var cleargifurl = "clear.gif";
 			{vb:raw messagearea}
 		</div>
 		<!-- / message area -->
-
-		<vb:if condition="$show['miscoptions']">
-		<h3 class="blocksubhead">{vb:rawphrase miscellaneous_options}</h3>
-		<div class="section">
-			<div class="blockrow">
-				<ul class="group checkradio">
-					<vb:if condition="$show['parseurl']">
-					<li><label for="cb_parseurl"><input type="checkbox" name="parseurl" id="cb_parseurl" value="1" {vb:raw checked.parseurl} tabindex="1" /> {vb:rawphrase automatically_parse_links_in_text}</label></li>
-					</vb:if>
-					{vb:raw disablesmiliesoption}
-				</ul>
-			</div>
-		</div>
-		</vb:if>
 	</div>
 	<div class="blockfoot actionbuttons">
 		<div class="group">
@@ -1757,6 +1800,31 @@ var cleargifurl = "clear.gif";
 			<input type="submit" class="button" name="preview" value="{vb:rawphrase preview}" accesskey="r" tabindex="1" />
 		</div>
 	</div>
+	<br />
+	<vb:if condition="$show['miscoptions']">
+	<h3 class="blockhead">{vb:rawphrase additional_options}</h3>
+	<div class="blockbody formcontrols">
+		<div class="section">
+			<div class="blockrow">
+				<label>{vb:rawphrase miscellaneous_options}:</label>
+				<ul class="checkradio group rightcol">
+					<vb:if condition="$show['parseurl']">
+					<li>
+						<label for="cb_parseurl"><input type="checkbox" name="parseurl" value="1" id="cb_parseurl" tabindex="1" {vb:raw checked.parseurl} /> {vb:rawphrase automatically_parse_links_in_text}</label><p class="description">{vb:rawphrase automatically_parse_links_description}</p>
+					</li>
+					</vb:if>
+					{vb:raw disablesmiliesoption}
+				</ul>
+			</div>
+		</div>
+	</div>
+	<div class="blockfoot actionbuttons">
+		<div class="group">
+			<input type="submit" class="button" name="sbutton" id="{vb:raw editorid}_save" value="{vb:rawphrase submit}" accesskey="s" tabindex="1" />
+			<input type="submit" class="button" name="preview" value="{vb:rawphrase preview}" accesskey="r" tabindex="1" />
+		</div>
+	</div>
+	</vb:if>
 
 	<input type="hidden" name="s" value="{vb:raw session.sessionhash}" />
 	<input type="hidden" name="securitytoken" value="{vb:raw bbuserinfo.securitytoken}" />
@@ -1868,7 +1936,7 @@ var cleargifurl = "clear.gif";
 	<dd class="td">{vb:raw stat.commenttotal}</dd>
 	<dd class="td">{vb:raw stat.usertotal}</dd>
 </dl>]]></template>
-		<template name="blog_cp_stats" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<div id="pagetitle">
+		<template name="blog_cp_stats" templatetype="template" date="1317862854" username="michael.lavaveshkul" version="4.1.1 Alpha 1"><![CDATA[<div id="pagetitle">
 	<h1>{vb:rawphrase blog_stats}</h1>
 </div>
 
@@ -2254,7 +2322,7 @@ var cleargifurl = "clear.gif";
 
 
 </li>]]></template>
-		<template name="blog_entry_editor" templatetype="template" date="1305682548" username="freddie" version="4.1.4 Beta 1"><![CDATA[<script type="text/javascript" src="clientscript/vbulletin-editor.js?v={vb:raw vboptions.simpleversion}"></script>
+		<template name="blog_entry_editor" templatetype="template" date="1329407856" username="pmarsden" version="4.1.11 Alpha 2"><![CDATA[<script type="text/javascript" src="clientscript/vbulletin-editor.js?v={vb:raw vboptions.simpleversion}"></script>
 
 <div id="pagetitle">
 	<h1><vb:if condition="$show['edit']">{vb:rawphrase edit_blog_entry}<vb:else />{vb:rawphrase post_to_your_blog}</vb:if></h1>
@@ -2281,18 +2349,18 @@ var cleargifurl = "clear.gif";
 									<dd id="deltype_soft_deps">
 										<input type="text" name="reason" class="textbox primary" value="" tabindex="1" />
 									</dd>
-									<vb:if condition="$show['physicaldeleteoption'] AND $show['keepattachmentsoption']"><dd><label for="cb_keepattachments"><input type="checkbox" name="keepattachments" value="1" id="cb_keepattachments" tabindex="1" />{vb:rawphrase keep_attachments}</label></dd></vb:if>
+									<vb:if condition="$show['physicaldeleteoption'] AND $show['keepattachmentsoption']"><dd><label for="cb_keepattachments"><input type="checkbox" name="keepattachments" value="1" id="cb_keepattachments" tabindex="1" /> {vb:rawphrase keep_attachments}</label></dd></vb:if>
 								</dl>
 							</li>
 						</ul>					
-						<div class="blockfoot actionbuttons">
-							<div class="group">
-								<input id="blog_deletebtn" type="submit" class="button" value="{vb:rawphrase delete}" tabindex="1" accesskey="d" />
-							</div>
-						</div>
 					</dd>
 				</dl>
 			</div>
+		</div>
+	</div>
+	<div class="blockfoot actionbuttons">
+		<div class="group">
+			<input id="blog_deletebtn" type="submit" class="button" value="{vb:rawphrase delete_blog_entry}" tabindex="1" accesskey="d" />
 		</div>
 	</div>
 	<input type="hidden" name="s" value="{vb:raw session.sessionhash}" />
@@ -2301,6 +2369,17 @@ var cleargifurl = "clear.gif";
 	<input type="hidden" name="url" value="{vb:raw url}" />
 	<input type="hidden" name="do" value="deleteblog" />
 </form>
+</vb:if>
+
+<vb:if condition="$show['lightbox']">
+<!-- lightbox scripts -->
+	<script type="text/javascript" src="clientscript/vbulletin_lightbox.js?v={vb:raw vboptions.simpleversion}"></script>
+	<script type="text/javascript">
+	<!--
+	vBulletin.register_control("vB_Lightbox_Container", "blog_message", {vb:raw vboptions.lightboxenabled});
+	//-->
+	</script>
+<!-- / lightbox scripts -->
 </vb:if>
 
 {vb:raw postpreview}
@@ -2316,7 +2395,7 @@ var cleargifurl = "clear.gif";
 				<p class="singledescription">{vb:rawphrase select_draft_title_to_load_previous_options}</p>
 			</div>
 			<div class="blockrow">
-				<ul class="group checkradio">
+				<ul class="group checkradio full">
 					{vb:raw draft_options}
 				</ul>
 			</div>
@@ -2348,8 +2427,8 @@ var cleargifurl = "clear.gif";
 			<vb:if condition="$show['edit']">
 			<!-- edit reason field -->
 			<div class="blockrow">
-				<label class="full">{vb:rawphrase reason_for_editing}:</label>
-				<input type="text" class="primary full textbox" name="reason" value="{vb:raw reason}" maxlength="200" tabindex="1" />
+				<label class="reason">{vb:rawphrase reason_for_editing}:</label>
+				<input type="text" class="primary textbox" name="reason" value="{vb:raw reason}" maxlength="200" tabindex="1" />
 				<p class="description">{vb:rawphrase optional}</p>
 			</div>
 			<!-- / edit reason field -->
@@ -2491,7 +2570,9 @@ var cleargifurl = "clear.gif";
 				<label>{vb:rawphrase miscellaneous_options}:</label>
 				<ul class="checkradio group rightcol">
 					<vb:if condition="$show['parseurl']">
-					<li><label for="cb_parseurl"><input type="checkbox" name="parseurl" value="1" id="cb_parseurl" tabindex="1" {vb:raw checked.parseurl} /> {vb:rawphrase automatically_parse_links_in_text}</label></li>
+					<li>
+						<label for="cb_parseurl"><input type="checkbox" name="parseurl" value="1" id="cb_parseurl" tabindex="1" {vb:raw checked.parseurl} /> {vb:rawphrase automatically_parse_links_in_text}</label><p class="description">{vb:rawphrase automatically_parse_links_description}</p>
+					</li>
 					</vb:if>
 					{vb:raw disablesmiliesoption}
 				</ul>
@@ -2707,7 +2788,7 @@ var cleargifurl = "clear.gif";
 	</div>
 <!-- / attachments -->
 </vb:if>]]></template>
-		<template name="blog_entry_featured" templatetype="template" date="1302041862" username="michael.lavaveshkul" version="4.1.3 Beta 1"><![CDATA[<li class="block blogentrybit featured postcontainer" id="featuredentry{vb:raw blog.blogid}">
+		<template name="blog_entry_featured" templatetype="template" date="1320968257" username="pmarsden" version="4.1.10 Alpha 1"><![CDATA[<li class="block blogentrybit featured postcontainer" id="featuredentry{vb:raw blog.blogid}">
 	<div class="wrapper">
 		<!--blog_entry_featured-->
 
@@ -2726,7 +2807,13 @@ var cleargifurl = "clear.gif";
 			</a>
 		</div>
 
-		<h4><a href="{vb:link entry, {vb:raw blog}}">{vb:raw blog.title}</a></h4>
+		<h4>
+			<a href="{vb:link entry, {vb:raw blog}}">{vb:raw blog.title}</a>
+			<vb:if condition="$show['edit']">
+				<a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_post.php?{vb:raw session.sessionurl}do=editblog&amp;b={vb:raw blog.blogid}" class="edit_blog"><img src="{vb:stylevar imgdir_cms}/edit_small.png" alt="{vb:rawphrase edit_blog_entry}" class="inlineimg" id="entry_edit_{vb:raw blog.blogid}" /></a>
+				<img style="display: none" id="entry_progress_{vb:raw blog.blogid}" src="{vb:stylevar imgdir_misc}/progress.gif" alt="{vb:rawphrase loading_editor_please_wait}" />
+			</vb:if>
+		</h4>
 
 		<div class="blogbit">	
 			<div class="bloghead">
@@ -3054,103 +3141,6 @@ var cleargifurl = "clear.gif";
 	{vb:raw page.t}
 </vb:if>
 <vb:if condition="$show['divider']">|</vb:if>]]></template>
-		<template name="blog_home" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<div id="pagetitle">
-	<a id="rssicon" href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_external.php" rel="nofollow"><img src="{vb:stylevar imgdir_misc}/rss_40b.png" border="0" class="inlineimg" alt="{vb:rawphrase view_rss_feed}" /></a>
-	<vb:if condition="$show['postblog'] OR $show['postgroupblog']">
-		<vb:if condition="$show['postgroupblog']">
-			<a class="pagetitleinfo textcontrol" href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_post.php?{vb:raw session.sessionurl}do=newblog&amp;u={vb:raw userinfo.userid}" rel="nofollow">{vb:rawphrase new_entry}</a>
-		<vb:else />
-			<a class="pagetitleinfo textcontrol" href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_post.php?{vb:raw session.sessionurl}do=newblog" rel="nofollow">{vb:rawphrase new_entry}</a>
-		</vb:if>
-	</vb:if>
-	<h2>{vb:rawphrase recent_blogs_posts}</h2>
-</div>
-<div id="content_container">
-	<div id="content">
-		<vb:if condition="$show['featured']">
-		<div class="block">
-			<ol id="blogentries" class="bloglist">{vb:raw featured_blogbits}</ol>
-			<vb:if condition="$show['lightbox']">
-				<!-- lightbox scripts -->
-					<script type="text/javascript" src="clientscript/vbulletin_lightbox.js?v={vb:raw vboptions.simpleversion}"></script>
-					<script type="text/javascript">
-					<!--
-						vBulletin.register_control("vB_Lightbox_Container", "blogentries", {vb:raw vboptions.lightboxenabled});
-					//-->
-					</script>
-				<!-- / lightbox scripts -->
-			</vb:if>
-		</div>
-		</vb:if>
-	</div>
-</div>
-
-<div id="sidebar_container">
-	<div id="blog_sidebar_generic">
-		{vb:raw ad_location.blogsidebar_start}
-		<div class="block" id="whatsnewsidebar">
-			<div class="blocksubhead smaller">
-				<a href="#top" id="collapse_c_bloglist" class="collapse">
-					<img src="{vb:stylevar imgdir_button}/collapse_40b{vb:raw vbcollapse.collapseimg_blog_search}.png" alt=""/>
-				</a>
-				<ul class="blogitems">
-					<li<vb:if condition="$display['latest']"> style="display:{vb:raw display.latest}"</vb:if> id="vb_bloglatest_latest">
-						<span>{vb:rawphrase recent_blog_entries}</span>
-					</li>
-	                <li style="<vb:if condition="$display['latest_link']">display:{vb:raw display.latest_link}</vb:if>" id="vb_bloglatest_latest_link">
-						<a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}do=list&amp;blogtype=latest">{vb:rawphrase recent_blog_entries}</a>
-					</li>
-					<li<vb:if condition="$display['rating']"> style="display:{vb:raw display.rating}"</vb:if> id="vb_bloglatest_rating">
-						<span>{vb:rawphrase best_blog_entries}</span>
-					</li>
-					<li<vb:if condition="$display['rating_link']"> style="display:{vb:raw display.rating_link}"</vb:if> id="vb_bloglatest_rating_link">
-						<a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}do=list&amp;blogtype=best">{vb:rawphrase best_blog_entries}</a>
-					</li>
-					<li<vb:if condition="$display['blograting']"> style="display:{vb:raw display.blograting}"</vb:if> id="vb_bloglatest_blograting">
-						<span>{vb:rawphrase best_blogs}</span>
-					</li>
-					<li<vb:if condition="$display['blograting_link']"> style="display:{vb:raw display.blograting_link}"</vb:if> id="vb_bloglatest_blograting_link">
-						<a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}do=bloglist&amp;blogtype=best">{vb:rawphrase best_blogs}</a>
-					</li>
-					<li id="processicon"><img class="inlineimg" style="display:none" id="progress_latest" src="{vb:stylevar imgdir_misc}/13x13progress.gif" alt="" /></li>
-				</ul>
-			</div>
-			<div class="blockbody" id="c_bloglist">
-				<ul id="latestblogs" class="blockrow">
-					{vb:raw recentblogbits}
-				</ul>
-			</div>
-			<div class="blockfoot advanced">
-				<span id="vb_bloglatest_latest_findmore"><a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}do=list">{vb:rawphrase find_more}</a></span>
-				<span id="vb_bloglatest_rating_findmore" style="display:none"><a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}do=list&amp;blogtype=best">{vb:rawphrase find_more}</a></span>
-				<span id="vb_bloglatest_blograting_findmore" style="display:none"><a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}do=bloglist&amp;blogtype=best">{vb:rawphrase find_more}</a></span>
-			</div>
-		</div>
-
-		<div class="block">
-			<h5 class="blocksubhead smaller">
-				<a href="#top" id="collapse_c_blog_comments" class="collapse">
-					<img src="{vb:stylevar imgdir_button}/collapse_40b{vb:raw vbcollapse.collapseimg_blog_search}.png" alt=""/>
-				</a>
-				{vb:rawphrase recent_comments}
-			</h5>
-			<div class="blockbody" id="c_blog_comments">
-				<ul id="latestcomments" class="blockrow">
-					{vb:raw recentcommentbits}
-				</ul>
-			</div>
-			<div class="blockfoot advanced">
-				<a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}do=comments">{vb:rawphrase find_more}</a>
-			</div>
-		</div>
-		
-		<script type="text/javascript" src="clientscript/blog_ajax_latest.js?v={vb:raw vboptions.simpleversion}"></script>
-		<script type="text/javascript">
-		<!--
-			blogLatest = new vB_AJAX_BlogLatest('blogLatest');
-		//-->
-		</script>
-]]></template>
 		<template name="blog_home_list_blog" templatetype="template" date="1256855288" username="freddie" version="4.0.0 Beta 1"><![CDATA[<li class="avatarcontent floatcontainer">
 	<vb:if condition="$show['avatar']">
 		<a class="smallavatar" href="{vb:link member, {vb:raw updated}}"><img class="blog_home_bit_icon" src="{vb:raw updated.avatarurl}" width="30" alt="{vb:rawphrase xs_avatar, {vb:raw updated.username}}" /></a>
@@ -3201,7 +3191,7 @@ var cleargifurl = "clear.gif";
 		</div>
 	</div>
 </li>]]></template>
-		<template name="blog_inlinemod_delete_comments" templatetype="template" date="1309975788" username="michael.lavaveshkul" version="4.1.5 Beta 1"><![CDATA[<form action="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_inlinemod.php?b={vb:raw bloginfo.blogid}&amp;blogtextids={vb:raw blogtextids}" method="post" name="vbform" class="block">
+		<template name="blog_inlinemod_delete_comments" templatetype="template" date="1323210106" username="pmarsden" version="4.1.10 Alpha 1"><![CDATA[<form action="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_inlinemod.php?b={vb:raw bloginfo.blogid}&amp;blogtextids={vb:raw blogtextids}" method="post" name="vbform" class="block">
 <input type="hidden" name="s" value="{vb:raw session.sessionhash}" />
 <input type="hidden" name="securitytoken" value="{vb:raw bbuserinfo.securitytoken}" />
 <input type="hidden" name="b" value="{vb:raw bloginfo.blogid}" />
@@ -3215,7 +3205,7 @@ var cleargifurl = "clear.gif";
 	<vb:if condition="$show['deleteoption']">
 		<div class="blockrow">
 			<label>{vb:rawphrase how_would_you_like_to_delete}</label>
-			<ul class="group checkradio">
+			<ul class="checkradio group dep_group rightcol">
 				<vb:if condition="$show['deletecomments']">
 					<li><label for="rb_soft_delete"><input type="radio" name="deletetype" id="rb_soft_delete" value="1" {vb:raw checked.delete} tabindex="1" /> {vb:rawphrase soft_delete_leave_deleted_message}</label></li>
 				</vb:if>
@@ -3368,7 +3358,7 @@ var cleargifurl = "clear.gif";
 </div>
 
 </form>]]></template>
-		<template name="blog_list_blogs_all" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<div id="pagetitle">
+		<template name="blog_list_blogs_all" templatetype="template" date="1311969471" username="michael.lavaveshkul" version="4.1.7 Beta 1"><![CDATA[<div id="pagetitle">
 	<h1>{vb:rawphrase blog_list}</h1>
 </div>
 
@@ -3379,16 +3369,16 @@ var cleargifurl = "clear.gif";
 	<div class="bloglist bloglistall table">
 		<dl class="columnsort tr">
 			<dd class="bloglistinfo td">
-				<a class="blocksubhead" href="{vb:raw sorturl}&amp;order=asc&amp;sort=title">{vb:rawphrase title}, {vb:rawphrase user}, {vb:rawphrase rating} {vb:raw sortarrow.title}</a>
+				<a class="blocksubhead" href="{vb:raw sorturl}&amp;order={vb:raw sortorder.title}&amp;sort=title">{vb:rawphrase title}, {vb:rawphrase user}, {vb:rawphrase rating} {vb:raw sortarrow.title}</a>
 			</dd>
 			<dd class="blogliststats td">
-				<a class="blocksubhead" href="{vb:raw sorturl}&amp;order=desc&amp;sort=entries">{vb:rawphrase entries} {vb:raw sortarrow.entries}</a>
+				<a class="blocksubhead" href="{vb:raw sorturl}&amp;order={vb:raw sortorder.entries}&amp;sort=entries">{vb:rawphrase entries} {vb:raw sortarrow.entries}</a>
 			</dd>
 			<dd class="blogliststats td">
-				<a class="blocksubhead" href="{vb:raw sorturl}&amp;order=desc&amp;sort=comments">{vb:rawphrase comments} {vb:raw sortarrow.comments}</a>
+				<a class="blocksubhead" href="{vb:raw sorturl}&amp;order={vb:raw sortorder.comments}&amp;sort=comments">{vb:rawphrase comments} {vb:raw sortarrow.comments}</a>
 			</dd>
 			<dd class="bloglistlastpost td">
-				<a class="blocksubhead" href="{vb:raw sorturl}&amp;order=desc&amp;sort=lastblog">{vb:rawphrase last_post} {vb:raw sortarrow.lastblog}</a>
+				<a class="blocksubhead" href="{vb:raw sorturl}&amp;order={vb:raw sortorder.lastblog}&amp;sort=lastblog">{vb:rawphrase last_post} {vb:raw sortarrow.lastblog}</a>
 			</dd>
 			<vb:if condition="$show['notificationtype']">
 				<dd class="bloglistnotification td">
@@ -3419,8 +3409,7 @@ var cleargifurl = "clear.gif";
 		</dl>
 	</div>
 </form>
-</vb:if>
-]]></template>
+</vb:if>]]></template>
 		<template name="blog_list_blogs_best" templatetype="template" date="1251730018" username="Mert" version="2.1.0"><![CDATA[<vb:if condition="$blogbits">
 	<ol class="list_no_decoration" id="message_list">
 		{vb:raw blogbits}
@@ -4163,41 +4152,14 @@ var cleargifurl = "clear.gif";
 		<li><a href="{vb:link blog, {vb:raw userinfo}, null, 'userid', 'blog_title'}">{vb:rawphrase view_all_blog_entries_by_user, {vb:raw userinfo.username}}</a></li>
 	</ul>
 ]]></template>
-		<template name="blog_navbar_link" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<vb:if condition="$vboptions['selectednavtab'] == 'vbblog'">
-<li class="selected">
-	<a class="navtab" href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php{vb:raw session.sessionurl_q}">{vb:rawphrase blogs}</a>
-	<ul class="floatcontainer">
-		{vb:raw template_hook.blog_navbar_start}
-		<vb:if condition="$show['canpostitems']">
-			<li><a href="{vb:link blog, {vb:raw bbuserinfo}, null, 'userid', 'blog_title'}">{vb:rawphrase your_blog}</a></li>
-		</vb:if>
-		{vb:raw template_hook.blog_navbar_after_your_blog}
-		<li><a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}do=list">{vb:rawphrase recent_entries}</a></li>
-		{vb:raw template_hook.blog_navbar_after_recent_entries}
-		<li><a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}do=list&amp;blogtype=best">{vb:rawphrase best_blog_entries}</a></li>
-		{vb:raw template_hook.blog_navbar_after_best_entries}
-		<li><a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}do=bloglist">{vb:rawphrase blog_list}</a></li>
-		{vb:raw template_hook.blog_navbar_after_blog_list}
-		<vb:if condition="$show['canpostitems']">
-			<li><a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_usercp.php?{vb:raw session.sessionurl}do=editprofile">{vb:rawphrase blog_options}</a></li>
-		</vb:if>
-		{vb:raw template_hook.blog_navbar_end}
-	</ul>
-</li>
-<vb:else />
-	<li><a class="navtab" href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php{vb:raw session.sessionurl_q}">{vb:rawphrase blogs}</a></li>
-</vb:if>]]></template>
-		<template name="blog_navbar_whatsnew_link" templatetype="template" date="1273010878" username="ebrown" version="4.0.4"><![CDATA[<vb:comment>Blog What's new link to new blog entries</vb:comment>
-<li><a href="search.php?do=getnew&amp;{vb:raw session.sessionurl}contenttype=vBBlog_BlogEntry">{vb:rawphrase new_blogs_nav}</a></li>
-]]></template>
-		<template name="blog_notify_urls" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[{vb:raw errors}
+		<template name="blog_notify_urls" templatetype="template" date="1313622970" username="freddie" version="4.1.7 Beta 1"><![CDATA[{vb:raw errors}
 <form action="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_post.php?do=notify" name="vbform" method="post" class="block">
 	<h2 class="blockhead">{vb:rawphrase send_pingback_trackback_notification}</h2>
 	<div class="blockbody formcontrols">
 		<div class="blockrow">
-			<label>{vb:rawphrase notification_urls}</label>
+			<label>{vb:rawphrase notification_urls}:</label>
+			<ul class="checkradio group rightcol">{vb:raw urlbits}</ul>
 			<p class="description">{vb:rawphrase links_were_found_within_your_blog_entry}</p>
-			<ol class="group checkradio">{vb:raw urlbits}</ul>
 		</div>
 		<vb:if condition="$show['urllimit']">
 			<div class="blockrow">
@@ -4222,19 +4184,16 @@ var cleargifurl = "clear.gif";
 		<template name="blog_postbit_blog_this_post" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<a class="blog" href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_post.php?{vb:raw session.sessionurl}do=newblog&amp;p={vb:raw post.postid}"><!-- <img src="{vb:stylevar imgdir_misc}/blog/blogpost_40b.png" alt="{vb:rawphrase blog_this_post}" />--> {vb:rawphrase blog_this_post}</a>
 					<span class="seperator">&nbsp;</span>]]></template>
 		<template name="blog_postbit_entries_link" templatetype="template" date="1256859254" username="freddie" version="4.0.0 Beta 1"><![CDATA[<dt>{vb:rawphrase blog_entries}</dt><dd><a href="{vb:link blog, {vb:raw post}, null, 'userid', 'blog_title'}">{vb:raw post.entries}</a></dd>]]></template>
-		<template name="blog_reportitem" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<form  class="block" action="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_report.php?do={vb:raw forminfo.action}" method="post">
+		<template name="blog_reportitem" templatetype="template" date="1313191943" username="freddie" version="4.1.7 Beta 1"><![CDATA[<form  class="block" action="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_report.php?do={vb:raw forminfo.action}" method="post">
 <input type="hidden" name="s" value="{vb:raw session.sessionhash}" />
 <input type="hidden" name="securitytoken" value="{vb:raw bbuserinfo.securitytoken}" />
-	<h2 class="blockhead">
-		<span class="fly"><strong>{vb:raw forminfo.reporttype}</strong>: <a href="{vb:raw forminfo.itemlink}">{vb:raw forminfo.itemname}</a></span>
-		{vb:raw forminfo.reportphrase}
-	</h2>
+	<h2 class="blockhead">{vb:raw forminfo.reportphrase}</h2>
 	<div class="blockbody formcontrols">
 		<div class="blockrow">
 			{vb:raw usernamecode}
 			<!-- report field -->
 			<label for="message">{vb:rawphrase message}:</label>
-			<textarea name="reason" class="primary textbox" wrap="virtual" rows="6" cols="50" tabindex="1"></textarea>
+			<textarea name="reason" class="reportmsg textbox" wrap="virtual" rows="6" cols="50" tabindex="1"></textarea>
 			<p class="description">{vb:raw forminfo.description}</p>
 			<!-- / report field -->
 		</div>
@@ -4249,7 +4208,7 @@ var cleargifurl = "clear.gif";
 		</div>
 	</div>
 </form>]]></template>
-		<template name="blog_rules" templatetype="template" date="1302041862" username="michael.lavaveshkul" version="4.1.3 Beta 1"><![CDATA[<div id="blogusermenu" class="block">
+		<template name="blog_rules" templatetype="template" date="1326139719" username="michael.lavaveshkul" version="4.1.10 Alpha 2"><![CDATA[<div id="blogusermenu" class="block">
 	<h2 class="blocksubhead smaller">
 		<a href="#top" id="collapse_c_forumrules" class="collapse">
 			<img id="collapseimg_forumrules" src="{vb:stylevar imgdir_button}/collapse_40b{vb:raw vbcollapse.collapseimg_forumrules}.png"  alt="" class="collapse_generic_img"/>
@@ -4261,12 +4220,13 @@ var cleargifurl = "clear.gif";
 			<li>{vb:rawphrase bb_code_is_x, {vb:raw session.sessionurl}, {vb:raw bbcodeon}}</li>
 			<li>{vb:rawphrase smilies_are_x, {vb:raw session.sessionurl}, {vb:raw smilieson}}</li>
 			<li>{vb:rawphrase img_code_is_x, {vb:raw session.sessionurl}, {vb:raw imgcodeon}}</li>
+			<li>{vb:rawphrase video_code_is_x, {vb:raw session.sessionurl}, {vb:raw videocodeon}}</li>
 			<li>{vb:rawphrase html_code_is_x {vb:raw htmlcodeon}}</li>
 		</ol>
 	</div>
 </div>
 ]]></template>
-		<template name="blog_search_results_result" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<li class="threadbit" id="search_blog_{vb:raw blog.blogid}" title="{vb:raw blog.previewtext}">
+		<template name="blog_search_results_result" templatetype="template" date="1323305307" username="pmarsden" version="4.1.10 Alpha 1"><![CDATA[<li class="threadbit" id="search_blog_{vb:raw blog.blogid}" title="{vb:raw blog.previewtext}">
 	<div class="nonsticky">
 		<div class="threadinfo blogentry">
 			<a class="threadstatus"></a>
@@ -4280,7 +4240,7 @@ var cleargifurl = "clear.gif";
 					<div class="author">
 						{vb:rawphrase posted_by}
 						<a href="{vb:link member, {vb:raw blog}}" class="username">{vb:raw blog.postedby_username}</a>
-						{vb:date {vb:raw dateline}, {vb:raw dateformat}} <em class="time">{vb:date {vb:raw dateline}, {vb:raw timeformat}}</em>
+						{vb:date {vb:raw dateline}, {vb:raw dateformat}} <span class="time">{vb:date {vb:raw dateline}, {vb:raw timeformat}}</span>
 					</div>
 					
 				</div>
@@ -4310,9 +4270,9 @@ var cleargifurl = "clear.gif";
 		</ul>					
 		<dl class="threadlastpost td">
 			<dt class="lastpostby hidden">{vb:rawphrase last_post_by}:</dt>
-			<dd>{vb:rawphrase last_post}: {vb:raw blog.lastpostdate} <em class="time">{vb:raw blog.lastposttime}</em> </dd>
+			<dd>{vb:rawphrase last_post}: {vb:raw blog.lastpostdate} <span class="time">{vb:raw blog.lastposttime}</span> </dd>
 			<dd>
-			{vb:rawphrase by_xlink_yguest, {vb:link member, {vb:raw blog}}, {vb:raw blog.lastcommenter}} &nbsp; <a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}b={vb:raw blog.blogid}&amp;goto=newpost"><img src="{vb:stylevar imgdir_button}/lastpost-{vb:stylevar right}.png" alt="{vb:rawphrase go_to_last_post}" /></a>
+			{vb:rawphrase by_xlink_yguest, {vb:raw blog.lastcommenter_link}, {vb:raw blog.lastcommenter}} &nbsp; <a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}b={vb:raw blog.blogid}&amp;goto=newpost"><img src="{vb:stylevar imgdir_button}/lastpost-{vb:stylevar right}.png" alt="{vb:rawphrase go_to_last_post}" /></a>
 			</dd>
 		</dl>
 		
@@ -4323,7 +4283,7 @@ var cleargifurl = "clear.gif";
 		</div>
 	</div>
 </li>]]></template>
-		<template name="blog_send_to_friend" templatetype="template" date="1308167260" username="michael.lavaveshkul" version="4.1.5 Beta 1"><![CDATA[<vb:if condition="$show['errors']">
+		<template name="blog_send_to_friend" templatetype="template" date="1313627767" username="michael.lavaveshkul" version="4.1.7 Beta 1"><![CDATA[<vb:if condition="$show['errors']">
 	<div class="block">
 		<h2 class="blockhead">{vb:rawphrase errors_occured_when_submitted}:</h2>
 		<div class="blockbody formcontrols">
@@ -4335,12 +4295,9 @@ var cleargifurl = "clear.gif";
 </vb:if>
 
 <form action="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?do=dosendtofriend&amp;b={vb:raw bloginfo.blogid}" method="post" class="block">
-	<h2 class="blockhead">
-		<span class="toright">{vb:rawphrase blog_entry} <a href="{vb:link entry, {vb:raw bloginfo}}" title="{vb:raw bloginfo.title}">{vb:raw bloginfo.title_trimmed}</a></span>
-		{vb:rawphrase send_page_to_a_friend}
-	</h2>
+	<h2 class="blockhead">{vb:rawphrase send_page_to_a_friend}</h2>
 	<div class="blockbody formcontrols">
-		<div class="blockrow">{vb:raw usernamecode}</div>
+		{vb:raw usernamecode}
 		<vb:if condition="$imagereg OR $human_verify">
 			<div class="blockrow">{vb:raw human_verify}</div>
 		</vb:if>
@@ -4984,7 +4941,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 		<template name="blog_sidebar_custompage_link" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<li>
 	<a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}cp={vb:raw page.i}">{vb:raw page.t}</a>
 </li>]]></template>
-		<template name="blog_sidebar_entry_link" templatetype="template" date="1256860129" username="freddie" version="4.0.0 Beta 1"><![CDATA[<li class="avatarcontent floatcontainer">
+		<template name="blog_sidebar_entry_link" templatetype="template" date="1326139719" username="michael.lavaveshkul" version="4.1.10 Alpha 1"><![CDATA[<li class="avatarcontent floatcontainer">
 	<a class="smallavatar">
 		<vb:if condition="$userinfo['hascustomavatar']">
 		<img width="30" alt="" src="{vb:raw userinfo.avatarurl}" title=""/>
@@ -4993,7 +4950,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 		</vb:if>
 	</a>
 	<div class="smallavatartext">
-		<vb:if condition="$show['status']">
+		<vb:if condition="$show['sidebarstatus']">
 			<img class="inlineimg" src="{vb:raw status.image}" alt="{vb:raw status.phrase}" />
 		</vb:if>
 		<a href="{vb:link entry, {vb:raw entry}}">{vb:raw entry.title}</a>
@@ -5125,7 +5082,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 <vb:if condition="!$show['hidesidebar']">
 </div>
 </vb:if>]]></template>
-		<template name="blog_sidebar_user" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[	<h6 class="actionbutton_container">
+		<template name="blog_sidebar_user" templatetype="template" date="1327713143" username="pmarsden" version="4.1.11 Alpha 1"><![CDATA[<h6 class="actionbutton_container">
 	<vb:if condition="!$bbuserinfo['userid']">
 		<a class="pagetitleinfo textcontrol" href="register.php{vb:raw session.sessionurl_q}" rel="nofollow"><span>+</span> {vb:rawphrase create_blog}</a>
 	<vb:elseif condition="!$show['hidepostblogbutton'] AND ($show['postblog'] OR $show['postgroupblog'])" />
@@ -5216,7 +5173,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 					</vb:if>
 					<vb:if condition="$userinfo['age']">
 					<dl class="stats">
-						<dt>{vb:rawphrase age}:</dt>
+						<dt>{vb:rawphrase age}</dt>
 						<dd>{vb:raw userinfo.age}</dd>
 					</dl>
 					</vb:if>
@@ -5312,8 +5269,12 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 	<div class="underblock"></div>
 	</vb:if>
 	<vb:if condition="$show['moveable_blocks']">
-		<script type="text/javascript" src="{vb:stylevar yuipath}/dragdrop/dragdrop-min.js?v={vb:raw vboptions.simpleversion}"></script>
-		<script type="text/javascript" src="{vb:stylevar yuipath}/animation/animation-min.js?v={vb:raw vboptions.simpleversion}"></script>
+		<script type="text/javascript">
+		<!--
+			document.write('<script type="text/javascript" src="' + yuipath + '/dragdrop/dragdrop-min.js?v={vb:raw vboptions.simpleversion}"></script>');
+			document.write('<script type="text/javascript" src="' + yuipath + '/animation/animation-min.js?v={vb:raw vboptions.simpleversion}"></script>');
+		//-->
+		</script>
 		<script type="text/javascript" src="clientscript/blog_dragdrop.js?v={vb:raw vboptions.simpleversion}"></script>
 		<script type="text/javascript">
 		<!--
@@ -5469,7 +5430,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 	<div class="underblock"></div>
 </li>
 </vb:if>]]></template>
-		<template name="blog_sidebar_user_block_visitors" templatetype="template" date="1254758591" username="admin" version="4.0.0 Alpha 5"><![CDATA[<vb:if condition="$sidebar['visitorbits']">
+		<template name="blog_sidebar_user_block_visitors" templatetype="template" date="1326921516" username="michael.lavaveshkul" version="4.1.11 Alpha 1"><![CDATA[<vb:if condition="$sidebar['visitorbits']">
 <li id="block_visitors">
 	<div class="block" <vb:if condition="$show['moveable']">id="block_visitors_div"</vb:if>>
 		<div class="blocksubhead" id="block_visitors_handle">
@@ -5478,7 +5439,11 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 		</div>
 		<div class="blockbody" id="c_blog_visitors">
 			<div class="blockrow">
-				<ul id="recent_visitors_list" class="commalist">{vb:raw sidebar.visitorbits}</ul>
+				<ul id="recent_visitors_list" class="commalist">
+					<vb:each from="sidebar.visitorbits" value="row">
+						<li><a class="username" href="{vb:link member,{vb:raw row}}">{vb:raw row.musername}</a>{vb:raw row.invisiblemark}{vb:raw row.buddymark}{vb:raw row.comma}</li>
+					</vb:each>
+				</ul>
 			</div>
 		</div>
 	</div>
@@ -5516,12 +5481,19 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 	</div>
 
 </form>		]]></template>
-		<template name="blog_tagbit" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<vb:if condition="$userinfo['userid']">
-	<a href="{vb:link blog, {vb:raw userinfo}, {vb:raw pageinfo}, 'userid', 'blog_title'}">{vb:raw tag}</a>
-<vb:else />
-	<a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}tag={vb:raw tag_url}">{vb:raw tag}</a>
-</vb:if>]]></template>
-		<template name="blog_tag_cloud" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<vb:if condition="$tag_cloud">
+		<template name="blog_taglist" templatetype="template" date="1318288255" username="michael.lavaveshkul" version="4.1.8 Beta 1"><![CDATA[<vb:each from="tag_list" value="row">
+	<vb:if condition="$userinfo['userid']">
+		<a href="{vb:link blog, {vb:raw userinfo}, {vb:raw row.pageinfo}, 'userid', 'blog_title'}">{vb:raw row.tag}</a>{vb:raw row.comma}
+	<vb:else />
+		<a href="{vb:raw vbblog_url}blog.php?{vb:raw session.sessionurl}tag={vb:raw row.url}">{vb:raw row.tag}</a>{vb:raw row.comma}
+	</vb:if>
+</vb:each>
+
+
+
+
+]]></template>
+		<template name="blog_tag_cloud" templatetype="template" date="1328215419" username="pmarsden" version="4.1.11 Alpha 1"><![CDATA[<vb:if condition="$tag_cloud">
 	{vb:raw tag_cloud}
 </vb:if>
 <div class="clear"></div>
@@ -5532,7 +5504,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 		<div class="blockbody">
 			<div class="searchbox_wrapper">
 				<span id="tag_wrapper">
-					<input type="text" id="tag_input" tabindex="1" name="tag" class="bginput"/>
+					<input type="text" id="tag_input" tabindex="1" name="tag" class="bginput popupctrl"/>
 				</span>
 				<input type="hidden" name="u" value="{vb:raw userinfo.userid}" />
 				<input type="submit" class="button" value="{vb:rawphrase search}" tabindex="1" />
@@ -5542,8 +5514,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 </form>
 
 <vb:if condition="$show['popups']">
-	<div id="tag_wrapper_menu" class="hidden vbmenu_popup"></div>
-	<script type="text/javascript" src="clientscript/vbulletin_ajax_suggest.js?v={vb:raw vboptions.simpleversion}"></script>
+	<div id="tag_wrapper_menu" class="hidden vbmenu_popup popupbody"></div>
 	<script type="text/javascript">
 	<!--
 		vbmenu_register('tag_wrapper', true);
@@ -5573,16 +5544,16 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 <vb:else />
 	<a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog.php?{vb:raw session.sessionurl}tag={vb:raw thistag.tagtext_url}" class="tagcloudlink level{vb:raw thistag.level}" title="{vb:raw thistag.tagtext}">{vb:raw thistag.tagtext}</a> 
 </vb:if>]]></template>
-		<template name="blog_trackback" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<div class="block" id="trackback$response[blogtrackbackid]">
+		<template name="blog_trackback" templatetype="template" date="1313187753" username="michael.lavaveshkul" version="4.1.7 Beta 1"><![CDATA[<div class="block" id="trackback{vb:raw response.blogtrackbackid}">
 	<vb:if condition="$show['inlinemod_trackback']">
-		<h2 class="blockhead"><input type="checkbox" name="trackbacklist[$response[blogtrackbackid]]" id="trackbacklist_$response[blogtrackbackid]" value="$response[checkbox_value]" title="{vb:rawphrase select_this_item_for_inline_moderation}" /></h2>
+		<h2 class="blockhead"><input type="checkbox" name="trackbacklist[{vb:raw response.blogtrackbackid}]" id="trackbacklist_{vb:raw response.blogtrackbackid}" value="{vb:raw response.checkbox_value}" title="{vb:rawphrase select_this_item_for_inline_moderation}" /></h2>
 	</vb:if>
 	<div class="blockbody">
 		<h3 class="blocksubhead"><vb:if condition="$show['moderation']"><img src="{vb:stylevar imgdir_misc}/moderated.png" class="inlineimg" alt="{vb:rawphrase moderated_trackback}"  border="0" /></vb:if><a href="{vb:raw response.url}" rel="nofollow">{vb:raw response.title}</a></h3>
 		<div class="blockrow shade">{vb:raw response.date}<vb:if condition="!$show['detailedtime']">, {vb:raw response.time}</vb:if></div>
 		<div class="blockrow">{vb:raw response.snippet}</div>
 	</div>
-	<vb:if condition="$show['edit_trackback']"><div class="blockfoot toright"><a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_post.php?{vb:raw session.sessionurl}do=edittrackback&amp;blogtrackbackid={vb:raw response.blogtrackbackid}"><img class="inlineimg" src="{vb:stylevar imgdir_misc}/blog/edit.png" alt="{vb:rawphrase edit_comment}" border="0" /></a></div></vb:if>
+	<vb:if condition="$show['edit_trackback']"><div class="blockfoot toright"><a href="{vb:raw vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_post.php?{vb:raw session.sessionurl}do=edittrackback&amp;blogtrackbackid={vb:raw response.blogtrackbackid}"><img class="inlineimg" src="{vb:stylevar imgdir_misc}/blog/edit.png" alt="{vb:rawphrase edit_comment}" border="0" /></a></div></vb:if>
 </div>]]></template>
 		<template name="blog_usercp_nav_link" templatetype="template" date="1291933942" username="michael.lavaveshkuli" version="4.1.1 Alpha 1"><![CDATA[<li>
 	<h4 class="blocksubhead"><img class="usercpimage" src="{vb:stylevar imgdir_cms}/widget-blog.png" alt="{vb:rawphrase blog}" border="0" /> <a href="{vb:raw $vboptions.vbblog_url}{vb:if "$vboptions['vbblog_url']", '/', ''}blog_usercp.php{vb:raw session.sessionurl_q}" class="usercp_blog">{vb:rawphrase blog}</a></h4>
@@ -5595,8 +5566,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 </style>]]></template>
 		<template name="modifyattachmentsbit_entry" templatetype="template" date="1256860392" username="freddie" version="4.0.0 Beta 1"><![CDATA[{vb:rawphrase blog}: <a href="{vb:link blog, {vb:raw entry}, null, 'userid', 'blogtitle'}">{vb:raw entry.blogtitle}</a>
 {vb:rawphrase entry}: <a href="{vb:link entry, {vb:raw entry}}">{vb:raw entry.title}</a>]]></template>
-		<template name="search_input_blogcomment" templatetype="template" date="1309980136" username="michael.lavaveshkul" version="4.1.5 Beta 1"><![CDATA[<form action="search.php?do=process" method="post" name="vbform" id="searchform">
-
+		<template name="search_input_blogcomment" templatetype="template" date="1313783219" username="michael.lavaveshkul" version="4.1.7 Beta 1"><![CDATA[<form action="search.php?do=process" method="post" name="vbform" id="searchform">
 	<h3 class="blocksubhead">{vb:rawphrase search_for_blog_comments}</h3>
 	<div class="section">
 		<div class="blockrow">
@@ -5607,7 +5577,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 				</li>
 				<li>
 					<select name="titleonly" tabindex="1">
-						<option value="0" only{vb:raw titleselected.0}>{vb:rawphrase search_description_title}</option>
+						<option value="0" {vb:raw titleonlyselected.0}>{vb:rawphrase search_description_title}</option>
 						<option value="1" {vb:raw titleonlyselected.1}>{vb:rawphrase search_titles_only}</option>
 					</select>
 				</li>
@@ -5660,7 +5630,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 						<option value="1" {vb:raw searchdateselected.1}>{vb:rawphrase yesterday}</option>
 						<option value="7" {vb:raw searchdateselected.7}>{vb:rawphrase a_week_ago}</option>
 						<option value="14" {vb:raw searchdateselected.14}>{vb:rawphrase x_weeks_ago, 2}</option>
-						<option value="30"{vb:raw searchdateselected.30}]> {vb:rawphrase a_month_ago}</option>
+						<option value="30"{vb:raw searchdateselected.30}>{vb:rawphrase a_month_ago}</option>
 						<option value="90" {vb:raw searchdateselected.90}>{vb:rawphrase x_months_ago, 3}</option>
 						<option value="180" {vb:raw searchdateselected.180}>{vb:rawphrase x_months_ago, 6}</option>
 						<option value="365" {vb:raw searchdateselected.365}>{vb:rawphrase a_year_ago}</option>
@@ -5727,7 +5697,7 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 	<input type="hidden" name="contenttypeid" value="{vb:raw contenttypeid}" />
 
 </form>]]></template>
-		<template name="search_input_blogentry" templatetype="template" date="1309980136" username="michael.lavaveshkul" version="4.1.5 Beta 1"><![CDATA[<form action="search.php?do=process" method="post" name="vbform" id="searchform">
+		<template name="search_input_blogentry" templatetype="template" date="1314047125" username="michael.lavaveshkul" version="4.1.7 Beta 1"><![CDATA[<form action="search.php?do=process" method="post" name="vbform" id="searchform">
 	<h3 class="blocksubhead">{vb:rawphrase search_for_blog_entries}</h3>
 	<div class="section">
 		<div class="blockrow">
@@ -5766,16 +5736,8 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 		</div>
 		<div class="blockrow">
 			<label for="tag">{vb:rawphrase tag}:</label>
-			<div id="tag_add">
-				<input type="text" class="textbox primary" name="tag" id="tag_add_input" tabindex="1" value="{vb:raw tag}" />
-			</div>
-			<div id="tag_add_menu" class="vbmenu_popup hidden">
-			<script type="text/javascript">
-			<!--
-				vbmenu_register('tag_add', true);
-				tag_add_comp = new vB_AJAX_TagSuggest('tag_add_comp', 'tag_add_input', 'tag_add');
-			//-->
-			</script>
+			<div id="tag_add" class="popupmenu nomouseover noclick nohovermenu popupcustom">
+				<input type="text" class="textbox primary popupctrl" name="tag" id="tag_add_input" tabindex="1" value="{vb:raw tag}" />
 			</div>
 		</div>
 		<div class="blockrow">
@@ -5875,20 +5837,19 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 			<stylevar name="vbblog_bloglist_avatar_width" datatype="size" validation="" failsafe="" />
 			<stylevar name="vbblog_bloglist_border" datatype="border" validation="" failsafe="" />
 			<stylevar name="vbblog_bloglist_header_color" datatype="color" validation="" failsafe="" />
-			<stylevar name="vbblog_comment_header_color" datatype="color" validation="" failsafe="" />
+			<stylevar name="vbblog_body_background" datatype="background" validation="" failsafe="" />
+			<stylevar name="vbblog_entry_background" datatype="background" validation="" failsafe="" />
 			<stylevar name="vbblog_featured_background" datatype="background" validation="" failsafe="" />
 			<stylevar name="vbblog_featured_border" datatype="border" validation="" failsafe="" />
 			<stylevar name="vbblog_featured_header_background" datatype="background" validation="" failsafe="" />
 			<stylevar name="vbblog_featured_header_color" datatype="color" validation="" failsafe="" />
-			<stylevar name="vbblog_input_font" datatype="font" validation="" failsafe="" />
-			<stylevar name="vbblog_link_color" datatype="color" validation="" failsafe="" />
+			<stylevar name="vbblog_listrow_background" datatype="background" validation="" failsafe="" />
 			<stylevar name="vbblog_pagetitle_border" datatype="border" validation="" failsafe="" />
 			<stylevar name="vbblog_pagetitle_color" datatype="color" validation="" failsafe="" />
 			<stylevar name="vbblog_pagetitle_description_color" datatype="color" validation="" failsafe="" />
 			<stylevar name="vbblog_pagetitle_description_font" datatype="font" validation="" failsafe="" />
 			<stylevar name="vbblog_pagetitle_font" datatype="font" validation="" failsafe="" />
 			<stylevar name="vbblog_sidebar_avatar_border" datatype="border" validation="" failsafe="" />
-			<stylevar name="vbblog_sidebar_avatar_maxSize" datatype="size" validation="" failsafe="" />
 			<stylevar name="vbblog_sidebar_tabs_background" datatype="background" validation="" failsafe="" />
 			<stylevar name="vbblog_sidebar_tabs_border" datatype="border" validation="" failsafe="" />
 			<stylevar name="vbblog_sidebar_tabs_color" datatype="color" validation="" failsafe="" />
@@ -5902,20 +5863,19 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 		<stylevar name="vbblog_bloglist_avatar_width" value="YToyOntzOjU6InVuaXRzIjtzOjI6InB4IjtzOjQ6InNpemUiO3M6MjoiNjAiO30=" />
 		<stylevar name="vbblog_bloglist_border" value="YTo0OntzOjU6InVuaXRzIjtzOjI6InB4IjtzOjU6IndpZHRoIjtzOjE6IjEiO3M6NToic3R5bGUiO3M6NjoiZG90dGVkIjtzOjU6ImNvbG9yIjtzOjc6IiNjOGM4YzgiO30=" />
 		<stylevar name="vbblog_bloglist_header_color" value="YToxOntzOjU6ImNvbG9yIjtzOjc6IiMzZTNlM2UiO30=" />
-		<stylevar name="vbblog_comment_header_color" value="YToxOntzOjU6ImNvbG9yIjtzOjc6IiMwMDAwMDAiO30=" />
+		<stylevar name="vbblog_body_background" value="YTo2OntzOjU6InVuaXRzIjtzOjA6IiI7czo1OiJjb2xvciI7czoxODoicmdiKDI1NSwgMjU1LCAyNTUpIjtzOjU6ImltYWdlIjtzOjA6IiI7czo2OiJyZXBlYXQiO3M6MDoiIjtzOjE6IngiO3M6MDoiIjtzOjE6InkiO3M6MDoiIjt9" />
+		<stylevar name="vbblog_entry_background" value="YTo2OntzOjU6InVuaXRzIjtzOjA6IiI7czo1OiJjb2xvciI7czoxMToidHJhbnNwYXJlbnQiO3M6NToiaW1hZ2UiO3M6MDoiIjtzOjY6InJlcGVhdCI7czowOiIiO3M6MToieCI7czowOiIiO3M6MToieSI7czowOiIiO30=" />
 		<stylevar name="vbblog_featured_background" value="YTo2OntzOjU6InVuaXRzIjtzOjA6IiI7czo1OiJjb2xvciI7czo3OiIjZjJmNmY4IjtzOjU6ImltYWdlIjtzOjA6IiI7czo2OiJyZXBlYXQiO3M6MDoiIjtzOjE6IngiO3M6MDoiIjtzOjE6InkiO3M6MDoiIjt9" />
 		<stylevar name="vbblog_featured_border" value="YTo0OntzOjU6InVuaXRzIjtzOjI6InB4IjtzOjU6IndpZHRoIjtzOjE6IjEiO3M6NToic3R5bGUiO3M6NToic29saWQiO3M6NToiY29sb3IiO3M6NzoiI0NFREZFQiI7fQ==" />
 		<stylevar name="vbblog_featured_header_background" value="YTo2OntzOjU6InVuaXRzIjtzOjA6IiI7czo1OiJjb2xvciI7czo3OiIjQ0VERkVCIjtzOjU6ImltYWdlIjtzOjA6IiI7czo2OiJyZXBlYXQiO3M6MDoiIjtzOjE6IngiO3M6MDoiIjtzOjE6InkiO3M6MDoiIjt9" />
 		<stylevar name="vbblog_featured_header_color" value="YToxOntzOjU6ImNvbG9yIjtzOjc6IiM1YjViNWIiO30=" />
-		<stylevar name="vbblog_input_font" value="YTo2OntzOjU6InVuaXRzIjtzOjI6InB0IjtzOjY6ImZhbWlseSI7czo0MDoiQ2FsaWJyaSxUYWhvbWEsVmVyZGFuYSxHZW5ldmEsc2Fucy1zZXJpZiI7czo0OiJzaXplIjtzOjI6IjEwIjtzOjY6IndlaWdodCI7czo2OiJub3JtYWwiO3M6NToic3R5bGUiO3M6MDoiIjtzOjc6InZhcmlhbnQiO3M6MDoiIjt9" />
-		<stylevar name="vbblog_link_color" value="YToxOntzOjU6ImNvbG9yIjtzOjc6IiM0MTczOTQiO30=" />
+		<stylevar name="vbblog_listrow_background" value="YTo2OntzOjU6InVuaXRzIjtzOjA6IiI7czo1OiJjb2xvciI7czo3OiIjRkFGQUZGIjtzOjU6ImltYWdlIjtzOjUzOiJ1cmwoaW1hZ2VzL2dyYWRpZW50cy9mb3JtLWNvbnRyb2wtZ3JhZGllbnQtYWxwaGEucG5nKSI7czo2OiJyZXBlYXQiO3M6ODoicmVwZWF0LXgiO3M6MToieCI7czo2OiJib3R0b20iO3M6MToieSI7czo2OiJjZW50ZXIiO30=" />
 		<stylevar name="vbblog_pagetitle_border" value="YTo0OntzOjU6InVuaXRzIjtzOjI6InB4IjtzOjU6IndpZHRoIjtzOjE6IjMiO3M6NToic3R5bGUiO3M6NToic29saWQiO3M6NToiY29sb3IiO3M6NzoiIzQyNTc2OSI7fQ==" />
 		<stylevar name="vbblog_pagetitle_color" value="YToxOntzOjU6ImNvbG9yIjtzOjc6IiM0MjQyNDIiO30=" />
 		<stylevar name="vbblog_pagetitle_description_color" value="YToxOntzOjU6ImNvbG9yIjtzOjc6IiM4MjgyODIiO30=" />
 		<stylevar name="vbblog_pagetitle_description_font" value="YTo2OntzOjU6InVuaXRzIjtzOjE6IiUiO3M6NjoiZmFtaWx5IjtzOjM2OiJUYWhvbWEsIENhbGlicmksIFZlcmRhbmEsIHNhbnMtc2VyaWYiO3M6NDoic2l6ZSI7czoyOiI4OCI7czo2OiJ3ZWlnaHQiO3M6Njoibm9ybWFsIjtzOjU6InN0eWxlIjtzOjA6IiI7czo3OiJ2YXJpYW50IjtzOjA6IiI7fQ==" />
 		<stylevar name="vbblog_pagetitle_font" value="YTo2OntzOjU6InVuaXRzIjtzOjE6IiUiO3M6NjoiZmFtaWx5IjtzOjM2OiJUYWhvbWEsIENhbGlicmksIFZlcmRhbmEsIHNhbnMtc2VyaWYiO3M6NDoic2l6ZSI7czozOiIxNDAiO3M6Njoid2VpZ2h0IjtzOjQ6ImJvbGQiO3M6NToic3R5bGUiO3M6MDoiIjtzOjc6InZhcmlhbnQiO3M6MDoiIjt9" />
 		<stylevar name="vbblog_sidebar_avatar_border" value="YTo0OntzOjU6InVuaXRzIjtzOjI6InB4IjtzOjU6IndpZHRoIjtzOjE6IjEiO3M6NToic3R5bGUiO3M6NToic29saWQiO3M6NToiY29sb3IiO3M6NzoiI2RhZGFkYSI7fQ==" />
-		<stylevar name="vbblog_sidebar_avatar_maxSize" value="YToyOntzOjU6InVuaXRzIjtzOjI6InB4IjtzOjQ6InNpemUiO3M6MjoiODAiO30=" />
 		<stylevar name="vbblog_sidebar_tabs_background" value="YTo2OntzOjU6InVuaXRzIjtzOjA6IiI7czo1OiJjb2xvciI7czo3OiIjZjVmNWY1IjtzOjU6ImltYWdlIjtzOjA6IiI7czo2OiJyZXBlYXQiO3M6MDoiIjtzOjE6IngiO3M6MDoiIjtzOjE6InkiO3M6MDoiIjt9" />
 		<stylevar name="vbblog_sidebar_tabs_border" value="YTo0OntzOjU6InVuaXRzIjtzOjI6InB4IjtzOjU6IndpZHRoIjtzOjE6IjEiO3M6NToic3R5bGUiO3M6NToic29saWQiO3M6NToiY29sb3IiO3M6NzoiI2RhZGFkYSI7fQ==" />
 		<stylevar name="vbblog_sidebar_tabs_color" value="YToxOntzOjU6ImNvbG9yIjtzOjc6IiM0MTczOTQiO30=" />
@@ -5924,6 +5884,14 @@ var quick_comment = new vB_QuickComment("qc_form", {vb:raw vboptions.postminchar
 		<stylevar name="vbblog_sidebar_tabs_selected_background" value="YTo2OntzOjU6InVuaXRzIjtzOjA6IiI7czo1OiJjb2xvciI7czoxODoicmdiKDI1NSwgMjU1LCAyNTUpIjtzOjU6ImltYWdlIjtzOjA6IiI7czo2OiJyZXBlYXQiO3M6MDoiIjtzOjE6IngiO3M6MDoiIjtzOjE6InkiO3M6MDoiIjt9" />
 		<stylevar name="vbblog_sidebar_width" value="YToyOntzOjU6InVuaXRzIjtzOjI6InB4IjtzOjQ6InNpemUiO3M6MzoiMjcwIjt9" />
 	</stylevars>
+	<stylevardfns_mobile>
+		<stylevargroup name="Blog">
+			<stylevar name="vbblog_bloglist_avatar_width" datatype="size" validation="" failsafe="" />
+		</stylevargroup>
+	</stylevardfns_mobile>
+	<stylevars_mobile>
+		<stylevar name="vbblog_bloglist_avatar_width" value="YToyOntzOjU6InVuaXRzIjtzOjI6InB4IjtzOjQ6InNpemUiO3M6MjoiNjAiO30=" />
+	</stylevars_mobile>
 	<plugins>
 		<plugin active="1" executionorder="5">
 			<title>Admin DM: Blog Permission Field</title>
@@ -5961,12 +5929,14 @@ else if ($table == 'blog_featured')
 	$idfield = 'featureid';
 
 	$item = $vbulletin->db->query_first("
-		SELECT featureid
+		SELECT featureid, type
 		FROM " . TABLE_PREFIX . "blog_featured
 		WHERE featureid = $itemid
 	");
-	$item['title'] = 'featureid';
+	$typedesc = $item['type'].'_entry';
+
 	$handled = true;
+	$item['title'] = $vbphrase[$typedesc];
 }
 else if ($table == 'blog_category')
 {
@@ -5977,8 +5947,9 @@ else if ($table == 'blog_category')
 		FROM " . TABLE_PREFIX . "blog_category
 		WHERE blogcategoryid = $itemid AND userid = 0
 	");
-	$item['title'] = 'blogcategoryid';
+
 	$handled = true;
+	$item['title'] = $vbphrase['category' . $item['blogcategoryid'] . '_title'];
 }]]></phpcode>
 		</plugin>
 		<plugin active="1" executionorder="5">
@@ -6006,9 +5977,6 @@ $hook_query_fields .=	"
 	blog.title AS blogentry_title, blog_text.title AS comment_title, blog_attachment.filename AS blogattachment_title, blog_trackback.title AS trackback_title
 ";
 
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-require_once(DIR . '/vb/types.php');
-vB_Bootstrap_Framework::init();
 $contenttypeid = vB_Types::instance()->getContentTypeID('vBBlog_BlogEntry');
 
 $hook_join_fields .= "
@@ -6121,12 +6089,14 @@ build_category_permissions();]]></phpcode>
 			$dohtml = ($this->parse_userinfo['permissions']['vbblog_entry_permissions'] & $this->registry->bf_ugp_vbblog_entry_permissions['blog_allowhtml']);
 			$dobbcode = ($this->parse_userinfo['permissions']['vbblog_entry_permissions'] & $this->registry->bf_ugp_vbblog_entry_permissions['blog_allowbbcode']);
 			$dobbimagecode = ($this->parse_userinfo['permissions']['vbblog_entry_permissions'] & $this->registry->bf_ugp_vbblog_entry_permissions['blog_allowimages']);
+			$dobbvideocode = ($this->parse_userinfo['permissions']['vbblog_entry_permissions'] & $this->registry->bf_ugp_vbblog_entry_permissions['blog_allowvideos']);
 			$dosmilies = ($allowsmilie AND ($this->parse_userinfo['permissions']['vbblog_entry_permissions'] & $this->registry->bf_ugp_vbblog_entry_permissions['blog_allowsmilies']));
 			break;
 		case 'blog_comment':
 			$dohtml = ($this->parse_userinfo['permissions']['vbblog_comment_permissions'] & $this->registry->bf_ugp_vbblog_comment_permissions['blog_allowhtml']);
 			$dobbcode = ($this->parse_userinfo['permissions']['vbblog_comment_permissions'] & $this->registry->bf_ugp_vbblog_comment_permissions['blog_allowbbcode']);
 			$dobbimagecode = ($this->parse_userinfo['permissions']['vbblog_comment_permissions'] & $this->registry->bf_ugp_vbblog_comment_permissions['blog_allowimages']);
+			$dobbvideocode = ($this->parse_userinfo['permissions']['vbblog_comment_permissions'] & $this->registry->bf_ugp_vbblog_comment_permissions['blog_allowvideos']);
 			$dosmilies = ($allowsmilie AND ($this->parse_userinfo['permissions']['vbblog_comment_permissions'] & $this->registry->bf_ugp_vbblog_comment_permissions['blog_allowsmilies']));
 			break;
 	}
@@ -6157,7 +6127,9 @@ build_category_permissions();]]></phpcode>
 			'blog_comment_profile',
 			'blog_member_ministats',
 			'blog_member_stats',
-			'blog_tagbit',
+			'blog_taglist',
+			'activitystream_blog_entry',
+			'activitystream_blog_comment',
 		);
 		$cache = array_merge($addtemplates, $cache);
 		break;
@@ -6169,13 +6141,18 @@ build_category_permissions();]]></phpcode>
 	case 'tags':
 		$cache[] = 'blog_search_results_result';
 		break;
+
+	case 'activity':
+		$cache[] = 'activitystream_blog_entry';
+		$cache[] = 'activitystream_blog_comment';
+		break;
 }
 
 // Check that the viewer can access the blog
-if ($vbulletin->userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewothers'] OR ($vbulletin->userinfo['userid'] AND $vbulletin->userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewown']))
+if ($vbulletin->userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewothers']
+OR ($vbulletin->userinfo['userid'] AND $vbulletin->userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewown']))
 {
-	$cache[] = 'blog_navbar_link';
-	$cache[] = 'blog_navbar_whatsnew_link';
+	$cache[] = 'blog_postbit_blog_this_post';
 
 	if (in_array('usercp_nav_folderbit', $cache))
 	{
@@ -6185,7 +6162,6 @@ if ($vbulletin->userinfo['permissions']['vbblog_general_permissions'] & $vbullet
 	{
 		$cache[] = 'blog_postbit_entries_link';
 		$cache[] = 'blog_postbit_blog_link';
-		$cache[] = 'blog_postbit_blog_this_post';
 	}
 
 	define('VBBLOG_CACHED_TEMPLATES', true);
@@ -6249,11 +6225,13 @@ else if ($vbulletin->GPC['parsetype']== 'blog_comment')
 {
 	$can_toolbar = ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowbbcode']) ? true : false;
 	$show['img_bbcode'] = ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowimages']) ? true : false;
+	$show['video_bbcode'] = ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowvideos']) ? true : false;
 }
 else if ($forumid == 'blog_comment')
 {
 	$can_toolbar = ($vbulletin->userinfo['permissions']['vbblog_comment_permissions'] & $vbulletin->bf_ugp_vbblog_comment_permissions['blog_allowbbcode']) ? true : false;
 	$show['img_bbcode'] = ($vbulletin->userinfo['permissions']['vbblog_comment_permissions'] & $vbulletin->bf_ugp_vbblog_comment_permissions['blog_allowimages']) ? true : false;
+	$show['video_bbcode'] = ($vbulletin->userinfo['permissions']['vbblog_comment_permissions'] & $vbulletin->bf_ugp_vbblog_comment_permissions['blog_allowvideos']) ? true : false;
 }]]></phpcode>
 		</plugin>
 		<plugin active="1" executionorder="5">
@@ -6457,20 +6435,8 @@ $hook_query_joins .= "LEFT JOIN " . TABLE_PREFIX . "blog_user AS blog_user ON (b
 		$hook_joins[] = "LEFT JOIN " . TABLE_PREFIX . "blog_custom_block_parsed AS blockparsed ON (blockparsed.userid = user.userid AND blockparsed.styleid = " . intval(STYLEID) . " AND blockparsed.languageid = " . intval(LANGUAGEID) . ")";
 	}
 	else
-	{
-		// Attempt to guess the correct style - this could be wrong and will be invalidated later if so
-		if (defined('VBBLOG_STYLE') AND $vbulletin->options['vbblog_style'])
-		{
-			$styleidsql = $vbulletin->options['vbblog_style'];
-		}
-		else if ($vbulletin->options['allowchangestyles'] == 1 OR ($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']))
-		{
-			$styleidsql = "IF(user.styleid > 0, user.styleid, " . $vbulletin->options['styleid'] . ")";
-		}
-		else
-		{
-			$styleidsql = $vbulletin->options['styleid'];
-		}
+	{	// all that jazz here was pointless, $vbulletin->userinfo doesn't exist yet as this is the query itself that gets it
+		$styleidsql = $vbulletin->options['styleid'];
 		$hook_joins[] = "LEFT JOIN " . TABLE_PREFIX . "blog_custom_block_parsed AS blockparsed ON
 			 (blockparsed.userid = user.userid AND blockparsed.styleid = $styleidsql AND blockparsed.languageid = " . (!empty($languageid) ? $languageid : "IF(user.languageid = 0, " . intval($vbulletin->options['languageid']) . ", user.languageid)") . ")";
 	}
@@ -6487,7 +6453,7 @@ $hook_query_joins .= "LEFT JOIN " . TABLE_PREFIX . "blog_user AS blog_user ON (b
 
 	if ($vbulletin->userinfo['userid'] AND $vbulletin->userinfo['userid'] != $userid)
 	{
-		$hook_fields[] = 	"gm.permissions AS grouppermissions, ignored.relationid AS ignoredid, buddy.relationid AS buddyid";
+		$hook_fields[] = 	"gm.permissions AS grouppermissions, ignored.relationid AS ignoreid, buddy.relationid AS buddyid";
 		$hook_joins[] = "LEFT JOIN " . TABLE_PREFIX . "userlist AS ignored ON (ignored.userid = user.userid AND ignored.relationid = " . $vbulletin->userinfo['userid'] . " AND ignored.type = 'ignore')";
 		$hook_joins[] = "LEFT JOIN " . TABLE_PREFIX . "userlist AS buddy ON (buddy.userid = user.userid AND buddy.relationid = " . $vbulletin->userinfo['userid'] . " AND buddy.type = 'buddy')";
 		if ($option === 'flipgmperms')
@@ -6581,6 +6547,10 @@ if ($option & 4)
 			<hookname>global_state_check</hookname>
 			<phpcode><![CDATA[if (defined('VBBLOG_SCRIPT'))
 {
+	if (defined('VBBLOG_STYLE') AND $vbulletin->options['vbblog_style'])
+	{
+		$this->force_styleid = $vbulletin->options['vbblog_style'];
+	}
 	$temp = $vbulletin->input->shortvars;
 	$vbulletin->input->shortvars = array(
 		'b'  => 'blogid',
@@ -6705,6 +6675,22 @@ $template_hook['memberinfo_css'] .= vB_Template::create('blog_member_css')->rend
 	}
 }]]></phpcode>
 		</plugin>
+		<plugin active="1" executionorder="3">
+			<title>Navbar: Set Navigation Tab</title>
+			<hookname>set_navigation_tab_main</hookname>
+			<phpcode><![CDATA[if (defined('VBBLOG_SCRIPT'))
+{
+	$root = 'vbtab_blog'; // Blogs root tab
+}]]></phpcode>
+		</plugin>
+		<plugin active="1" executionorder="5">
+			<title>Navbar: Set Fallback Tab</title>
+			<hookname>set_navigation_tab_fallback</hookname>
+			<phpcode><![CDATA[if (defined('VBBLOG_SCRIPT'))
+{
+	$root = 'vbtab_blog'; // Blogs root tab
+}]]></phpcode>
+		</plugin>
 		<plugin active="1" executionorder="5">
 			<title>Postbit: Fetch blog information on Ajax Post</title>
 			<hookname>newreply_post_ajax</hookname>
@@ -6753,7 +6739,7 @@ $hook_query_joins .= "LEFT JOIN " . TABLE_PREFIX . "blog_user AS blog_user ON (b
 			<phpcode><![CDATA[if ($vbulletin->options['vbblog_url'])
 {
    global $template_hook;
-   $template_hook['headinclude_javascript'] .= '<script type="text/javascript">PATHS.blog = "' . htmlspecialchars($vbulletin->options['vbblog_url']) . '";</script>'; 
+   $template_hook['headinclude_javascript'] .= '<script type="text/javascript">PATHS.blog = "' . htmlspecialchars($vbulletin->options['vbblog_url']) . '";</script>';
 }]]></phpcode>
 		</plugin>
 		<plugin active="1" executionorder="5">
@@ -6800,17 +6786,6 @@ $hook_query_joins .= "LEFT JOIN " . TABLE_PREFIX . "blog_user AS blog_user ON (b
 	$vbulletin->userinfo['userid']
 );
 
-if (defined('VBBLOG_CACHED_TEMPLATES'))
-{
-	if (defined('VBBLOG_SCRIPT'))
-	{
-		$vbulletin->options['selectednavtab'] = 'vbblog';
-	}
-	$template_hook['navtab_middle'] .= vB_Template::create('blog_navbar_link')->render();
-        $template_hook['navbar_getnew_menu'] .= vB_Template::create('blog_navbar_whatsnew_link')->render();
-}
-
-
 if (STYLEID != $vbulletin->userinfo['blogstyleid'])
 {
 	$vbulletin->userinfo['blocktext'] = '';
@@ -6834,17 +6809,6 @@ $hook_query_joins .= "LEFT JOIN " . TABLE_PREFIX . "blog_user AS blog_user ON (b
 			<phpcode><![CDATA[print_stylevar_row($vbphrase['blog_form_width'], 'formwidth_blog');
 print_stylevar_row($vbphrase['blog_code_block_width'], 'codeblockwidth_blog');
 print_stylevar_row($vbphrase['message_width_blog'], 'messagewidth_blog');]]></phpcode>
-		</plugin>
-		<plugin active="1" executionorder="5">
-			<title>Style: Override Style and Setup Group Blog Permissions</title>
-			<hookname>style_fetch</hookname>
-			<phpcode><![CDATA[if (defined('VBBLOG_STYLE') AND $vbulletin->options['vbblog_style'])
-{
-	$styleid = $vbulletin->options['vbblog_style'];
-	$vbulletin->userinfo['styleid'] = $styleid;
-	$userselect = true;
-	$vbulletin->options['allowchangestyles'] = false;
-}]]></phpcode>
 		</plugin>
 		<plugin active="1" executionorder="5">
 			<title>Admin: Add Template Group for Blog</title>
@@ -6983,6 +6947,7 @@ require_once(DIR . '/includes/blog_functions.php');
 $userdm =& datamanager_init('Blog_User', $this->registry, ERRTYPE_SILENT);
 $existing = array('bloguserid' => $this->existing['userid']);
 $userdm->set_existing($existing);
+$userdm->set_info('verifyuser', array('userid' => $this->existing['userid'], 'username' => $this->existing['username']));
 $userdm->delete();
 unset($userdm);]]></phpcode>
 		</plugin>
@@ -7045,7 +7010,12 @@ $this->dbobject->query_write("
 		</plugin>
 	</plugins>
 	<phrases>
-		<phrasetype name="Ad Manager" fieldname="advertising">
+		<phrasetype name="Activity Stream" fieldname="activitystream">
+			<phrase name="guest_x_commented_on_blog_entry_y_in_z" date="1337205182" username="freddie" version="4.2.0 Alpha 1"><![CDATA[{1} commented on blog entry <a href="{2}">{3}</a> in <a href="{4}">{5}</a>]]></phrase>
+			<phrase name="x_commented_on_blog_entry_y_in_z" date="1334708308" username="freddie" version="4.2.0 Alpha 1"><![CDATA[<a href="{1}" class="username">{2}</a> commented on blog entry <a href="{3}">{4}</a> in <a href="{5}">{6}</a>]]></phrase>
+			<phrase name="x_created_a_blog_entry_y_in_z" date="1334604281" username="freddie" version="4.2.0 Alpha 1"><![CDATA[<a href="{1}" class="username">{2}</a> created a blog entry <a href="{3}">{4}</a> in <a href="{5}">{6}</a>]]></phrase>
+		</phrasetype>
+		<phrasetype name="Advertising" fieldname="advertising">
 			<phrase name="adlocation_bloglist_first_entry" date="1272404347" username="ksours" version="4.0.4"><![CDATA[First Entry]]></phrase>
 			<phrase name="adlocation_blogshowentry_after" date="1272461315" username="ksours" version="4.0.4"><![CDATA[After Entry]]></phrase>
 			<phrase name="adlocation_blogshowentry_before" date="1272405269" username="ksours" version="4.0.4"><![CDATA[Before Entry]]></phrase>
@@ -7146,6 +7116,10 @@ This area allows you to manage the existing tags and create new ones. Note that 
 <br />
 <b>Note: </b>This number must be at least 1.]]></phrase>
 			<phrase name="options_options_blog_commentsperpage_title" date="1231199650" username="freddie" version="2.0.1"><![CDATA[Comments Per Page]]></phrase>
+			<phrase name="options_options_vbblog_blockmaxvideos_text" date="1325640873" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Set this to the maximum number of videos you wish to allow per custom block. Set this to 0 to disable the videos count.]]></phrase>
+			<phrase name="options_options_vbblog_blockmaxvideos_title" date="1325640873" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Videos Per Custom Block]]></phrase>
+			<phrase name="options_options_vbblog_commentmaxvideos_text" date="1325640876" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Set this to the maximum number of videos you wish to allow per blog comment. Set this to 0 to disable the videos count.]]></phrase>
+			<phrase name="options_options_vbblog_commentmaxvideos_title" date="1325640876" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Videos Per Comment]]></phrase>
 			<phrase name="options_options_vbblog_commentmoderation_text" date="1231203623" username="freddie" version="2.0.1"><![CDATA[If set to 'Yes', all comments are placed into a moderation queue for approval by board staff before being visible to site visitors.<br />
 <br />
 It may be a legal requirement to enable this option in some cases, such as for boards run in Germany.<br />
@@ -7154,6 +7128,8 @@ If you would like to have all comments from only certain usergroups sent to the 
 			<phrase name="options_options_vbblog_commentmoderation_title" date="1231203623" username="freddie" version="2.0.1"><![CDATA[Comment Moderation]]></phrase>
 			<phrase name="options_options_vbblog_entrymaximages_text" date="1231203728" username="freddie" version="2.0.1"><![CDATA[Set this to the maximum number of images you wish to allow per blog entry. Set this to 0 to disable the images count.]]></phrase>
 			<phrase name="options_options_vbblog_entrymaximages_title" date="1231203728" username="freddie" version="2.0.1"><![CDATA[Maximum Images Per Entry]]></phrase>
+			<phrase name="options_options_vbblog_entrymaxvideos_text" date="1325640879" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Set this to the maximum number of videos you wish to allow per blog entry. Set this to 0 to disable the videos count.]]></phrase>
+			<phrase name="options_options_vbblog_entrymaxvideos_title" date="1325640879" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Videos Per Entry]]></phrase>
 			<phrase name="options_options_vbblog_maxperpage_text" date="1231202710" username="freddie" version="2.0.1"><![CDATA[This is the maximum number of entries per page on blog lists.<br />
 <br />
 <b>Note: </b>This number must be at least 1.]]></phrase>
@@ -7164,6 +7140,8 @@ If you would like to have all comments from only certain usergroups sent to the 
 			<phrase name="options_options_vbblog_maxtagstarter_title" date="1231201949" username="freddie" version="2.0.1"><![CDATA[Maximum Tags Applied by Entry Author]]></phrase>
 			<phrase name="options_options_vbblog_maxtaguser_text" date="1231202007" username="freddie" version="2.0.1"><![CDATA[The maximum number of tags the users other than the entry author can apply. Even if this setting allows it, the number of tags in an entry cannot exceed the "Maximum Tags per Entry" setting. 0 disables this limit. To prevent a user from tagging an entry, use user group permissions.]]></phrase>
 			<phrase name="options_options_vbblog_maxtaguser_title" date="1231202007" username="freddie" version="2.0.1"><![CDATA[Maximum Tags Applied by Other Users]]></phrase>
+			<phrase name="options_options_vbblog_pagemaxvideos_text" date="1325640883" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Set this to the maximum number of videos you wish to allow per custom page. Set this to 0 to disable the videos count.]]></phrase>
+			<phrase name="options_options_vbblog_pagemaxvideos_title" date="1325640883" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Videos Per Custom Page]]></phrase>
 			<phrase name="options_options_vbblog_perpage_text" date="1231202800" username="freddie" version="2.0.1"><![CDATA[This is the default number of entries per page on blog lists.<br />
 <br />
 <b>Note: </b>This number must be at least 1.]]></phrase>
@@ -7216,7 +7194,7 @@ A tag name may contain any character except a comma. Tags with censored words ar
 			<phrase name="options_options_vbblog_tagmaxlen_title" date="1231201729" username="freddie" version="2.0.1"><![CDATA[Tag Maximum Length]]></phrase>
 			<phrase name="options_options_vbblog_tagminlen_text" date="1231201697" username="freddie" version="2.0.1"><![CDATA[The minimum number of characters in a tag name. This can be between 1 and 100.]]></phrase>
 			<phrase name="options_options_vbblog_tagminlen_title" date="1231201697" username="freddie" version="2.0.1"><![CDATA[Tag Minimum Length]]></phrase>
-			<phrase name="options_options_vbblog_url_text" date="1294350982" username="kevin" version="4.1.2"><![CDATA[<p><b>
+			<phrase name="options_options_vbblog_url_text" date="1318892691" username="freddie" version="4.1.8 Beta 1"><![CDATA[<p><b>
 This feature requires that the "Always use Forum URL as Base Path" be set to yes.
 </b></p>
 
@@ -7225,7 +7203,7 @@ This will override the main Forum URL setting for blog pages to allow the blog p
 </p>
 
 <p>
-For example, if vBulletin is located at http://example.com/vbulletin then entering a value of "blog" will result in the blog being located at  http://example.com/vbulletin/blog. A value of "http://www.example.com/blog" will result in the blog being located at http://www.example.com/blog.  All vBulletin URLs must have the same host name. 
+For example, if vBulletin is located at http://example.com/vbulletin then entering a value of "blog" will result in the blog being located at  http://example.com/vbulletin/blog. A value of "http://www.example.com/blog" will result in the blog being located at http://www.example.com/blog.  All vBulletin URLs must have the same host name.
 </p>
 
 <p>
@@ -7239,10 +7217,20 @@ In addition to setting the Blog Component URL, you will need to take the followi
 <li>
 If you are using rewrite friendly URLs, you will need to copy the .htaccess file from do_not_upload/rewrite/apache2/blog to the stub directory before uploading.
 </li>
+
+<li>
+If you are using a different domain, such as blog.example.com versus www.example.com then you will need a crossdomain.xml file for the asset manager flash upload. Create a file called "crossdomain.xml" and place it in your blog subdirectory with the following contents modified to suit your domain.
+<div style="border:1px dashed red; margin:4px; padding:4px; white-space:pre">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;cross-domain-policy xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xsi:noNamespaceSchemaLocation=&quot;http://www.adobe.com/xml/schemas/PolicyFile.xsd&quot;&gt;
+  &lt;allow-access-from domain=&quot;*.example.com&quot;/&gt;
+	&lt;site-control permitted-cross-domain-policies=&quot;master-only&quot;/&gt;
+  &lt;allow-http-request-headers-from domain=&quot;*.example.com&quot; headers=&quot;*&quot; secure=&quot;true&quot;/&gt;
+&lt;/cross-domain-policy&gt;</div>
+</li>
 </ol>
 
 <p><b>
-If the cookie path option is set for the site, it needs to be general enough to include all vBulletin URLs. For example, if vBulletin is located at www.host.com/mysite/vbulletin but the then is located at www.mysite.com/mysite/blog then a cookie path of "mysite" will work, but a cookie path of "mysite/vbulletin" will not work because the cookies will not be sent to pages in the mysite/then directory. 
+If the cookie path option is set for the site, it needs to be general enough to include all vBulletin URLs. For example, if vBulletin is located at www.host.com/mysite/vbulletin but the then is located at www.mysite.com/mysite/blog then a cookie path of "mysite" will work, but a cookie path of "mysite/vbulletin" will not work because the cookies will not be sent to pages in the mysite/then directory.
 </b></p>]]></phrase>
 			<phrase name="options_options_vbblog_url_title" date="1292449783" username="kevin" version="4.1.1 Alpha 1"><![CDATA[Blog URL]]></phrase>
 			<phrase name="options_options_vbblog_usercss_allowed_border_widths_text" date="1231198479" username="freddie" version="2.0.1"><![CDATA[The list of allowed border width sizes for blog style customizations. Put each border width size on its own line.]]></phrase>
@@ -7253,6 +7241,8 @@ If the cookie path option is set for the site, it needs to be general enough to 
 			<phrase name="options_options_vbblog_usercss_allowed_fonts_title" date="1231198614" username="freddie" version="2.0.1"><![CDATA[Allowed Fonts]]></phrase>
 			<phrase name="options_options_vbblog_usercss_allowed_padding_text" date="1231198459" username="freddie" version="2.0.1"><![CDATA[The list of allowed padding sizes for blog style customizations. Put each padding size on its own line.]]></phrase>
 			<phrase name="options_options_vbblog_usercss_allowed_padding_title" date="1231198459" username="freddie" version="2.0.1"><![CDATA[Allowed Padding]]></phrase>
+			<phrase name="options_options_vbblog_usermaxvideos_text" date="1325640886" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Set this to the maximum number of videos you wish to allow per blog description. Set this to 0 to disable the videos count.]]></phrase>
+			<phrase name="options_options_vbblog_usermaxvideos_title" date="1325640886" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Videos Per Blog Description]]></phrase>
 			<phrase name="usergroup_add_edit_blog_candeleteentry_text" date="1187104431" username="Scott" version="1.0.0 Beta 5"><![CDATA[This setting controls permission for the soft deletion of blog entries.]]></phrase>
 			<phrase name="usergroup_add_edit_blog_candeleteentry_title" date="1187104431" username="Scott" version="1.0.0 Beta 5"><![CDATA[Can Delete Own Blog Entries]]></phrase>
 			<phrase name="usergroup_add_edit_blog_canmanageblogcomments_text" date="1211322754" username="freddie" version="2.0.0 Beta 1"><![CDATA[This permission allows users to manage the comment that are left within their own blog. They will be able to moderate, edit, and soft delete these comments.]]></phrase>
@@ -7271,6 +7261,8 @@ If the cookie path option is set for the site, it needs to be general enough to 
 			<phrase name="usergroup_edit_add_blog_allowimages_title" date="1211326253" username="freddie" version="2.0.0 Beta 1"><![CDATA[Allow [IMG] Code]]></phrase>
 			<phrase name="usergroup_edit_add_blog_allowsmilies_text" date="1211326185" username="freddie" version="2.0.0 Beta 1"><![CDATA[This permission allows users to use smilies in their entries. Without this permission, smilies will remained unparsed.]]></phrase>
 			<phrase name="usergroup_edit_add_blog_allowsmilies_title" date="1211326185" username="freddie" version="2.0.0 Beta 1"><![CDATA[Allow Smilies]]></phrase>
+			<phrase name="usergroup_edit_add_blog_allowvideos_text" date="1211326253" username="freddie" version="4.1.10 Alpha 2"><![CDATA[This permission allows users to use [video] tags to display videos inline in their blog entries.]]></phrase>
+			<phrase name="usergroup_edit_add_blog_allowvideos_title" date="1211326253" username="freddie" version="4.1.10 Alpha 2"><![CDATA[Allow [VIDEO] Code]]></phrase>
 			<phrase name="usergroup_edit_add_blog_cancommentothers_text" date="1211327745" username="freddie" version="2.0.0 Beta 1"><![CDATA[This permission allows users to post comments to other users' blogs.]]></phrase>
 			<phrase name="usergroup_edit_add_blog_cancommentothers_title" date="1211327745" username="freddie" version="2.0.0 Beta 1"><![CDATA[Can Post Comments to Others' Blog]]></phrase>
 			<phrase name="usergroup_edit_add_blog_cancommentown_text" date="1211327653" username="freddie" version="2.0.0 Beta 1"><![CDATA[This permission allows users to post comments to their own entries.]]></phrase>
@@ -7336,6 +7328,7 @@ If the cookie path option is set for the site, it needs to be general enough to 
 			<phrase name="block_search" date="1211494158" username="freddie" version="2.0.0 Beta 1"><![CDATA[Search]]></phrase>
 			<phrase name="block_tagcloud" date="1211494316" username="freddie" version="2.0.0 Beta 1"><![CDATA[Tag Cloud]]></phrase>
 			<phrase name="block_visitors" date="1211494312" username="freddie" version="2.0.0 Beta 1"><![CDATA[Recent Visitors]]></phrase>
+			<phrase name="blog_comment" date="1336078949" username="freddie" version="4.2.0 Alpha 1"><![CDATA[Blog Comment]]></phrase>
 			<phrase name="blog_comments" date="1189812576" username="freddie" version="1.0.1"><![CDATA[Blog Comments]]></phrase>
 			<phrase name="blog_entries" date="1189812567" username="freddie" version="1.0.1"><![CDATA[Blog Entries]]></phrase>
 			<phrase name="cachetype_noperm" date="1210702756" username="freddie" version="2.0.0 Beta 1"><![CDATA[No Permission Check]]></phrase>
@@ -7354,7 +7347,6 @@ If the cookie path option is set for the site, it needs to be general enough to 
 			<phrase name="other_members_may" date="1209152060" username="freddie" version="2.0.0 Beta 1"><![CDATA[Other members may...]]></phrase>
 			<phrase name="permissions_and_privacy" date="1189812784" username="freddie" version="1.0.1"><![CDATA[Permissions and Privacy]]></phrase>
 			<phrase name="pingback" date="1171917684" username="freddie" version="1.0.0 Alpha 1"><![CDATA[Pingback]]></phrase>
-			<phrase name="realtime" date="1177455836" username="freddie" version="1.0.0 Alpha 1"><![CDATA[Realtime]]></phrase>
 			<phrase name="six_months" date="1212603764" username="freddie" version="2.0.0 Beta 1"><![CDATA[Six Months]]></phrase>
 			<phrase name="three_months" date="1212603753" username="freddie" version="2.0.0 Beta 1"><![CDATA[Three Months]]></phrase>
 			<phrase name="trackback" date="1171917677" username="freddie" version="1.0.0 Alpha 1"><![CDATA[Trackback]]></phrase>
@@ -7747,7 +7739,7 @@ A blog is a type of website, usually maintained by an individual with regular en
 			<phrase name="blog_blockthanks" date="1218670288" username="freddie" version="2.0.0 Beta 1"><![CDATA[Custom block updated successfully.]]></phrase>
 			<phrase name="blog_comment_nodelete" date="1185579595" username="freddie" version="1.0.0 Beta 3"><![CDATA[You have chosen not to delete this comment. You are now being returned to the user's profile.]]></phrase>
 			<phrase name="blog_commentthanks" date="1169568240" username="Scott" version="1.0.0 Alpha 1"><![CDATA[Thank you for your comment! You will now be taken to your comment.]]></phrase>
-			<phrase name="blog_commentthanks_moderate" date="1183745035" username="freddie" version="1.0.0 Alpha 1"><![CDATA[Thank you for your comment! Your comment will not be visible to other members until $bloginfo[username] or a blog moderator has approved it for display.  You will now be taken to your comment.]]></phrase>
+			<phrase name="blog_commentthanks_moderate" date="1314722734" username="Paul" version="4.1.7 Beta 1"><![CDATA[Thank you for your comment. Please note your comment will not be visible to other members until {1} or a blog moderator has approved it for display. You will now be taken to your comment.]]></phrase>
 			<phrase name="blog_declined_group_blog" date="1214518642" username="freddie" version="2.0.0 Beta 1"><![CDATA[You have declined the invitation to join the blog.]]></phrase>
 			<phrase name="blog_delete" date="1184623961" username="freddie" version="1.0.0 Beta 1"><![CDATA[Blog entry deleted, you will now be returned to the blog.]]></phrase>
 			<phrase name="blog_deletecomment" date="1287446400" username="freddie" version="4.1.3 Beta 1"><![CDATA[Blog comment deleted, you will now be returned to the blog.]]></phrase>
@@ -7763,10 +7755,10 @@ A blog is a type of website, usually maintained by an individual with regular en
 			<phrase name="blog_left_group_blog" date="1214518657" username="freddie" version="2.0.0 Beta 1"><![CDATA[You have successfully left the blog.]]></phrase>
 			<phrase name="blog_markread" date="1183141748" username="freddie" version="1.0.0 Alpha 1"><![CDATA[You have now marked all of the blog entries of this user as read.]]></phrase>
 			<phrase name="blog_pagethanks" date="1218670300" username="freddie" version="2.0.0 Beta 1"><![CDATA[Custom page updated successfully.]]></phrase>
-			<phrase name="blog_profileupdate" date="1201023163" username="freddie" version="1.0.4"><![CDATA[Thank you for updating your blog, $bbuserinfo[username].]]></phrase>
+			<phrase name="blog_profileupdate" date="1314722734" username="Paul" version="4.1.7 Beta 1"><![CDATA[Thank you for updating your blog, {1}.]]></phrase>
 			<phrase name="blog_rate_add" date="1183730308" username="Scott" version="1.0.0 Alpha 1"><![CDATA[Your vote on this entry has been added.]]></phrase>
 			<phrase name="blog_search_executed" date="1175786559" username="Scott" version="1.0.0 Alpha 1"><![CDATA[Your search has been executed and you are now being redirected to the results.]]></phrase>
-			<phrase name="blog_sentemail" date="1174945069" username="freddie" version="1.0.0 Alpha 1"><![CDATA[We have sent your email to $sendtoname. You will now be returned to the blog.]]></phrase>
+			<phrase name="blog_sentemail" date="1314722734" username="Paul" version="4.1.7 Beta 1"><![CDATA[We have sent your email to {1}. You will now be returned to the blog.]]></phrase>
 			<phrase name="blogsubremove_blogsubscribeentryid" date="1187998168" username="freddie" version="1.0.0 Release Candidate 2"><![CDATA[Your subscription for this entry has been removed.]]></phrase>
 			<phrase name="blogsubremove_blogsubscribeuserid" date="1187998187" username="freddie" version="1.0.0 Release Candidate 2"><![CDATA[Your subscription for this blog has been removed.]]></phrase>
 			<phrase name="custom_block_delete" date="1223305430" username="freddie" version="2.0.0 Beta 3"><![CDATA[Your custom block has been deleted. You will now be returned to the sidebar editor.]]></phrase>
@@ -7809,6 +7801,13 @@ A blog is a type of website, usually maintained by an individual with regular en
 			<phrase name="search_blogs" date="1183393973" username="Scott" version="1.0.0 Alpha 1"><![CDATA[Search Blogs]]></phrase>
 			<phrase name="these_are_the_x_most_searched_entry_tags" date="1210978954" username="freddie" version="2.0.0 Beta 1"><![CDATA[These are the {1} most-searched-for entry tags throughout all blogs]]></phrase>
 			<phrase name="view_blog_entries" date="1260215519" username="mhenretty" version="4.0.0 Release Candidate 1"><![CDATA[View Blog Entries]]></phrase>
+			<phrase name="vb_navigation_link_vbblog_member_text" date="1330000000" username="System" version="4.2.0 Alpha 1"><![CDATA[Member Blogs]]></phrase>
+			<phrase name="vb_navigation_link_vbblog_myblog_text" date="1330000000" username="System" version="4.2.0 Alpha 1"><![CDATA[My Blog]]></phrase>
+			<phrase name="vb_navigation_link_vbblog_popular_text" date="1330000000" username="System" version="4.2.0 Alpha 1"><![CDATA[Most Popular]]></phrase>
+			<phrase name="vb_navigation_link_vbblog_recent_text" date="1330000000" username="System" version="4.2.0 Alpha 1"><![CDATA[Recent Entries]]></phrase>
+			<phrase name="vb_navigation_link_vbblog_settings_text" date="1330000000" username="System" version="4.2.0 Alpha 1"><![CDATA[Blog Settings]]></phrase>
+			<phrase name="vb_navigation_link_vbnew_entries_text" date="1330000000" username="System" version="4.2.0 Alpha 1"><![CDATA[New Blog Entries]]></phrase>
+			<phrase name="vb_navigation_tab_vbtab_blog_text" date="1330000000" username="System" version="4.2.0 Alpha 1"><![CDATA[Blogs]]></phrase>
 			<phrase name="x_blog" date="1254420715" username="admin" version="4.0.0 Alpha 5"><![CDATA[{1}'s Blog]]></phrase>
 			<phrase name="your_blog" date="1253690421" username="admin" version="4.0.0 Alpha 4"><![CDATA[My Blog]]></phrase>
 		</phrasetype>
@@ -7876,54 +7875,54 @@ A blog is a type of website, usually maintained by an individual with regular en
 			<phrase name="blog_form_width" date="1187795671" username="Kier" version="1.0.0 Release Candidate 1"><![CDATA[Blog Form Width (pixels) <dfn>(This value allows you to specify a form width suitable for panels located in the blog, compensating for the screen real estate occupied by the blog sidebar.)</dfn>]]></phrase>
 			<phrase name="group_blog" date="1170715016" username="freddie" version="1.0.0 Alpha 1"><![CDATA[Blog]]></phrase>
 			<phrase name="message_width_blog" date="1189790454" username="freddie" version="1.0.1"><![CDATA[Blog Message Area Width (pixels) <dfn>(This value represents the width in pixels of the message area in blog pages)</dfn>]]></phrase>
-			<phrase name="stylevar_vbblog_bloglist_avatar_width_description" date="1259113820" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_bloglist_avatar_width_name" date="1259113820" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_bloglist_border_description" date="1259176378" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_bloglist_border_name" date="1259176378" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_bloglist_header_color_description" date="1259176296" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_bloglist_header_color_name" date="1259176296" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_comment_header_color_description" date="1259103471" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_comment_header_color_name" date="1259103471" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_featured_background_description" date="1258675678" username="ngiaopao" version="4.0.0 Beta 4" />
-			<phrase name="stylevar_vbblog_featured_background_name" date="1258675678" username="ngiaopao" version="4.0.0 Beta 4" />
-			<phrase name="stylevar_vbblog_featured_border_description" date="1258675607" username="ngiaopao" version="4.0.0 Beta 4" />
-			<phrase name="stylevar_vbblog_featured_border_name" date="1258675607" username="ngiaopao" version="4.0.0 Beta 4" />
-			<phrase name="stylevar_vbblog_featured_header_background_description" date="1258675932" username="ngiaopao" version="4.0.0 Beta 4" />
-			<phrase name="stylevar_vbblog_featured_header_background_name" date="1258675932" username="ngiaopao" version="4.0.0 Beta 4" />
-			<phrase name="stylevar_vbblog_featured_header_color_description" date="1258675861" username="ngiaopao" version="4.0.0 Beta 4" />
-			<phrase name="stylevar_vbblog_featured_header_color_name" date="1258675861" username="ngiaopao" version="4.0.0 Beta 4" />
-			<phrase name="stylevar_vbblog_input_font_description" date="1259178986" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_input_font_name" date="1259178986" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_link_color_description" date="1284411237" username="ngiaopao" version="4.0.8" />
-			<phrase name="stylevar_vbblog_link_color_name" date="1284411237" username="ngiaopao" version="4.0.8" />
-			<phrase name="stylevar_vbblog_pagetitle_border_description" date="1287434019" username="kevin" version="4.0.8" />
-			<phrase name="stylevar_vbblog_pagetitle_border_name" date="1287434019" username="kevin" version="4.0.8" />
-			<phrase name="stylevar_vbblog_pagetitle_color_description" date="1287434020" username="kevin" version="4.0.8" />
-			<phrase name="stylevar_vbblog_pagetitle_color_name" date="1287434020" username="kevin" version="4.0.8" />
-			<phrase name="stylevar_vbblog_pagetitle_description_color_description" date="1287434021" username="kevin" version="4.0.8" />
-			<phrase name="stylevar_vbblog_pagetitle_description_color_name" date="1287434021" username="kevin" version="4.0.8" />
-			<phrase name="stylevar_vbblog_pagetitle_description_font_description" date="1287434022" username="kevin" version="4.0.8" />
-			<phrase name="stylevar_vbblog_pagetitle_description_font_name" date="1287434022" username="kevin" version="4.0.8" />
-			<phrase name="stylevar_vbblog_pagetitle_font_description" date="1287434024" username="kevin" version="4.0.8" />
-			<phrase name="stylevar_vbblog_pagetitle_font_name" date="1287434024" username="kevin" version="4.0.8" />
-			<phrase name="stylevar_vbblog_sidebar_avatar_border_description" date="1259095591" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_avatar_border_name" date="1259095591" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_avatar_maxSize_description" date="1259095285" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_avatar_maxSize_name" date="1259095285" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_background_description" date="1259111317" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_background_name" date="1259111317" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_border_description" date="1284411044" username="ngiaopao" version="4.0.8" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_border_name" date="1284411044" username="ngiaopao" version="4.0.8" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_color_description" date="1259112305" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_color_name" date="1259112305" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_font_description" date="1259177876" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_font_name" date="1259177876" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_height_description" date="1259177652" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_height_name" date="1259177652" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_selected_background_description" date="1259111555" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_tabs_selected_background_name" date="1259111555" username="ngiaopao" version="4.0.0 Release Candidate 1" />
-			<phrase name="stylevar_vbblog_sidebar_width_description" date="1284411326" username="ngiaopao" version="4.0.8" />
-			<phrase name="stylevar_vbblog_sidebar_width_name" date="1284411326" username="ngiaopao" version="4.0.8" />
+			<phrase name="stylevar_vbblog_bloglist_avatar_width_description" date="1322951206" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the width of avatars in blog entry lists.]]></phrase>
+			<phrase name="stylevar_vbblog_bloglist_avatar_width_description_mobile" date="1328661594" username="freddie" version="4.1.11 Alpha 1"><![CDATA[This stylevar controls the width of avatars in blog entry lists.]]></phrase>
+			<phrase name="stylevar_vbblog_bloglist_avatar_width_name" date="1322951162" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Entry List Avatar Width]]></phrase>
+			<phrase name="stylevar_vbblog_bloglist_avatar_width_name_mobile" date="1328661594" username="freddie" version="4.1.11 Alpha 1"><![CDATA[Blog Entry List Avatar Width]]></phrase>
+			<phrase name="stylevar_vbblog_bloglist_border_description" date="1322951748" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the line between different blog entries in blog entry lists.]]></phrase>
+			<phrase name="stylevar_vbblog_bloglist_border_name" date="1322951671" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Entry List Separator Line]]></phrase>
+			<phrase name="stylevar_vbblog_bloglist_header_color_description" date="1322952281" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the text color of blog entry titles.]]></phrase>
+			<phrase name="stylevar_vbblog_bloglist_header_color_name" date="1322952188" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Entry Title Text Color]]></phrase>
+			<phrase name="stylevar_vbblog_body_background_description" date="1322952384" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the background of the blog body. The body is the area below the header, which contains all other elements.]]></phrase>
+			<phrase name="stylevar_vbblog_body_background_name" date="1322952315" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Body Background]]></phrase>
+			<phrase name="stylevar_vbblog_entry_background_description" date="1322954269" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the background of blog entries.]]></phrase>
+			<phrase name="stylevar_vbblog_entry_background_name" date="1322954239" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Entry Background]]></phrase>
+			<phrase name="stylevar_vbblog_featured_background_description" date="1322954819" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the background of featured blog entries in blog entry lists.]]></phrase>
+			<phrase name="stylevar_vbblog_featured_background_name" date="1322954529" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Featured Blog Entry Background]]></phrase>
+			<phrase name="stylevar_vbblog_featured_border_description" date="1322954845" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the border of featured blog entries in blog entry lists.]]></phrase>
+			<phrase name="stylevar_vbblog_featured_border_name" date="1322954568" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Featured Blog Entry Border]]></phrase>
+			<phrase name="stylevar_vbblog_featured_header_background_description" date="1322954836" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the background of featured blog entry headers in blog entry lists.]]></phrase>
+			<phrase name="stylevar_vbblog_featured_header_background_name" date="1322954644" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Featured Blog Entry Header Background]]></phrase>
+			<phrase name="stylevar_vbblog_featured_header_color_description" date="1322954825" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the text color of featured blog entry headers in blog entry lists.]]></phrase>
+			<phrase name="stylevar_vbblog_featured_header_color_name" date="1322954743" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Featured Blog Entry Header Text Color]]></phrase>
+			<phrase name="stylevar_vbblog_listrow_background_description" date="1322955987" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the background of rows in blog lists and in blog category lists.]]></phrase>
+			<phrase name="stylevar_vbblog_listrow_background_name" date="1322955866" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog List Row Background]]></phrase>
+			<phrase name="stylevar_vbblog_pagetitle_border_description" date="1322956546" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the line between the page title and the rest of the page content in the blog.]]></phrase>
+			<phrase name="stylevar_vbblog_pagetitle_border_name" date="1322956470" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Page Title Separator Line]]></phrase>
+			<phrase name="stylevar_vbblog_pagetitle_color_description" date="1322956386" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the text color of the page title in the blog.]]></phrase>
+			<phrase name="stylevar_vbblog_pagetitle_color_name" date="1322956150" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Page Title Text Color]]></phrase>
+			<phrase name="stylevar_vbblog_pagetitle_description_color_description" date="1322956322" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the text color of the page title description in the blog.]]></phrase>
+			<phrase name="stylevar_vbblog_pagetitle_description_color_name" date="1322956268" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Page Title Description Text Color]]></phrase>
+			<phrase name="stylevar_vbblog_pagetitle_description_font_description" date="1322956351" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the font of the page title description in the blog.]]></phrase>
+			<phrase name="stylevar_vbblog_pagetitle_description_font_name" date="1322956206" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Page Title Description Font]]></phrase>
+			<phrase name="stylevar_vbblog_pagetitle_font_description" date="1322956413" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the font of the page title in the blog.]]></phrase>
+			<phrase name="stylevar_vbblog_pagetitle_font_name" date="1322956180" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Page Title Font]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_avatar_border_description" date="1322957008" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the border of the blog owner avatar in the blog sidebar.]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_avatar_border_name" date="1322956909" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Sidebar Blog Owner Avatar Border]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_background_description" date="1322957305" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the background of the blog sidebar tabs.]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_background_name" date="1322957257" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Sidebar Tab Background]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_border_description" date="1322957939" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the border of the blog sidebar tabs.]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_border_name" date="1322957350" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Sidebar Tab Border]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_color_description" date="1322957963" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the link color of the blog sidebar tabs.]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_color_name" date="1322957744" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Sidebar Tab Link Color]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_font_description" date="1322957983" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the font of the blog sidebar tabs.]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_font_name" date="1322957776" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Sidebar Tab Font]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_height_description" date="1322958006" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the height of the blog sidebar tabs.]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_height_name" date="1322957819" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Sidebar Tab Height]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_selected_background_description" date="1322957913" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the background of the selected blog sidebar tab.]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_tabs_selected_background_name" date="1322957870" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Selected Blog Sidebar Tab Background]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_width_description" date="1322956661" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[This stylevar controls the width of the blog sidebar.]]></phrase>
+			<phrase name="stylevar_vbblog_sidebar_width_name" date="1322956609" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Blog Sidebar Width]]></phrase>
 		</phrasetype>
 		<phrasetype name="User Tools (global)" fieldname="user">
 			<phrase name="entry" date="1237478440" username="freddie" version="2.1.0"><![CDATA[Entry]]></phrase>
@@ -8048,6 +8047,7 @@ A blog is a type of website, usually maintained by an individual with regular en
 			<phrase name="auto_subscribe_blog_comment_description" date="1282772294" username="kevin" version="4.1.1 Alpha 1"><![CDATA[When you post a new comment, you can choose to automatically add the blog entry to your list of <a href="{1}">subscribed entries</a>, with the option to receive email notification of new comments to that blog entry.]]></phrase>
 			<phrase name="auto_subscribe_blog_entry_description" date="1282772130" username="kevin" version="4.1.1 Alpha 1"><![CDATA[When you post a new blog entry, you can choose to automatically add the entry to your list of <a href="{1}">subscribed entries</a>, with the option to receive email notification of new comments to that blog entry.]]></phrase>
 			<phrase name="auto_subscribe_profile_comment_description" date="1184087823" username="freddie" version="1.0.0 Alpha 1"><![CDATA[You may choose to receive email notification of new comments left on your profile page.]]></phrase>
+			<phrase name="back_to_bloglist" date="1296553556" username="xiaoyu" version="4.1.6 Beta 1"><![CDATA[Back to Blog List]]></phrase>
 			<phrase name="be_the_first_to_comment_on_this_blog_entry" date="1183130251" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Be the first to comment on this blog entry]]></phrase>
 			<phrase name="be_the_first_to_leave_user_a_comment" date="1183384251" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Be the first to leave {1} a comment]]></phrase>
 			<phrase name="best_deleted_entries" date="1183111692" username="Ed Sullivan" version="1.0.0 Alpha 1"><![CDATA[Best Deleted Entries]]></phrase>
@@ -8075,6 +8075,7 @@ A blog is a type of website, usually maintained by an individual with regular en
 			<phrase name="blog_custom_blocks" date="1254145130" username="admin" version="4.0.0 Alpha 4"><![CDATA[Organize Sidebar]]></phrase>
 			<phrase name="blog_custom_pages" date="1254145174" username="admin" version="4.0.0 Alpha 4"><![CDATA[Edit Custom Pages]]></phrase>
 			<phrase name="blog_description" date="1186588951" username="freddie" version="1.0.0 Beta 3"><![CDATA[Blog Description:]]></phrase>
+			<phrase name="blog_detail" date="1296547435" username="xiaoyu" version="4.1.6 Beta 1"><![CDATA[Blog Detail]]></phrase>
 			<phrase name="blog_entries" date="1183130550" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Blog Entries]]></phrase>
 			<phrase name="blog_entry_post_date_time" date="1183393076" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Blog Entry Post Date / Time]]></phrase>
 			<phrase name="blog_entry_subscription" date="1183134381" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Blog Entry Subscription]]></phrase>
@@ -8087,6 +8088,7 @@ A blog is a type of website, usually maintained by an individual with regular en
 			<phrase name="blog_none" date="1219792040" username="freddie" version="2.0.0 Beta 1"><![CDATA[None]]></phrase>
 			<phrase name="blog_options" date="1253690695" username="admin" version="4.0.0 Alpha 4"><![CDATA[Blog Settings]]></phrase>
 			<phrase name="blog_posted_by" date="1269291579" username="David Grove" version="4.0.4"><![CDATA[Blog Posted By]]></phrase>
+			<phrase name="blog_posts" date="1296394207" username="xiaoyu" version="4.1.6 Beta 1"><![CDATA[Blog Posts]]></phrase>
 			<phrase name="blog_rss_feed" date="1231186482" username="freddie" version="2.0.1"><![CDATA[{1} - Blog RSS Feed]]></phrase>
 			<phrase name="blog_rss_title" date="1184713666" username="freddie" version="1.0.0 Beta 1"><![CDATA[{1} - Blogs]]></phrase>
 			<phrase name="blog_rss_title_with_blogtitle" date="1184713681" username="freddie" version="1.0.0 Beta 1"><![CDATA[{1} - Blogs - {2} by {3}]]></phrase>
@@ -8106,12 +8108,13 @@ From,
 			<phrase name="blog_user_rss_feed" date="1236726247" username="freddie" version="2.0.2"><![CDATA[{2} - {1} Blog RSS Feed]]></phrase>
 			<phrase name="blogs" date="1183130920" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Blogs]]></phrase>
 			<phrase name="blogs_from_the_members_of_boardname" date="1202245396" username="freddie" version="1.1.0"><![CDATA[Blogs from the Members of {1}]]></phrase>
-			<phrase name="bookmarks" date="1210023641" username="freddie" version="2.0.0 Beta 1"><![CDATA[Bookmarks]]></phrase>
 			<phrase name="by_x_nolink" date="1189803598" username="freddie" version="1.0.1"><![CDATA[by {1}]]></phrase>
 			<phrase name="by_x_shade" date="1187201742" username="freddie" version="1.0.0 Beta 5"><![CDATA[<span class="shade">by <a href="{1}" rel="nofollow" class="shade">{2}</a></span>]]></phrase>
 			<phrase name="cannot_add_tags_remove_first" date="1210290509" username="freddie" version="2.0.0 Beta 1"><![CDATA[You cannot add any tags to this entry.<br />
 Please remove some first.]]></phrase>
+			<phrase name="category" date="1297414398" username="xiaoyu" version="4.1.6 Beta 1"><![CDATA[Category]]></phrase>
 			<phrase name="category_description" date="1183404770" username="freddie" version="1.0.0 Alpha 1"><![CDATA[Category Description]]></phrase>
+			<phrase name="cats" date="1296566165" username="xiaoyu" version="4.1.6 Beta 1"><![CDATA[Cats]]></phrase>
 			<phrase name="click_copy_profile_style" date="1223306047" username="freddie" version="2.0.0 Beta 3"><![CDATA[Click the following button if you would like to copy your customized profile style to your blog. You must 'Save' the page afterwards to make the change permanent. ]]></phrase>
 			<phrase name="comment" date="1183406577" username="freddie" version="1.0.0 Alpha 1"><![CDATA[Comment]]></phrase>
 			<phrase name="comment_from_blog" date="1183131690" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Comment From Blog]]></phrase>
@@ -8158,6 +8161,7 @@ Please remove some first.]]></phrase>
 			<phrase name="deselect_all_trackbacks" date="1183393458" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Deselect all Trackbacks]]></phrase>
 			<phrase name="display_location" date="1219790048" username="freddie" version="2.0.0 Beta 1"><![CDATA[Display Location]]></phrase>
 			<phrase name="display_order" date="1183393270" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Display Order]]></phrase>
+			<phrase name="draft" date="1297066139" username="xiaoyu" version="4.1.6 Beta 1"><![CDATA[Draft]]></phrase>
 			<phrase name="draft_blog_entries" date="1183133705" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Draft Blog Entries]]></phrase>
 			<phrase name="draft_blog_entry" date="1183133750" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Draft Blog Entry]]></phrase>
 			<phrase name="draft_entries_for_x_y" date="1183111558" username="Ed Sullivan" version="1.0.0 Alpha 1"><![CDATA[Draft Entries for {1} {2}]]></phrase>
@@ -8176,6 +8180,7 @@ Please remove some first.]]></phrase>
 			<phrase name="entries_for_x_y_z" date="1183111644" username="Ed Sullivan" version="1.0.0 Alpha 1"><![CDATA[Entries for {1} {2}, {3}]]></phrase>
 			<phrase name="entries_in_last_24_hours" date="1213211643" username="freddie" version="2.0.0 Beta 1"><![CDATA[Entries in Last 24 Hours]]></phrase>
 			<phrase name="entry_is_hidden_x_y" date="1205344054" username="freddie" version="1.1.0"><![CDATA[This entry is hidden because <strong>{1}</strong> is on your <a href="profile.php?{2}do=ignorelist">ignore list</a>.]]></phrase>
+			<phrase name="featured" date="1296394352" username="xiaoyu" version="4.1.6 Beta 1"><![CDATA[Featured]]></phrase>
 			<phrase name="featured_blog_entry_from_blogtitle" date="1282251438" username="kevin" version="4.1.1 Alpha 1"><![CDATA[Featured Post from <a href="{1}" class="username">{2}</a>]]></phrase>
 			<phrase name="featured_replacement_attachment" date="1186742747" username="Ed Sullivan" version="1.0.0 Beta 3"><![CDATA[[Attachment]]]></phrase>
 			<phrase name="featured_replacement_code" date="1186742709" username="Ed Sullivan" version="1.0.0 Beta 3"><![CDATA[[Code]]]></phrase>
@@ -8211,7 +8216,7 @@ To add a user to your blog, enter their name into the empty text box and click t
 			<phrase name="leave_blog" date="1214437084" username="freddie" version="2.0.0 Beta 1"><![CDATA[Leave Blog]]></phrase>
 			<phrase name="leave_comments_on_my_blog_entries_permission" date="1183373519" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Leave comments on my blog entries]]></phrase>
 			<phrase name="leave_comments_on_your_blog_entries_permission" date="1197917395" username="admin" version="1.0.3"><![CDATA[Leave comments on your blog entries]]></phrase>
-			<phrase name="links_were_found_within_your_blog_entry" date="1183374522" username="Kier" version="1.0.0 Alpha 1"><![CDATA[The following links were found within your blog entry. You may send pingback / trackback notices to any links that reference other blogs.]]></phrase>
+			<phrase name="links_were_found_within_your_blog_entry" date="1313095454" username="Paul" version="4.1.7 Beta 1"><![CDATA[The above link(s) were found within your blog entry. You may send pingback / trackback notices to any links that reference other blogs.]]></phrase>
 			<phrase name="local_categories" date="1229712935" username="freddie" version="2.0.0"><![CDATA[Local Categories]]></phrase>
 			<phrase name="main" date="1186519903" username="freddie" version="1.0.0 Beta 3"><![CDATA[Main]]></phrase>
 			<phrase name="manage_categories" date="1256308243" username="admin" version="4.0.0 Beta 1"><![CDATA[Manage Categories]]></phrase>
@@ -8245,12 +8250,13 @@ To add a user to your blog, enter their name into the empty text box and click t
 			<phrase name="my_own" date="1183135455" username="Kier" version="1.0.0 Alpha 1"><![CDATA[My Own...]]></phrase>
 			<phrase name="new_comment" date="1230335997" username="freddie" version="2.0.1"><![CDATA[New Comment]]></phrase>
 			<phrase name="new_entry" date="1258051737" username="ngiaopao" version="4.0.0 Beta 3"><![CDATA[Create New Post]]></phrase>
+			<phrase name="newest" date="1296394452" username="xiaoyu" version="4.1.6 Beta 1"><![CDATA[Newest]]></phrase>
 			<phrase name="no_blogs_reference_this_entry" date="1183135549" username="Kier" version="1.0.0 Alpha 1"><![CDATA[No other blogs currently reference this blog entry]]></phrase>
 			<phrase name="no_blogs_were_found" date="1183135481" username="Kier" version="1.0.0 Alpha 1"><![CDATA[No blogs were found]]></phrase>
 			<phrase name="no_comments_found" date="1183370578" username="Kier" version="1.0.0 Alpha 1"><![CDATA[No comments were found]]></phrase>
 			<phrase name="no_parent_category" date="1183129874" username="Kier" version="1.0.0 Alpha 1"><![CDATA[(No Parent Category)]]></phrase>
 			<phrase name="notification_sent_to_remote_server" date="1183135579" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Notification sent to remote server]]></phrase>
-			<phrase name="notification_urls" date="1211392958" username="freddie" version="2.0.0 Beta 1"><![CDATA[Notification Urls]]></phrase>
+			<phrase name="notification_urls" date="1313095454" username="Paul" version="4.1.7 Beta 1"><![CDATA[Notification URLs]]></phrase>
 			<phrase name="notify_linked_blogs" date="1183655039" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Notify blogs linked within this blog entry]]></phrase>
 			<phrase name="old_comment" date="1230335985" username="freddie" version="2.0.1"><![CDATA[Old Comment]]></phrase>
 			<phrase name="organize_sidebar_modules" date="1254052853" username="admin" version="4.0.0 Alpha 4"><![CDATA[Organize Sidebar Modules]]></phrase>
@@ -8268,6 +8274,7 @@ To add a user to your blog, enter their name into the empty text box and click t
 			<phrase name="permissions" date="1214608313" username="freddie" version="2.0.0 Beta 1"><![CDATA[Permissions]]></phrase>
 			<phrase name="permissions_and_privacy" date="1254144916" username="admin" version="4.0.0 Alpha 4"><![CDATA[Permissions &amp; Privacy]]></phrase>
 			<phrase name="please_wait" date="1183135799" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Please Wait]]></phrase>
+			<phrase name="popular" date="1296394494" username="xiaoyu" version="4.1.6 Beta 1"><![CDATA[Popular]]></phrase>
 			<phrase name="post_a_comment" date="1285007935" username="admin" version="4.0.8"><![CDATA[Leave Comment]]></phrase>
 			<phrase name="post_now" date="1183136088" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Post Now]]></phrase>
 			<phrase name="post_to_my_blog" date="1183370669" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Post to my Blog]]></phrase>
@@ -8275,7 +8282,7 @@ To add a user to your blog, enter their name into the empty text box and click t
 			<phrase name="post_to_your_blog" date="1197917773" username="admin" version="1.0.3"><![CDATA[Post to your Blog]]></phrase>
 			<phrase name="posted_date_at_time_by_guest" date="1189802418" username="freddie" version="1.0.1"><![CDATA[Posted {1} at {2} by {3}]]></phrase>
 			<phrase name="posted_date_at_time_by_user" date="1258222743" username="vB Style" version="4.0.0 Beta 4"><![CDATA[by <a href="{1}" class="username">{2}</a> on {3} at {4}]]></phrase>
-			<phrase name="posted_date_at_time_memberaction" date="1260215585" username="mhenretty" version="4.0.0 Release Candidate 1"><![CDATA[by {1} on {2} at {3}]]></phrase>
+			<phrase name="posted_date_at_time_memberaction" date="1310511062" username="Paul" version="4.1.7 Beta 1"><![CDATA[by {1}, {2} at {3}]]></phrase>
 			<phrase name="posted_in" date="1183135945" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Posted in]]></phrase>
 			<phrase name="posting_comment" date="1183135986" username="Kier" version="1.0.0 Alpha 1"><![CDATA[Posting Comment...]]></phrase>
 			<phrase name="private_blog" date="1186444160" username="freddie" version="1.0.0 Beta 3"><![CDATA[Private Blog]]></phrase>
@@ -8410,10 +8417,14 @@ Tags in bold were added by you.]]></phrase>
 <br />
 Set the value to 0 to disable this function.]]></phrase>
 			<phrase name="setting_vbblog_blockmaxchars_title" date="1219356781" username="freddie" version="2.0.0 Beta 1"><![CDATA[Maximum Custom Block Characters]]></phrase>
-			<phrase name="setting_vbblog_blockmaximages_desc" date="1272917440" username="freddie" version="4.0.4"><![CDATA[When a custom block entry is submitted or edited vBulletin will check the number of images, smilies, and videos in the text and reject it if the number is greater than the value specified here.<br />
+			<phrase name="setting_vbblog_blockmaximages_desc" date="1325198379" username="freddie" version="4.1.10 Alpha 3"><![CDATA[When a custom block entry is submitted or edited vBulletin will check the number of images and smilies in the text and reject it if the number is greater than the value specified here.<br />
 <br />
 Set the value to 0 to disable this function.]]></phrase>
-			<phrase name="setting_vbblog_blockmaximages_title" date="1272917440" username="freddie" version="4.0.4"><![CDATA[Maximum Images/Videos Per Custom Block]]></phrase>
+			<phrase name="setting_vbblog_blockmaximages_title" date="1325198379" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Images Per Custom Block]]></phrase>
+			<phrase name="setting_vbblog_blockmaxvideos_desc" date="1325198752" username="freddie" version="4.1.10 Alpha 3"><![CDATA[When a custom block entry is submitted or edited vBulletin will check the number of videos in the text and reject it if the number is greater than the value specified here.<br />
+<br />
+Set the value to 0 to disable this function.]]></phrase>
+			<phrase name="setting_vbblog_blockmaxvideos_title" date="1325198752" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Videos Per Custom Block]]></phrase>
 			<phrase name="setting_vbblog_blocks_desc" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[Users may manipulate the sidebar content blocks by choosing to enable, disable and reposition them. Uncheck any blocks that you do not wish for users to be able to manipulate.]]></phrase>
 			<phrase name="setting_vbblog_blocks_title" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[Configurable Sidebar Blocks]]></phrase>
 			<phrase name="setting_vbblog_blogthispost_desc" date="1230756114" username="freddie" version="2.0.1"><![CDATA[Enabling this option will add an icon to the display of forum posts that will allow the user to copy the content of the post to the content of a new blog entry. The user will be able to modify the entry and will still need to submit it.]]></phrase>
@@ -8422,10 +8433,14 @@ Set the value to 0 to disable this function.]]></phrase>
 <br />
 Set the value to 0 to disable this function.]]></phrase>
 			<phrase name="setting_vbblog_commentmaxchars_title" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[Maximum Characters Per Comment]]></phrase>
-			<phrase name="setting_vbblog_commentmaximages_desc" date="1272917361" username="freddie" version="4.0.4"><![CDATA[When a comment is submitted or edited vBulletin will check the number of images, smilies, and videos in the text and reject it if the number is greater than the value specified here.<br />
+			<phrase name="setting_vbblog_commentmaximages_desc" date="1325198394" username="freddie" version="4.1.10 Alpha 3"><![CDATA[When a comment is submitted or edited vBulletin will check the number of images and smilies in the text and reject it if the number is greater than the value specified here.<br />
 <br />
 Set the value to 0 to disable this function.]]></phrase>
-			<phrase name="setting_vbblog_commentmaximages_title" date="1272917361" username="freddie" version="4.0.4"><![CDATA[Maximum Images/Videos Per Comment]]></phrase>
+			<phrase name="setting_vbblog_commentmaximages_title" date="1325198394" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Images Per Comment]]></phrase>
+			<phrase name="setting_vbblog_commentmaxvideos_desc" date="1325198551" username="freddie" version="4.1.10 Alpha 3"><![CDATA[When a comment is submitted or edited vBulletin will check the number of videos in the text and reject it if the number is greater than the value specified here.<br />
+<br />
+Set the value to 0 to disable this function.]]></phrase>
+			<phrase name="setting_vbblog_commentmaxvideos_title" date="1325198551" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Videos Per Comment]]></phrase>
 			<phrase name="setting_vbblog_commentmoderation_desc" date="1216929989" username="freddie" version="2.0.0 Beta 1"><![CDATA[When enabled, all new comments are placed into moderation. This can also be enabled in usergroup permissions.]]></phrase>
 			<phrase name="setting_vbblog_commentmoderation_title" date="1216929989" username="freddie" version="2.0.0 Beta 1"><![CDATA[Comment Moderation]]></phrase>
 			<phrase name="setting_vbblog_defaultoptions_desc" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[The blog options on the New User creation form in in the Admin Control Panel, as well as the blog options form will default to the following settings.]]></phrase>
@@ -8437,10 +8452,14 @@ Set the value to 0 to disable this function.]]></phrase>
 <br />
 Set the value to 0 to disable this function.]]></phrase>
 			<phrase name="setting_vbblog_entrymaxchars_title" date="1216929989" username="freddie" version="2.0.0 Beta 1"><![CDATA[Maximum Characters Per Entry]]></phrase>
-			<phrase name="setting_vbblog_entrymaximages_desc" date="1272917516" username="freddie" version="4.0.4"><![CDATA[When an entry is submitted or edited vBulletin will check the number of images, smilies, and videos in the text and reject it if the number is greater than the value specified here.<br />
+			<phrase name="setting_vbblog_entrymaximages_desc" date="1325201992" username="freddie" version="4.1.10 Alpha 3"><![CDATA[When an entry is submitted or edited vBulletin will check the number of images and smilies in the text and reject it if the number is greater than the value specified here.<br />
 <br />
 Set the value to 0 to disable this function.]]></phrase>
-			<phrase name="setting_vbblog_entrymaximages_title" date="1272917516" username="freddie" version="4.0.4"><![CDATA[Maximum Images/Videos Per Entry]]></phrase>
+			<phrase name="setting_vbblog_entrymaximages_title" date="1325201992" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Images Per Entry]]></phrase>
+			<phrase name="setting_vbblog_entrymaxvideos_desc" date="1325202001" username="freddie" version="4.1.10 Alpha 3"><![CDATA[When an entry is submitted or edited vBulletin will check the number of videos in the text and reject it if the number is greater than the value specified here.<br />
+<br />
+Set the value to 0 to disable this function.]]></phrase>
+			<phrase name="setting_vbblog_entrymaxvideos_title" date="1325202001" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Videos Per Entry]]></phrase>
 			<phrase name="setting_vbblog_maxperpage_desc" date="1216929989" username="freddie" version="2.0.0 Beta 1"><![CDATA[The maximum number of entries to display on a page before splitting it over multiple pages.]]></phrase>
 			<phrase name="setting_vbblog_maxperpage_title" date="1216929989" username="freddie" version="2.0.0 Beta 1"><![CDATA[Maximum Displayed Entries Before Page Split]]></phrase>
 			<phrase name="setting_vbblog_maxratedblog_desc" date="1216930007" username="freddie" version="2.0.0 Beta 1"><![CDATA[The maximum number of rated blogs that will appear on the blog intro page.]]></phrase>
@@ -8471,10 +8490,14 @@ Set the value to 0 to disable this function.]]></phrase>
 <br />
 Set the value to 0 to disable this function.]]></phrase>
 			<phrase name="setting_vbblog_pagemaxchars_title" date="1224536383" username="freddie" version="2.0.0 Beta 4"><![CDATA[Maximum Custom Page Characters]]></phrase>
-			<phrase name="setting_vbblog_pagemaximages_desc" date="1272917476" username="freddie" version="4.0.4"><![CDATA[When a custom page entry is submitted or edited vBulletin will check the number of images, smilies, and videos in the text and reject it if the number is greater than the value specified here.<br />
+			<phrase name="setting_vbblog_pagemaximages_desc" date="1325198443" username="freddie" version="4.1.10 Alpha 3"><![CDATA[When a custom page entry is submitted or edited vBulletin will check the number of images and smilies in the text and reject it if the number is greater than the value specified here.<br />
 <br />
 Set the value to 0 to disable this function.]]></phrase>
-			<phrase name="setting_vbblog_pagemaximages_title" date="1272917476" username="freddie" version="4.0.4"><![CDATA[Maximum Images/Videos Per Custom Page]]></phrase>
+			<phrase name="setting_vbblog_pagemaximages_title" date="1325198443" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Images Per Custom Page]]></phrase>
+			<phrase name="setting_vbblog_pagemaxvideos_desc" date="1325199601" username="freddie" version="4.1.10 Alpha 3"><![CDATA[When a custom page entry is submitted or edited vBulletin will check the number of videos in the text and reject it if the number is greater than the value specified here.<br />
+<br />
+Set the value to 0 to disable this function.]]></phrase>
+			<phrase name="setting_vbblog_pagemaxvideos_title" date="1325199601" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Videos Per Custom Page]]></phrase>
 			<phrase name="setting_vbblog_pending_desc" date="1216929989" username="freddie" version="2.0.0 Beta 1"><![CDATA[You can limit the number of entries that a user may have pending.
 <br/><br />Set the value to 0 to disable this function.]]></phrase>
 			<phrase name="setting_vbblog_pending_title" date="1216929989" username="freddie" version="2.0.0 Beta 1"><![CDATA[Maximum Pending Entries]]></phrase>
@@ -8496,8 +8519,8 @@ Set the value to 0 to disable this function.]]></phrase>
 			<phrase name="setting_vbblog_snippet_title" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[Snippet Length]]></phrase>
 			<phrase name="setting_vbblog_stat_cutoff_desc" date="1232750426" username="freddie" version="2.0.1"><![CDATA[The number of days that individual blog stats (entries, comments, visitors) are kept for each blog.]]></phrase>
 			<phrase name="setting_vbblog_stat_cutoff_title" date="1232750426" username="freddie" version="2.0.1"><![CDATA[User Stat Cutoff]]></phrase>
-			<phrase name="setting_vbblog_style_desc" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[You may choose to override your forum's default style, or the user's chosen style with a specific style for the blog.]]></phrase>
-			<phrase name="setting_vbblog_style_title" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[Blog Style Override]]></phrase>
+			<phrase name="setting_vbblog_style_desc" date="1328648934" username="freddie" version="4.1.11 Alpha 1"><![CDATA[You may choose to override your forum's default style, or the user's chosen style with a specific style for the blog.]]></phrase>
+			<phrase name="setting_vbblog_style_title" date="1328648934" username="freddie" version="4.1.11 Alpha 1"><![CDATA[Blog Style Override]]></phrase>
 			<phrase name="setting_vbblog_tagcloud_cachetime_desc" date="1216929997" username="freddie" version="2.0.0 Beta 1"><![CDATA[Amount of time in minutes before the tag cloud data cache is regenerated.<br />
 <br />
 A value of 0 will generate the tag cloud on each view.]]></phrase>
@@ -8536,14 +8559,15 @@ Tags added more than this many days ago will not change the size of the link in 
 			<phrase name="setting_vbblog_tagminlen_title" date="1232750381" username="freddie" version="2.0.1"><![CDATA[Tag Minimum Length]]></phrase>
 			<phrase name="setting_vbblog_trackback_desc" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[This option enables vBulletin Blog to receive trackback notices.  Trackback notices are spam heavy and may increase server bandwidth depending on the amount of trackbacks received.]]></phrase>
 			<phrase name="setting_vbblog_trackback_title" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[Enable Trackback Server]]></phrase>
-			<phrase name="setting_vbblog_url_desc" date="1294350781" username="kevin" version="4.1.2"><![CDATA[Optional URL for your Blog.<br /><br />
+			<phrase name="setting_vbblog_url_desc" date="1318889688" username="freddie" version="4.1.8 Beta 1"><![CDATA[Optional URL for your Blog.<br /><br />
 If this is specified it will override the Forum URL setting for Blog pages.  You may specify an absolute URL or a URL relative to your Forum URL<br /><br />
 <b>Examples:</b><br />
+http://blog.example.com<br />
 http://www.example.com/blog<br />
 blog<br /><br />
 The URL should not have a trailing slash or contain the special directories ../ or ./<br /><br />
 Note: If you change the Blog URL you must upload the Blog stub directory.  See help for further information.]]></phrase>
-			<phrase name="setting_vbblog_url_title" date="1294350781" username="kevin" version="4.1.2"><![CDATA[Blog Component URL]]></phrase>
+			<phrase name="setting_vbblog_url_title" date="1318889688" username="freddie" version="4.1.8 Beta 1"><![CDATA[Blog Component URL]]></phrase>
 			<phrase name="setting_vbblog_usercss_allowed_border_widths_desc" date="1216932522" username="freddie" version="2.0.0 Beta 1"><![CDATA[The list of allowed border width sizes for profile style customizations. Put each border width size on its own line.]]></phrase>
 			<phrase name="setting_vbblog_usercss_allowed_border_widths_title" date="1216932522" username="freddie" version="2.0.0 Beta 1"><![CDATA[Allowed Border Widths]]></phrase>
 			<phrase name="setting_vbblog_usercss_allowed_font_sizes_desc" date="1216932482" username="freddie" version="2.0.0 Beta 1"><![CDATA[The list of allowed fonts size for profile style customizations. Put each font size on its own line. You may use any size that is valid in CSS.]]></phrase>
@@ -8556,10 +8580,14 @@ Note: If you change the Blog URL you must upload the Blog stub directory.  See h
 <br />
 Set the value to 0 to disable this function.]]></phrase>
 			<phrase name="setting_vbblog_usermaxchars_title" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[Maximum Characters Per Blog Description]]></phrase>
-			<phrase name="setting_vbblog_usermaximages_desc" date="1272917394" username="freddie" version="4.0.4"><![CDATA[When a blog description is submitted or edited vBulletin will check the number of images, smilies, and videos in the text and reject it if the number is greater than the value specified here.<br />
+			<phrase name="setting_vbblog_usermaximages_desc" date="1325198346" username="freddie" version="4.1.10 Alpha 3"><![CDATA[When a blog description is submitted or edited vBulletin will check the number of images and smilies in the text and reject it if the number is greater than the value specified here.<br />
 <br />
 Set the value to 0 to disable this function.]]></phrase>
-			<phrase name="setting_vbblog_usermaximages_title" date="1272917394" username="freddie" version="4.0.4"><![CDATA[Maximum Images/Videos Per Blog Description]]></phrase>
+			<phrase name="setting_vbblog_usermaximages_title" date="1325198346" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Images Per Blog Description]]></phrase>
+			<phrase name="setting_vbblog_usermaxvideos_desc" date="1325199614" username="freddie" version="4.1.10 Alpha 3"><![CDATA[When a blog description is submitted or edited vBulletin will check the number of videos in the text and reject it if the number is greater than the value specified here.<br />
+<br />
+Set the value to 0 to disable this function.]]></phrase>
+			<phrase name="setting_vbblog_usermaxvideos_title" date="1325199614" username="freddie" version="4.1.10 Alpha 3"><![CDATA[Maximum Videos Per Blog Description]]></phrase>
 			<phrase name="settinggroup_vbblog" date="1216929972" username="freddie" version="2.0.0 Beta 1"><![CDATA[vBulletin Blog: General Options]]></phrase>
 			<phrase name="settinggroup_vbblog_blog" date="1216930021" username="freddie" version="2.0.0 Beta 1"><![CDATA[vBulletin Blog: Display Page Options]]></phrase>
 			<phrase name="settinggroup_vbblog_customize" date="1216930067" username="freddie" version="2.0.0 Beta 1"><![CDATA[vBulletin Blog: Customization Options]]></phrase>
@@ -8603,14 +8631,8 @@ Set the value to 0 to disable this function.]]></phrase>
 			<setting varname="vbblog_style" displayorder="1">
 				<datatype>number</datatype>
 				<optioncode><![CDATA[select:eval
-require_once(DIR . '/includes/adminfunctions_template.php');
-global $stylecache;
-cache_styles();
-$options = array(0 => $vbphrase['none']);
-foreach($stylecache AS $style)
-{
-	$options["$style[styleid]"] = construct_depth_mark($style['depth'], '--') . " $style[title]";
-}]]></optioncode>
+$options = fetch_style_title_options_array();
+$options = array('0' => $vbphrase['none']) + $options;]]></optioncode>
 				<defaultvalue>0</defaultvalue>
 			</setting>
 			<setting varname="vbblog_trackback" displayorder="40">
@@ -8731,9 +8753,17 @@ foreach($stylecache AS $style)
 				<datatype>number</datatype>
 				<defaultvalue>4</defaultvalue>
 			</setting>
+			<setting varname="vbblog_commentmaxvideos" displayorder="351">
+				<datatype>number</datatype>
+				<defaultvalue>1</defaultvalue>
+			</setting>
 			<setting varname="vbblog_usermaximages" displayorder="360">
 				<datatype>number</datatype>
 				<defaultvalue>4</defaultvalue>
+			</setting>
+			<setting varname="vbblog_usermaxvideos" displayorder="361">
+				<datatype>number</datatype>
+				<defaultvalue>1</defaultvalue>
 			</setting>
 			<setting varname="vbblog_stat_cutoff" displayorder="410">
 				<datatype>integer</datatype>
@@ -8752,6 +8782,10 @@ foreach($stylecache AS $style)
 				<datatype>number</datatype>
 				<defaultvalue>10</defaultvalue>
 			</setting>
+			<setting varname="vbblog_blockmaxvideos" displayorder="441">
+				<datatype>number</datatype>
+				<defaultvalue>1</defaultvalue>
+			</setting>
 			<setting varname="vbblog_pagemaxchars" displayorder="445">
 				<datatype>number</datatype>
 				<defaultvalue>7500</defaultvalue>
@@ -8759,6 +8793,10 @@ foreach($stylecache AS $style)
 			<setting varname="vbblog_pagemaximages" displayorder="450">
 				<datatype>number</datatype>
 				<defaultvalue>10</defaultvalue>
+			</setting>
+			<setting varname="vbblog_pagemaxvideos" displayorder="451">
+				<datatype>number</datatype>
+				<defaultvalue>1</defaultvalue>
 			</setting>
 			<setting varname="vbblog_blogthispost" displayorder="460">
 				<datatype>boolean</datatype>
@@ -8844,6 +8882,10 @@ gargantuan|20px</defaultvalue>
 			<setting varname="vbblog_entrymaximages" displayorder="340">
 				<datatype>number</datatype>
 				<defaultvalue>10</defaultvalue>
+			</setting>
+			<setting varname="vbblog_entrymaxvideos" displayorder="341">
+				<datatype>number</datatype>
+				<defaultvalue>1</defaultvalue>
 			</setting>
 			<setting varname="vbblog_pending" displayorder="370">
 				<datatype>number</datatype>
@@ -9013,12 +9055,16 @@ gargantuan|20px</defaultvalue>
 		</helpscript>
 		<helpscript name="options">
 			<helptopic disp="1" act="options" opt="blog_commentsperpage" />
+			<helptopic disp="1" act="options" opt="vbblog_blockmaxvideos" />
+			<helptopic disp="1" act="options" opt="vbblog_commentmaxvideos" />
 			<helptopic disp="1" act="options" opt="vbblog_commentmoderation" />
 			<helptopic disp="1" act="options" opt="vbblog_entrymaximages" />
+			<helptopic disp="1" act="options" opt="vbblog_entrymaxvideos" />
 			<helptopic disp="1" act="options" opt="vbblog_maxperpage" />
 			<helptopic disp="1" act="options" opt="vbblog_maxtag" />
 			<helptopic disp="1" act="options" opt="vbblog_maxtagstarter" />
 			<helptopic disp="1" act="options" opt="vbblog_maxtaguser" />
+			<helptopic disp="1" act="options" opt="vbblog_pagemaxvideos" />
 			<helptopic disp="1" act="options" opt="vbblog_perpage" />
 			<helptopic disp="1" act="options" opt="vbblog_postmoderation" />
 			<helptopic disp="1" act="options" opt="vbblog_ratingpost" />
@@ -9039,6 +9085,7 @@ gargantuan|20px</defaultvalue>
 			<helptopic disp="1" act="options" opt="vbblog_usercss_allowed_fonts" />
 			<helptopic disp="1" act="options" opt="vbblog_usercss_allowed_font_sizes" />
 			<helptopic disp="1" act="options" opt="vbblog_usercss_allowed_padding" />
+			<helptopic disp="1" act="options" opt="vbblog_usermaxvideos" />
 		</helpscript>
 		<helpscript name="usergroup">
 			<helptopic disp="1" act="add,edit" opt="blog_candeleteentry" />
@@ -9050,6 +9097,7 @@ gargantuan|20px</defaultvalue>
 			<helptopic disp="1" act="edit,add" opt="blog_allowhtml" />
 			<helptopic disp="1" act="edit,add" opt="blog_allowimages" />
 			<helptopic disp="1" act="edit,add" opt="blog_allowsmilies" />
+			<helptopic disp="1" act="edit,add" opt="blog_allowvideos" />
 			<helptopic disp="1" act="edit,add" opt="blog_cancommentothers" />
 			<helptopic disp="1" act="edit,add" opt="blog_cancommentown" />
 			<helptopic disp="1" act="edit,add" opt="blog_cancreatecategory" />
@@ -9111,4 +9159,55 @@ gargantuan|20px</defaultvalue>
 		<faq faqname="vbblog_faq_reading_and_posting_options_pingback" faqparent="vbblog_faq_reading_and_posting_options" displayorder="3" />
 		<faq faqname="vbblog_faq_reading_and_posting_options_private" faqparent="vbblog_faq_reading_and_posting_options" displayorder="5" />
 	</faqentries>
+	<navigation>
+		<tab name="vbtab_blog" date="1337189025" username="Product-Forum" version="4.2.0 Alpha 1">
+			<active>1</active>
+			<show />
+			<scripts />
+			<displayorder>40</displayorder>
+			<url>blog.php{session.sessionurl_q}</url>
+		</tab>
+		<link name="vbblog_myblog" date="1337189025" username="Product-Forum" version="4.2.0 Alpha 1">
+			<active>1</active>
+			<show>canpostitems</show>
+			<parent>vbtab_blog</parent>
+			<displayorder>10</displayorder>
+			<url>blog.php?{session.sessionurl}userid={userinfo.userid}</url>
+		</link>
+		<link name="vbblog_recent" date="1337189025" username="Product-Forum" version="4.2.0 Alpha 1">
+			<active>1</active>
+			<show />
+			<parent>vbtab_blog</parent>
+			<displayorder>20</displayorder>
+			<url>blog.php?{session.sessionurl}do=list</url>
+		</link>
+		<link name="vbblog_popular" date="1337189025" username="Product-Forum" version="4.2.0 Alpha 1">
+			<active>1</active>
+			<show />
+			<parent>vbtab_blog</parent>
+			<displayorder>30</displayorder>
+			<url><![CDATA[blog.php?{session.sessionurl}do=list&blogtype=best]]></url>
+		</link>
+		<link name="vbblog_member" date="1337189025" username="Product-Forum" version="4.2.0 Alpha 1">
+			<active>1</active>
+			<show />
+			<parent>vbtab_blog</parent>
+			<displayorder>40</displayorder>
+			<url>blog.php?{session.sessionurl}do=bloglist</url>
+		</link>
+		<link name="vbblog_settings" date="1337189025" username="Product-Forum" version="4.2.0 Alpha 1">
+			<active>1</active>
+			<show>canpostitems</show>
+			<parent>vbtab_blog</parent>
+			<displayorder>50</displayorder>
+			<url>blog_usercp.php?{session.sessionurl}do=editprofile</url>
+		</link>
+		<link name="vbnew_entries" date="1337189025" username="Product-Forum" version="4.2.0 Alpha 1">
+			<active>1</active>
+			<show />
+			<parent>vbtab_whatsnew</parent>
+			<displayorder>50</displayorder>
+			<url><![CDATA[search.php?{session.sessionurl}do=getnew&contenttype=vBBlog_BlogEntry]]></url>
+		</link>
+	</navigation>
 </product>

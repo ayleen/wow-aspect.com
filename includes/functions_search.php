@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -278,65 +278,6 @@ function sanitize_search_query($query, &$errors)
 }
 
 // #############################################################################
-// fetch the score for a search result
-/*
-function fetch_search_item_score(&$item, $currentscore)
-{
-	global $vbulletin;
-	global $replyscore, $viewscore, $ratescore, $searchtype;
-
-	// for fulltext NL search, just use the score set by MySQL
-	if ($vbulletin->options['fulltextsearch'] AND !$searchtype)
-	{
-		return $currentscore;
-	}
-
-	// don't prejudice un-rated threads!
-	if ($item['votenum'] == 0)
-	{
-		$item['rating'] = 3;
-	}
-	else
-	{
-		$item['rating'] = $item['votetotal'] / $item['votenum'];
-	}
-
-	$replyscore = $vbulletin->options['replyfunc']($item['replycount']) * $vbulletin->options['replyscore'];
-	$viewscore = $vbulletin->options['viewfunc']($item['views']) * $vbulletin->options['viewscore'];
-	$ratescore = $vbulletin->options['ratefunc']($item['rating']) * $vbulletin->options['ratescore'];
-
-	return $currentscore + $replyscore + $viewscore + $ratescore;
-}
-*/
-
-// #############################################################################
-// fetch the date scores for search results
-/*
-function fetch_search_date_scores(&$datescores, &$itemscores, $mindate, $maxdate)
-{
-	global $vbulletin, $searchtype;
-
-	// for fulltext NL search, just use the score set by MySQL
-	if ($vbulletin->options['fulltextsearch'] AND !$searchtype)
-	{
-		unset($datescores);
-		return;
-	}
-
-	$datespread = $maxdate - $mindate;
-	if ($datespread > 0 AND $vbulletin->options['datescore'] != 0)
-	{
-		foreach ($datescores AS $itemid => $dateline)
-		{
-			$datescore = ($dateline - $mindate) / $datespread * $vbulletin->options['datescore'];
-			$itemscores["$itemid"] += $datescore;
-		}
-	}
-	unset($datescores);
-}
-*/
-
-// #############################################################################
 // fetch array of IDs of forums to display in the search form
 function fetch_search_forumids_array($parentid = -1, $depthmark = '')
 {
@@ -568,13 +509,12 @@ function prepare_tagcloud($type = 'usage')
 		if ($type == 'search')
 		{
 			$tags_result = $vbulletin->db->query_read_slave("
-				SELECT tagsearch.tagid, tag.tagtext, COUNT(*) AS searchcount
+				SELECT tagsearch.tagid, COUNT(*) AS searchcount
 				FROM " . TABLE_PREFIX . "tagsearch AS tagsearch
-				INNER JOIN " . TABLE_PREFIX . "tag AS tag ON (tagsearch.tagid = tag.tagid)
 				" . ($vbulletin->options['tagcloud_searchhistory'] ?
 			"WHERE tagsearch.dateline > " . (TIMENOW - (60 * 60 * 24 * $vbulletin->options['tagcloud_searchhistory'])) :
 			'') . "
-				GROUP BY tagsearch.tagid, tag.tagtext
+				GROUP BY tagsearch.tagid
 				ORDER BY searchcount DESC
 				LIMIT " . $vbulletin->options['tagcloud_tags']
 			);
@@ -611,14 +551,13 @@ function prepare_tagcloud($type = 'usage')
 			{
 				$timelimit = (TIMENOW - (60 * 60 * 24 * $vbulletin->options['tagcloud_usagehistory']));
 				$query = 	"
-					SELECT tagcontent.tagid, tag.tagtext, COUNT(*) AS searchcount
-					FROM " . TABLE_PREFIX . "tagcontent AS tagcontent
-					INNER JOIN " . TABLE_PREFIX . "tag AS tag ON (tagcontent.tagid = tag.tagid) " .
+					SELECT tagcontent.tagid, COUNT(*) AS searchcount
+					FROM " . TABLE_PREFIX . "tagcontent AS tagcontent " .
 					implode("\n", $bits['join']) . "
 					WHERE tagcontent.contenttypeid IN (" . implode(",", $bit_ids[$key]) . ") AND
 						tagcontent.dateline > $timelimit AND " .
 						implode(" AND ", $bits['where']) . "
-					GROUP BY tagcontent.tagid, tag.tagtext
+					GROUP BY tagcontent.tagid
 				";
 				$subqueries[] = $query;
 			}
@@ -626,25 +565,42 @@ function prepare_tagcloud($type = 'usage')
 			if (count($subqueries))
 			{
 				$query = "
-					SELECT data.tagid, data.tagtext, SUM(data.searchcount) AS searchcount
+					SELECT data.tagid, SUM(data.searchcount) AS searchcount
 					FROM
 						(" . implode(" UNION ALL ", $subqueries) . ") AS data
-					GROUP BY data.tagid, data.tagtext
+					GROUP BY data.tagid
 					ORDER BY searchcount DESC
 					LIMIT " . $vbulletin->options['tagcloud_tags'];
 
 				$tags_result = $vbulletin->db->query_read_slave($query);
-				while ($currenttag = $vbulletin->db->fetch_array($tags_result))
-				{
-					$tags["$currenttag[tagtext]"] = $currenttag;
-					$totals[$currenttag['tagid']] = $currenttag['searchcount'];
-				}
+			}
+		}
+
+		$tagids = array();
+		while ($currenttag = $vbulletin->db->fetch_array($tags_result))
+		{
+			$tagids[] = $currenttag['tagid'];
+		}
+		$vbulletin->db->data_seek($tags_result, 0);
+
+		if (count($tagids))
+		{
+			$query = "SELECT tag.tagid, tag.tagtext
+						FROM " . TABLE_PREFIX . "tag AS tag
+					   WHERE tag.tagid IN (" .  implode(",", $tagids) . ")";
+			$text_result = $vbulletin->db->query_read_slave($query);
+
+			while ($tagtext = $vbulletin->db->fetch_array($text_result))
+			{
+				$tag_names["$tagtext[tagid]"] = $tagtext['tagtext'];
 			}
 		}
 
 		while ($currenttag = $vbulletin->db->fetch_array($tags_result))
 		{
-			$tags["$currenttag[tagtext]"] = $currenttag;
+			$tag_name = $tag_names[$currenttag['tagid']];
+			$currenttag['tagtext'] = $tag_name;
+			$tags["$tag_name"] = $currenttag;
 			$totals[$currenttag['tagid']] = $currenttag['searchcount'];
 		}
 
@@ -748,7 +704,6 @@ function fetch_tagcloud($type = 'usage', $cloud = false)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45163 $
+|| # CVS: $RCSfile$ - $Revision: 61296 $
 || ####################################################################
 \*======================================================================*/

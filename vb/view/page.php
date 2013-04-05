@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright �2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright �2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -44,10 +44,8 @@ class vB_View_Page extends vB_View
 	 * @var array mixed
 	 */
 	protected $_cache_results = array(
+		'navbar',
 		'navbar_link',
-		'nav_title',
-		'nav_url',
-		'navbar'
 	);
 
 	/**
@@ -111,7 +109,7 @@ class vB_View_Page extends vB_View
 				$home_url .= (stripos('?',  vB::$vbulletin->options['site_tab_url']) === false ? '?' : '&')
 						."s=" . vB::$vbulletin->session->vars['sessionhash'];
 		}
-		$navbits[$home_url] = new vB_Phrase('vbcms', 'vbcms_title');
+		$navbits[$home_url] = new vB_Phrase('messaging', 'vbcms_title');
 
 		// Hide Home nav link
 		global $show;
@@ -154,7 +152,6 @@ class vB_View_Page extends vB_View
 		unset($this->navbits);
 
 		$this->headinclude_bottom =  new vB_View('headinclude_bottom');
-
 	}
 
 
@@ -222,7 +219,6 @@ class vB_View_Page extends vB_View
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28709 $
 || ####################################################################
 \*======================================================================*/

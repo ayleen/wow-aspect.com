@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ï¿½2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,8 +19,8 @@ if (!isset($GLOBALS['vbulletin']->db))
 * Single attachment display class
 *
 * @package 		vBulletin
-* @version		$Revision: 44610 $
-* @date 		$Date: 2011-06-16 14:41:03 -0700 (Thu, 16 Jun 2011) $
+* @version		$Revision: 62098 $
+* @date 		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 *
 */
 class vB_Attachment_Display_Single_Library
@@ -48,9 +48,6 @@ class vB_Attachment_Display_Single_Library
 			return self::$instance;
 		}
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 		$types = vB_Types::instance();
 
 		$attachmentinfo = array();
@@ -74,13 +71,13 @@ class vB_Attachment_Display_Single_Library
 		$class = $types->getContentTypeClass($contenttypeid);
 
 		$selectclass = "vB_Attachment_Display_Single_{$package}_{$class}";
-
 		$path = DIR . '/packages/' . strtolower($package) . '/attach/' . strtolower($class) . '.php';
 		if (file_exists($path))
 		{
 			include_once(DIR . '/packages/' . strtolower($package) . '/attach/' . strtolower($class) . '.php');
 			if (class_exists($selectclass))
 			{
+				
 				self::$instance = new $selectclass($registry, $attachmentid, $thumbnail);
 				return self::$instance;
 			}
@@ -94,8 +91,8 @@ class vB_Attachment_Display_Single_Library
 * Abstracted Attachment display class
 *
 * @package 		vBulletin
-* @version		$Revision: 44610 $
-* @date 		$Date: 2011-06-16 14:41:03 -0700 (Thu, 16 Jun 2011) $
+* @version		$Revision: 62098 $
+* @date 		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 *
 * @abstract
 */
@@ -187,9 +184,6 @@ abstract class vB_Attachment_Display_Single
 	*/
 	protected function verify_attachment_specific($contenttype, $selectsql = array(), $joinsql = array(), $wheresql = array())
 	{
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 		$types = vB_Types::instance();
 		$contenttypeid = intval($types->getContentTypeID($contenttype));
 
@@ -250,8 +244,8 @@ abstract class vB_Attachment_Display_Single
 * Multiple attachment display class
 *
 * @package 		vBulletin
-* @version		$Revision: 44610 $
-* @date 		$Date: 2011-06-16 14:41:03 -0700 (Thu, 16 Jun 2011) $
+* @version		$Revision: 62098 $
+* @date 		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 *
 */
 class vB_Attachment_Display_Multiple
@@ -291,9 +285,6 @@ class vB_Attachment_Display_Multiple
 
 		if (!is_subclass_of($this, 'vB_Attachment_Display_Multiple'))
 		{
-			require_once(DIR . "/includes/class_bootstrap_framework.php");
-			vB_Bootstrap_Framework::init();
-
 			$indexed_types = array();
 			$collection = new vB_Collection_ContentType();
 			$collection->filterAttachable(true);
@@ -371,6 +362,7 @@ class vB_Attachment_Display_Multiple
 					break;
 			}
 			$selectfields = implode(', ', $selectfieldssql);
+			
 		}
 		else
 		{
@@ -394,7 +386,6 @@ class vB_Attachment_Display_Multiple
 				$sql[] = "LIMIT $start, $limit";
 			}
 		}
-
 		$results = $this->registry->db->query_read_slave(implode("\r\n", $sql));
 		if ($countonly)
 		{
@@ -518,7 +509,7 @@ class vB_Attachment_Display_Multiple
 
 		$show['moderated'] = ($attachment['state'] == 'moderation');
 
-		$attachment['filename'] = htmlspecialchars_uni($attachment['filename']);
+		$attachment['filename'] = fetch_censored_text(htmlspecialchars_uni($attachment['filename'], false));
 		$attachment['counter'] = vb_number_format($attachment['counter']);
 		$attachment['size'] = vb_number_format($attachment['size'], 1, true);
 		$attachment['postdate'] = vbdate($this->registry->options['dateformat'], $attachment['dateline'], true);
@@ -560,8 +551,8 @@ class vB_Attachment_Display_Multiple
 * Attachment Storage class
 *
 * @package 		vBulletin
-* @version		$Revision: 44610 $
-* @date 		$Date: 2011-06-16 14:41:03 -0700 (Thu, 16 Jun 2011) $
+* @version		$Revision: 62098 $
+* @date 		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 *
 */
 class vB_Attachment_Store_Library
@@ -584,9 +575,6 @@ class vB_Attachment_Store_Library
 			return self::$instance;
 		}
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 		$types = vB_Types::instance();
 
 		if (!($contenttypeid = $types->getContentTypeID($contenttypeid)))
@@ -616,8 +604,8 @@ class vB_Attachment_Store_Library
 * Abstracted Attachment storage class
 *
 * @package 		vBulletin
-* @version		$Revision: 44610 $
-* @date 		$Date: 2011-06-16 14:41:03 -0700 (Thu, 16 Jun 2011) $
+* @version		$Revision: 62098 $
+* @date 		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 *
 * @abstract
 */
@@ -1025,8 +1013,8 @@ abstract class vB_Attachment_Store
 * Class for initiating proper subclass to extende attachment DM operations
 *
 * @package 		vBulletin
-* @version		$Revision: 44610 $
-* @date 		$Date: 2011-06-16 14:41:03 -0700 (Thu, 16 Jun 2011) $
+* @version		$Revision: 62098 $
+* @date 		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 *
 */
 class vB_Attachment_Dm_Library
@@ -1045,8 +1033,6 @@ class vB_Attachment_Dm_Library
 
 		if (!$instance["$contenttypeid"])
 		{
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			vB_Bootstrap_Framework::init();
 			$types = vB_Types::instance();
 
 			if (!($contenttypeid = $types->getContentTypeID($contenttypeid)))
@@ -1079,8 +1065,8 @@ class vB_Attachment_Dm_Library
 * Abstract class for attachment dm operation across content types
 *
 * @package 		vBulletin
-* @version		$Revision: 44610 $
-* @date 		$Date: 2011-06-16 14:41:03 -0700 (Thu, 16 Jun 2011) $
+* @version		$Revision: 62098 $
+* @date 		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 *
 */
 abstract class vB_Attachment_Dm
@@ -1201,9 +1187,6 @@ class vB_Attachment_Upload_Displaybit_Library
 			return self::$instance;
 		}
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 		$types = vB_Types::instance();
 
 		if (!($contenttypeid = $types->getContentTypeID($contenttypeid)))
@@ -1234,8 +1217,8 @@ class vB_Attachment_Upload_Displaybit_Library
 * Abstract class for updating the display of the calling window during uploads
 *
 * @package 		vBulletin
-* @version		$Revision: 44610 $
-* @date 		$Date: 2011-06-16 14:41:03 -0700 (Thu, 16 Jun 2011) $
+* @version		$Revision: 62098 $
+* @date 		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 *
 */
 abstract class vB_Attachment_Upload_Displaybit
@@ -1281,7 +1264,24 @@ abstract class vB_Attachment_Upload_Displaybit
 		$attachment['extension'] = strtolower(file_extension($attachment['filename']));
 		$attachment['filename']  = htmlspecialchars_uni($attachment['filename']);
 
-		return ($addopener ? "window.opener." : "") . "vB_Attachments.add($attachment[attachmentid], \"" . addslashes(str_replace(array("\r", "\n"), '', $attachment['html'])) . "\", '" . addslashes_js($attachment['filename']) . "', '" . addslashes_js($attachment['filesize']) . "', '".vB_Template_Runtime::fetchStyleVar('imgdir_attach')."/$attachment[extension].gif');\n";
+		return ($addopener ? "window.opener." : "") . "vB_Attachments.add($attachment[attachmentid], \"" . addslashes(str_replace(array("\r", "\n"), '', $attachment['html'])) . "\", '" . addslashes_js($attachment['filename']) . "', '" . addslashes_js($attachment['filesize']) . "', '".vB_Template_Runtime::fetchStyleVar('imgdir_attach')."/{$attachment['extension']}.gif', '" . intval($attachment['hasthumbnail']) . "');\n";
+	}
+	
+	/*	Add basebpath to img dir 
+	 * 
+	 * string	image path
+	 * 
+	 * @return	string
+	 */
+	protected function fetch_imgpath($extension)
+	{
+		$path = vB_Template_Runtime::fetchStyleVar('imgdir_attach') . "/{$extension}.gif";
+		if (!preg_match('#^https?://#si', $path))
+		{
+			$path = $this->registry->input->fetch_basepath() . $path;
+		}
+		
+		return $path;
 	}
 }
 
@@ -1289,8 +1289,8 @@ abstract class vB_Attachment_Upload_Displaybit
 * Class for common attachment tasks that are content agnostic
 *
 * @package 		vBulletin
-* @version		$Revision: 44610 $
-* @date 		$Date: 2011-06-16 14:41:03 -0700 (Thu, 16 Jun 2011) $
+* @version		$Revision: 62098 $
+* @date 		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 *
 */
 class vB_Attach_Display_Content
@@ -1319,8 +1319,6 @@ class vB_Attach_Display_Content
 	{
 		$this->registry =& $registry;
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 		$this->contenttypeid = vB_Types::instance()->getContentTypeID($contenttype);
 	}
 
@@ -1399,11 +1397,13 @@ class vB_Attach_Display_Content
 	*
 	* @param	string	Posthash of this edit/add
 	* @param	integer id of attachments owner
-	* @param	mixed		Who can view an attachment with no contentid (in progress), other than vbulletin->userinfo
+	* @param	mixed	Who can view an attachment with no contentid (in progress), other than vbulletin->userinfo
+	* @param	bool	Group result array by both attachmentid and contenttypeid
+	* @param	array	List of specific attachments to retrieve
 	*
 	* @return	array
 	*/
-	public function fetch_postattach($posthash = 0, $contentid = 0, $users = null)
+	public function fetch_postattach($posthash = 0, $contentid = 0, $users = null, $groupbyboth = false, $attachid = 0)
 	{
 		// if we were passed no information, simply return an empty array
 		// to avoid a nasty database error
@@ -1430,6 +1430,20 @@ class vB_Attach_Display_Content
 			$users[] = $this->registry->userinfo['userid'];
 		}
 
+		$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+		($hook = vBulletinHook::fetch_hook('fetch_postattach_query')) ? eval($hook) : false;
+
+		$mainselect = "
+			SELECT
+				fd.thumbnail_dateline, fd.filesize, IF(fd.thumbnail_filesize > 0, 1, 0) AS hasthumbnail, fd.thumbnail_filesize,
+				a.dateline, a.state, a.attachmentid, a.counter, a.contentid, a.filename, a.userid, a.settings, a.displayorder,
+				at.contenttypes
+				$hook_query_fields 
+			FROM " . TABLE_PREFIX . "attachment AS a
+			INNER JOIN " . TABLE_PREFIX . "filedata AS fd ON (fd.filedataid = a.filedataid)
+			LEFT JOIN " . TABLE_PREFIX . "attachmenttype AS at ON (at.extension = fd.extension)
+			$hook_query_joins
+			";
 		$union = array();
 
 		if ($contentid)
@@ -1443,36 +1457,46 @@ class vB_Attach_Display_Content
 				$sql = "a.contentid = " . intval($contentid);
 			}
 			$union[] = "
-				SELECT
-					fd.thumbnail_dateline, fd.filesize, IF(fd.thumbnail_filesize > 0, 1, 0) AS hasthumbnail, fd.thumbnail_filesize,
-					a.dateline, a.state, a.attachmentid, a.counter, a.contentid, a.filename, a.userid, a.settings, a.displayorder,
-					at.contenttypes
-				FROM " . TABLE_PREFIX . "attachment AS a
-				INNER JOIN " . TABLE_PREFIX . "filedata AS fd ON (fd.filedataid = a.filedataid)
-				LEFT JOIN " . TABLE_PREFIX . "attachmenttype AS at ON (at.extension = fd.extension)
+				$mainselect
 				WHERE
 					$sql
 						AND
 					a.contenttypeid = " . $this->contenttypeid . "
+				$hook_query_where
 			";
 		}
 
+		if ($attachid)
+		{
+			if (is_array($attachid))
+			{
+				$sql = "a.attachmentid IN (" . implode(",", $attachid) . ")";
+			}
+			else
+			{
+				$sql = "a.attachmentid = " . intval($attachid);
+			}
+			$union[] = "
+				$mainselect
+				WHERE
+					$sql
+						AND
+					a.contenttypeid = " . $this->contenttypeid . "
+				$hook_query_where
+			";
+		}
+		
 		if ($posthash)
 		{
 			$union[] = "
-				SELECT
-					fd.thumbnail_dateline, fd.filesize, IF(fd.thumbnail_filesize > 0, 1, 0) AS hasthumbnail, fd.thumbnail_filesize,
-					a.dateline, a.state, a.attachmentid, a.counter, a.contentid, a.filename, a.userid, a.settings, a.displayorder,
-					at.contenttypes
-				FROM " . TABLE_PREFIX . "attachment AS a
-				INNER JOIN " . TABLE_PREFIX . "filedata AS fd ON (fd.filedataid = a.filedataid)
-				LEFT JOIN " . TABLE_PREFIX . "attachmenttype AS at ON (at.extension = fd.extension)
+				$mainselect
 				WHERE
 					a.posthash = '" . $this->registry->db->escape_string($posthash) . "'
 						AND
 					a.userid IN (" . implode(',', $users) . ")
 						AND
 					a.contenttypeid = " . $this->contenttypeid . "
+				$hook_query_where
 			";
 		}
 
@@ -1497,14 +1521,20 @@ class vB_Attach_Display_Content
 		{
 			$content = @unserialize($attachment['contenttypes']);
 			$attachment['newwindow'] = $content[$this->contenttypeid]['n'];
-			if (is_array($contentid))
+
+			if ($groupbyboth)
+			{
+				$postattach['bycontent']["$attachment[contentid]"]["$attachment[attachmentid]"] = $attachment;
+				$postattach['byattachment']["$attachment[attachmentid]"] = $attachment;
+			}			
+			else if (is_array($contentid))
 			{
 				$postattach["$attachment[contentid]"]["$attachment[attachmentid]"] = $attachment;
 			}
 			else
 			{
-				$postattach["$attachment[attachmentid]"] = $attachment;
-			}
+				$postattach["$attachment[attachmentid]"] = $attachment;			
+			}		
 		}
 
 		return $postattach;
@@ -1532,7 +1562,7 @@ class vB_Attach_Display_Content
 			$show['attachments'] = true;
 			$show['moderatedattachment'] = $show['thumbnailattachment'] = $show['otherattachment'] = false;
 			$show['imageattachment'] = $show['imageattachmentlink'] = false;
-
+			
 			$attachcount = sizeof($attachments);
 			$thumbcount = 0;
 
@@ -1557,7 +1587,7 @@ class vB_Attach_Display_Content
 
 				$show['newwindow'] = $attachment['newwindow'];
 
-				$attachment['filename'] = fetch_censored_text(htmlspecialchars_uni($attachment['filename']));
+				$attachment['filename'] = fetch_censored_text(htmlspecialchars_uni($attachment['filename'], false));
 				$attachment['attachmentextension'] = strtolower(file_extension($attachment['filename']));
 				$attachment['filesize'] = vb_number_format($attachment['filesize'], 1, true);
 
@@ -1719,7 +1749,6 @@ class vB_Attach_Display_Content
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44610 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/

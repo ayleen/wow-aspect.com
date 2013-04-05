@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright Â©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -313,13 +313,11 @@ class vB_Blog_Response
 		$templater->register('response', $response);
 		$templater->register('pageinfo', $this->pageinfo);
 		$templater->register('pageinfo_ip', $pageinfo_ip);
+		$templater->register('avatarenabled', array("avatarenabled" => $this->registry->options['avatarenabled']));
+		$templater->register('avatar_user_permission', array("avatar_user_permission" => (($this->registry->userinfo['showavatars'] == 0)? false : true)));
 
 		if ($vbulletin->products['vbcms'])
 		{
-
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			vB_Bootstrap_Framework::init();
-
 			if (! isset(vB::$vbulletin->userinfo['permissions']['cms']))
 			{
 				require_once DIR . '/packages/vbcms/permissions.php';
@@ -404,11 +402,11 @@ class vB_Blog_Response
 			{
 				if ($this->registry->options['usefileavatar'])
 				{
-					$this->response['avatarurl'] = $this->registry->options['avatarurl'] . '/avatar' . $this->response['userid'] . '_' . $this->response['avatarrevision'] . '.gif';
+					$this->response['avatarurl'] = $this->registry->options['avatarurl'] . '/thumbs/avatar' . $this->response['userid'] . '_' . $this->response['avatarrevision'] . '.gif';
 				}
 				else
 				{
-					$this->response['avatarurl'] = 'image.php?' . $this->registry->session->vars['sessionurl'] . 'u=' . $this->response['userid'] . '&amp;dateline=' . $this->response['avatardateline'];
+					$this->response['avatarurl'] = 'image.php?' . $this->registry->session->vars['sessionurl'] . 'u=' . $this->response['userid'] . '&amp;dateline=' . $this->response['avatardateline'] . '&amp;type=thumb';
 				}
 				if ($this->response['avwidth'] AND $this->response['avheight'])
 				{
@@ -441,7 +439,7 @@ class vB_Blog_Response
 		{
 			$show['avatar'] = true;
 		}
-
+ 
 		$show['emaillink'] = (
 			$this->response['showemail'] AND $this->registry->options['displayemails'] AND (
 				!$this->registry->options['secureemail'] OR (
@@ -829,8 +827,7 @@ class vB_Blog_Response_Trackback extends vB_Blog_Response
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 41346 $
+|| # SVN: $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

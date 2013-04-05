@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -74,7 +74,7 @@ $VB_API_WHITELIST_COMMON['thread'] = array(
 	'del_userid', 'moderatedprefix', 'realthreadid', 'rating', 'sticky',
 	'preview', 'dot_count', 'dot_lastpost', 'threadiconpath', 'threadicontitle',
 	'movedprefix', 'typeprefix', 'prefix_rich', 'redirectthreadid',
-	'startdate', 'starttime', 'dot_count', 'dot_lastpost',
+	'startdate', 'starttime', 'dot_count', 'dot_lastpost', 'forumid', 'forumtitle',
 	'pagenav' => array(
 		'*' => array(
 			'curpage'
@@ -88,7 +88,7 @@ $VB_API_WHITELIST_COMMON['thread'] = array(
 
 $VB_API_WHITELIST_COMMON['threadbit'] = array(
 	'thread' => $VB_API_WHITELIST_COMMON['thread'],
-	'avatar',
+	'avatar', 'forumid', 'forumtitle',
 	'show' => array(
 		'threadtitle', 'deletereason', 'viewthread', 'managethread', 'moderated',
 		'deletedthread', 'rexpires', 'rmanage', 'threadmoved', 'paperclip', 'unsubscribe',
@@ -99,7 +99,7 @@ $VB_API_WHITELIST_COMMON['threadbit'] = array(
 );
 
 $VB_API_WHITELIST_COMMON['threadinfo'] = array(
-	'meta_description', 'prefix_plain_html', 'title', 'threadid', 'rating', 'keywords'
+	'meta_description', 'prefix_plain_html', 'title', 'threadid', 'rating', 'keywords','forumid', 'forumtitle'
 );
 
 $VB_API_WHITELIST_COMMON['moderator'] = array(
@@ -274,7 +274,6 @@ $VB_API_WHITELIST_COMMON['blogsidebarcategory'] = array(
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35584 $
 || ####################################################################
 \*======================================================================*/

@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -95,7 +95,7 @@ class vBForum_Search_Result_SocialGroupMessage extends vB_Search_Result
 			disc.firstpostid, starter.title AS firsttitle, gr.groupid, gr.name AS groupname
 			" . (vB::$vbulletin->options['avatarenabled'] ? ", avatar.avatarpath, user.userid, user.username,
 				customavatar.userid AS hascustomavatar, customavatar.dateline AS avatardateline,
-				customavatar.width AS avwidth,customavatar.height AS avheight" : "") .
+				customavatar.width AS avwidth,customavatar.height AS avheight, user.avatarrevision" : "") .
 				" FROM " . TABLE_PREFIX .
 				"groupmessage AS gm\n INNER JOIN " . TABLE_PREFIX .
 				"discussion AS disc ON disc.discussionid = gm.discussionid\n INNER JOIN " . TABLE_PREFIX .
@@ -118,7 +118,7 @@ class vBForum_Search_Result_SocialGroupMessage extends vB_Search_Result
 			$template = vB_Template::create($template_name);
 			$template->register('item', $item);
 			$template->register('dateformat', $vbulletin->options['dateformat']);
-			$template->register('timeformat', $vbulletin->options['default_timeformat']);
+			$template->register('timeformat', $vbulletin->options['timeformat']);
 			
 			if ($vbulletin->options['sg_enablesocialgroupicons'])
 			{
@@ -127,7 +127,7 @@ class vBForum_Search_Result_SocialGroupMessage extends vB_Search_Result
 		
 			if (vB::$vbulletin->options['avatarenabled'])
 			{
-				$template->register('avatar', fetch_avatar_from_record($item));
+				$template->register('avatar', fetch_avatar_from_record($item, true));
 			}
 			return $template->render();
 		}
@@ -202,7 +202,6 @@ class vBForum_Search_Result_SocialGroupMessage extends vB_Search_Result
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

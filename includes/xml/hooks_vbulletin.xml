@@ -2,6 +2,18 @@
 
 <hooks>
 
+	<hooktype type="activitystream">
+		<hook>activity_manage_start</hook>
+		<hook>activity_manage_delete</hook>
+		<hook>activity_manage_update</hook>
+		<hook>activity_manage_presave</hook>
+		<hook>activity_manage_save</hook>
+		<hook>activity_view_beforefetch</hook>
+		<hook>activity_view_start</hook>
+		<hook>activity_view_group</hook>
+		<hook>activity_view_union_sql</hook>
+	</hooktype>
+
 	<hooktype type="ads">
 		<hook>ads_list_criteria</hook>
 		<hook>ad_check_criteria</hook>
@@ -36,6 +48,8 @@
 		<hook>album_picture_editbit</hook>
 		<hook>album_picture_edit_complete</hook>
 		<hook>album_picture</hook>
+		<hook>album_picture_query</hook>
+		<hook>album_picturelist_query</hook>
 		<hook>album_picture_complete</hook>
 		<hook>album_album</hook>
 		<hook>album_album_query</hook>
@@ -100,6 +114,7 @@
 		<hook>attachdata_doset</hook>
 		<hook>attachdata_start</hook>
 		<hook>attachdata_postsave</hook>
+                <hook>fetch_postattach_query</hook>
 	</hooktype>
 
 	<hooktype type="attachment">
@@ -107,11 +122,31 @@
 		<hook>attachment_lightbox</hook>
 		<hook>attachment_display</hook>
 		<hook>attachment_complete</hook>
+		<hook>attachment_process_start</hook>
 		<hook>attachment_inlinemod_approve</hook>
 		<hook>attachment_inlinemod_authenticate_switch</hook>
 		<hook>attachment_inlinemod_delete</hook>
 		<hook>attachment_inlinemod_dodelete</hook>
 		<hook>attachment_inlinemod_start</hook>
+	</hooktype>
+
+	<hooktype type="bbcode">
+		<hook>bbcode_fetch_tags</hook>
+		<hook>bbcode_create</hook>
+		<hook>bbcode_parse_start</hook>
+		<hook>bbcode_parse_complete_precache</hook>
+		<hook>bbcode_parse_complete</hook>
+		<hook>bbcode_img_match</hook>
+		<hook>url_to_bbcode</hook>
+		<hook>url_to_bbcode_callback</hook>
+		<hook>strip_bbcode</hook>
+	</hooktype>
+
+	<hooktype type="contentreaddata">
+		<hook>contentread_start</hook>
+		<hook>contentread_presave</hook>
+		<hook>contentread_postsave</hook>
+		<hook>contentread_delete</hook>
 	</hooktype>
 
 	<hooktype type="calendar">
@@ -166,6 +201,7 @@
 
 	<hooktype type="css">
 		<hook>css_start</hook>
+		<hook>css_complete</hook>
 	</hooktype>
 
 	<hooktype type="data">
@@ -210,6 +246,7 @@
 		<hook>editor_toolbar_filter</hook>
 		<hook>editor_toolbar_start</hook>
 		<hook>editor_toolbar_switch</hook>
+		<hook>editor_toolbar_set</hook>
 		<hook>editor_switch_wysiwyg_to_standard</hook>
 		<hook>editor_wysiwyg_compatible</hook>
 	</hooktype>
@@ -241,6 +278,18 @@
 		<hook>external_query</hook>
 		<hook>external_type</hook>
 		<hook>external_complete</hook>
+	</hooktype>
+
+	<hooktype type="facebook">
+		<hook>fb_opengraph_array</hook>
+		<hook>fb_canonical_url</hook>
+		<hook>fb_auto_register</hook>
+		<hook>fb_import_form</hook>
+		<hook>fb_profile_info</hook>
+		<hook>fb_publish_message</hook>
+		<hook>fb_publish_checkbox</hook>
+		<hook>fb_like_button</hook>
+		<hook>fb_import_form_data</hook>
 	</hooktype>
 
 	<hooktype type="faq">
@@ -291,20 +340,23 @@
 		<hook>forumhome_loggedinuser_query</hook>
 		<hook>forumhome_loggedinuser</hook>
 		<hook>forumhome_complete</hook>
+		<hook>forumhome_whovisited_list</hook>
+		<hook>forumhome_whovisited_prelist</hook>
+		<hook>forumhome_whovisited_postlist</hook>
+		<hook>forumhome_whovisited_nonames</hook>
 	</hooktype>
 
 	<hooktype type="friendlyurl">
 		<hook>friendlyurl_resolve_class</hook>
 		<hook>friendlyurl_redirect_canonical</hook>
 		<hook>friendlyurl_redirect_canonical_route</hook>
+		<hook>friendlyurl_geturl</hook>
+		<hook>friendlyurl_clean_fragment</hook>
 	</hooktype>
 
 	<hooktype type="general">
 		<hook>init_startup</hook>
 		<hook>style_fetch</hook>
-		<hook>cache_templates</hook>
-		<hook>parse_templates</hook>
-		<hook>process_templates_complete</hook>
 		<hook>global_start</hook>
 		<hook>global_bootstrap_init_complete</hook>
 		<hook>global_bootstrap_complete</hook>
@@ -344,14 +396,7 @@
 		<hook>pagenav_complete</hook>
 		<hook>replacement_vars</hook>
 		<hook>forumrules</hook>
-		<hook>bbcode_fetch_tags</hook>
-		<hook>bbcode_create</hook>
-		<hook>bbcode_parse_start</hook>
-		<hook>bbcode_parse_complete_precache</hook>
-		<hook>bbcode_parse_complete</hook>
 		<hook>dot_threads_array</hook>
-		<hook>url_to_bbcode</hook>
-		<hook>url_to_bbcode_callback</hook>
 		<hook>quotable_posts_query</hook>
 		<hook>quotable_posts_logic</hook>
 		<hook>upload_accept</hook>
@@ -361,9 +406,12 @@
 		<hook>collection_factory_create</hook>
 		<hook>bit_factory_create</hook>
 		<hook>xml_print_output</hook>
-		<hook>template_register_var</hook>
 		<hook>memberaction_dropdown</hook>
 		<hook>fetch_session_complete</hook>
+		<hook>xmlrpc_verify_pingback</hook>
+		<hook>load_show_variables</hook>
+		<hook>load_forum_show_variables</hook>
+		<hook>mark_content_read</hook>
 	</hooktype>
 
 	<hooktype type="generaladmin" admin="1">
@@ -415,6 +463,11 @@
 		<hook>admin_cache_bbcode</hook>
 		<hook>admin_cache_smilies</hook>
 		<hook>admin_search_options</hook>
+		<hook>admin_joinrequest_process_start</hook>
+		<hook>admin_joinrequest_process_complete</hook>
+		<hook>admin_joinrequest_view_start</hook>
+		<hook>admin_joinrequest_view_bit</hook>
+		<hook>admin_joinrequest_view_complete</hook>
 	</hooktype>
 
 	<hooktype type="generalmod" admin="1">
@@ -433,6 +486,7 @@
 		<hook>group_dojoin</hook>
 		<hook>group_docreate</hook>
 		<hook>group_doedit</hook>
+		<hook>group_create_edit</hook>
 		<hook>group_memberbit</hook>
 		<hook>group_discuss_start</hook>
 		<hook>group_discuss_end</hook>
@@ -469,6 +523,7 @@
 		<hook>group_overview</hook>
 		<hook>group_view_categories_start</hook>
 		<hook>group_view_categories_query</hook>
+		<hook>group_updatedgroups_query</hook>
 	</hooktype>
 
 	<hooktype type="group_category">
@@ -520,6 +575,13 @@
 		<hook>groupmessagedata_presave</hook>
 		<hook>groupmessagedata_postsave</hook>
 		<hook>groupmessagedata_delete</hook>
+	</hooktype>
+
+	<hooktype type="ipdata">
+		<hook>ipdata_start</hook>
+		<hook>ipdata_presave</hook>
+		<hook>ipdata_postsave</hook>
+		<hook>ipdata_delete</hook>
 	</hooktype>
 
 	<hooktype type="image">
@@ -630,6 +692,7 @@
 		<hook>member_profileblock_album_query</hook>
 		<hook>member_profileblock_recentvisitors_query</hook>
 		<hook>member_profileblock_visitormessage_query</hook>
+		<hook>member_profileblock_reputationbit</hook>
 		<hook>member_start_fetch_user</hook>
 		<hook>userprofile_create</hook>
 		<hook>userprofile_prepare</hook>
@@ -711,6 +774,37 @@
 		<hook>moderatordata_delete</hook>
 	</hooktype>
 
+	<hooktype type="navigation">
+		<hook>navigation_tab_complete</hook>
+		<hook>set_navigation_tab_main</hook>
+		<hook>set_navigation_tab_vbview</hook>
+		<hook>set_navigation_tab_fallback</hook>
+		<hook>build_navigation_data</hook>
+		<hook>build_navigation_list</hook>
+		<hook>build_navigation_listdata</hook>
+		<hook>build_navigation_array</hook>
+		<hook>build_navigation_menudata</hook>
+		<hook>check_navigation_permission</hook>
+		<hook>collapse_navigation_state</hook>
+		<hook>expand_navigation_state</hook>
+		<hook>navigation_admin_start</hook>
+		<hook>navigation_admin_list</hook>
+		<hook>navigation_admin_update</hook>
+		<hook>navigation_admin_add</hook>
+		<hook>navigation_admin_doadd</hook>
+		<hook>navigation_admin_edit</hook>
+		<hook>navigation_admin_doedit</hook>
+		<hook>navigation_admin_move</hook>
+		<hook>navigation_admin_domove</hook>
+		<hook>navigation_admin_delete</hook>
+		<hook>navigation_admin_dodelete</hook>
+		<hook>navigation_admin_default</hook>
+		<hook>navigation_admin_dodefault</hook>
+		<hook>process_navigation_links_complete</hook>
+		<hook>process_navigation_links_start</hook>
+		<hook>set_navigation_menu_element</hook>
+	</hooktype>
+
 	<hooktype type="newattachment">
 		<hook>newattachment_start</hook>
 		<hook>newattachment_attach</hook>
@@ -758,6 +852,7 @@
 	<hooktype type="online">
 		<hook>online_start</hook>
 		<hook>online_query</hook>
+		<hook>online_user_count</hook>
 		<hook>online_user</hook>
 		<hook>online_location_preprocess</hook>
 		<hook>online_location_process</hook>
@@ -809,8 +904,10 @@
 	<hooktype type="picturecommentdata">
 		<hook>picturecommentdata_start</hook>
 		<hook>picturecommentdata_presave</hook>
+		<hook>picturecommentdata_postsave_activitystream</hook>
 		<hook>picturecommentdata_postsave</hook>
 		<hook>picturecommentdata_delete</hook>
+		<hook>picturecommentdata_delete_activitystream</hook>
 	</hooktype>
 
 	<hooktype type="picturedata">
@@ -1061,7 +1158,22 @@
 		<hook>search_doprefs_process</hook>
 		<hook>search_doprefs_complete</hook>
 		<hook>search_complete</hook>
+		<hook>search_criteria_gethash</hook>
 		<hook>search_similarthreads_fulltext</hook>
+		<hook>search_getnew_start</hook>
+		<hook>search_getnew_process</hook>
+		<hook>search_getnew_complete</hook>
+		<hook>search_addnew_filter</hook>
+		<hook>search_results_thread_start</hook>
+		<hook>search_results_thread_process</hook>
+		<hook>search_results_thread_complete</hook>
+		<hook>search_prepare_render</hook>
+		<hook>search_validated_list</hook>
+		<hook>search_pref_defaults</hook>
+		<hook>search_listui_complete</hook>
+		<hook>search_advanced_filters</hook>
+		<hook>search_dbquery_info</hook>
+		<hook>search_add_user_filter</hook>
 	</hooktype>
 
 	<hooktype type="sendmessage">
@@ -1115,6 +1227,7 @@
 		<hook>showgroups_user</hook>
 		<hook>showgroups_usergroup</hook>
 		<hook>showgroups_forum</hook>
+		<hook>showgroups_forumleaders</hook>
 		<hook>showgroups_complete</hook>
 	</hooktype>
 
@@ -1141,6 +1254,18 @@
 		<hook>showthread_similarthreadbit</hook>
 		<hook>showthread_bookmarkbit</hook>
 		<hook>showthread_complete</hook>
+		<hook>showthread_whoread_list</hook>
+		<hook>showthread_whoread_prelist</hook>
+		<hook>showthread_whoread_postlist</hook>
+		<hook>showthread_whoread_nonames</hook>
+	</hooktype>
+
+	<hooktype type="sitemap">
+		<hook>sitemap_admin_start</hook>
+		<hook>sitemap_forum_row</hook>
+		<hook>sitemap_blog_row</hook>
+		<hook>sitemap_cms_row</hook>
+		<hook>sitemap_admin_complete</hook>
 	</hooktype>
 
 	<hooktype type="styleedit" admin="1">
@@ -1166,6 +1291,18 @@
 		<hook>tag_cloud_bit</hook>
 		<hook>tags_start</hook>
 		<hook>tags_cloud_complete</hook>
+	</hooktype>
+
+	<hooktype type="templates">
+		<hook>cache_templates</hook>
+		<hook>parse_templates</hook>
+		<hook>page_templates</hook>
+		<hook>template_render_output</hook>
+		<hook>cache_templates_process</hook>
+		<hook>process_templates_complete</hook>
+		<hook>template_register_var</hook>
+		<hook>fetch_template_start</hook>
+		<hook>fetch_template_complete</hook>
 	</hooktype>
 
 	<hooktype type="threadbit">
@@ -1206,6 +1343,12 @@
 		<hook>threadmanage_stickunstick</hook>
 		<hook>threadmanage_removeredirect</hook>
 		<hook>threadmanage_managepost</hook>
+		<hook>threadmanage_deletethread</hook>
+		<hook>threadmanage_dodeletethread</hook>
+		<hook>threadmanage_domanagepost</hook>
+		<hook>threadmanage_mergethread</hook>
+		<hook>threadmanage_editthread</hook>
+		<hook>threadmanage_move_copy_thread</hook>
 		<hook>threadmanage_complete</hook>
 	</hooktype>
 
@@ -1246,6 +1389,7 @@
 		<hook>usercp_nav_start</hook>
 		<hook>usercp_nav_complete</hook>
 		<hook>usercp_reputationbit</hook>
+		<hook>usercp_reputationgivenbit</hook>
 		<hook>usercp_pmbit</hook>
 		<hook>usercp_threads_query</hook>
 		<hook>usercp_infractioninfobit</hook>
@@ -1341,4 +1485,4 @@
 	</hooktype>
 </hooks>
 
-<!-- CVS: $RCSfile$ - $Revision: 44911 $ -->
+<!-- CVS: $RCSfile$ - $Revision: 62871 $ -->

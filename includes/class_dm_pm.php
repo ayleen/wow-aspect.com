@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -28,8 +28,8 @@ if (!class_exists('vB_DataManager', false))
 *	- forward (bool): whether this is a forward of the parent (true) or a reply (false)
 *
 * @package	vBulletin
-* @version	$Revision: 34509 $
-* @date		$Date: 2009-12-15 16:58:30 -0800 (Tue, 15 Dec 2009) $
+* @version	$Revision: 53471 $
+* @date		$Date: 2011-10-10 16:10:55 -0700 (Mon, 10 Oct 2011) $
 */
 class vB_DataManager_PM extends vB_DataManager
 {
@@ -277,6 +277,7 @@ class vB_DataManager_PM extends vB_DataManager
 	*/
 	function set_recipients($recipientlist, &$permissions, $type = 'bcc')
 	{
+		global $vbphrase;
 		$names = array();      // names in the recipient list
 		$users = array();      // users from the recipient list found in the user table
 		$notfound = array();   // names from the recipient list NOT found in the user table
@@ -373,9 +374,11 @@ class vB_DataManager_PM extends vB_DataManager
 				$notfound[] = $name;
 			}
 		}
+
 		if (!empty($notfound)) // error - some users were not found
 		{
-			$this->error('pmrecipientsnotfound', implode("</li>\r\n<li>", $notfound));
+			$comma = $vbphrase['comma_space'];
+			$this->error('pmrecipientsnotfound', implode("</li>$comma<li>", $notfound));
 			return false;
 		}
 
@@ -709,8 +712,7 @@ class vB_DataManager_PM extends vB_DataManager
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 34509 $
+|| # CVS: $RCSfile$ - $Revision: 53471 $
 || ####################################################################
 \*======================================================================*/
 ?>

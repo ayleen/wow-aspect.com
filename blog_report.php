@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -56,7 +56,6 @@ $globaltemplates = array(
 	'blog_reportitem',
 	'blog_sidebar_user',
 	'blog_tag_cloud_link',
-	'memberinfo_visitorbit',
 	'newpost_usernamecode',
 	'ad_blogsidebar_start',
 	'ad_blogsidebar_middle',
@@ -238,7 +237,7 @@ if ($_POST['do'] == 'sendemail')
 		$reportobj->do_report($trimmed_reason, $blockinfo);
 	}
 
-	eval(print_standard_redirect('redirect_reportthanks'));
+	print_standard_redirect('redirect_reportthanks');  
 }
 
 ($hook = vBulletinHook::fetch_hook('blog_report_complete')) ? eval($hook) : false;
@@ -285,8 +284,7 @@ print_output($templater->render());
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 40911 $
+|| # SVN: $Revision: 53471 $
 || ####################################################################
 \*======================================================================*/
 ?>

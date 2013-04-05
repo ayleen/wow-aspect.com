@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright �2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright �2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -273,7 +273,6 @@ class vBCms_DM_Node extends vBCMS_DM_Content
 			$this->item->setInfo(array('publishdate'=> $publishdate));
 		}
 
-
 		if (vB::$vbulletin->GPC_exists['keywords'])
 		{
 			$this->set('keywords', vB::$vbulletin->GPC['keywords']);
@@ -440,6 +439,7 @@ class vBCms_DM_Node extends vBCMS_DM_Content
 	protected function prepareFields()
 	{
 		parent::prepareFields();
+
 
 		//The parent DM uses item_id, but the actual database field is $contentid. Let's make
 		// sure both are set.
@@ -1065,7 +1065,7 @@ class vBCms_DM_Node extends vBCMS_DM_Content
 				TABLE_PREFIX . "cms_nodeinfo AS info INNER JOIN " .
 				TABLE_PREFIX . "thread AS thread ON thread.threadid = info.associatedthreadid
 				WHERE info.nodeid = ". $this->item->getNodeId() );
-
+	
 			if ($record['associatedthreadid'])
 			{
 				require_once DIR . '/includes/functions_databuild.php';
@@ -1075,6 +1075,7 @@ class vBCms_DM_Node extends vBCMS_DM_Content
 				{
 					if (intval($this->set_fields['comments_enabled']))
 					{
+						
 						//We need to ensure comments are enabled.
 						//only if it is published
 						$visible = $thread->get_field('visible');
@@ -1094,12 +1095,13 @@ class vBCms_DM_Node extends vBCMS_DM_Content
 							vB::$db->query_write($sql);
 						}
 					}
-					else
+					else if (!method_exists($this->item, 'getKeepThread') OR !method_exists($this->item, 'getMoveThread')
+						OR !($this->item->getKeepThread() AND !$this->item->getMoveThread()))
 					{
-						//We need to hide the thread.
+						//If this is a promoted article and it's set to keep the existing
+						// thread, we leave it alone, otherwise, we need to hide the thread.
 						$thread->soft_delete(new vB_Legacy_CurrentUser(), '', true);
 					}
-
 				}
 				build_thread_counters($record['associatedthreadid']);
 				build_forum_counters($record['forumid']);
@@ -1585,7 +1587,13 @@ class vBCms_DM_Node extends vBCMS_DM_Content
 			}
 		}
 
-		vB_Cache::instance()->event(vBCms_NavBar::getCacheEventId(vBCms_NavBar::GLOBAL_CACHE_EVENT));
+		vB_Cache::instance()->event(vBCms_NavBar::GLOBAL_CACHE_EVENT);
+		vB_Cache::instance()->event(vBCms_NavBar::getCacheEventId($this->item->getNodeId()));
+		vB_Cache::instance()->event($this->item->getContentCacheEvent());
+
+		vB_Cache::instance()->eventPurge($this->item->getCacheEvents());
+
+		vB_Cache::instance()->cleanNow();
 
 		return parent::postDelete($result);
 	}
@@ -1629,7 +1637,6 @@ class vBCms_DM_Node extends vBCMS_DM_Content
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 28749 $
 || ####################################################################
 \*======================================================================*/

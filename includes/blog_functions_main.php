@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -131,7 +131,7 @@ function fetch_featured_entry($featured, $blogs)
 */
 function &fetch_blog_list($blogids, $attachcount, &$postattach, &$categories, $sqljoin = null, $wheresql = null, $deljoinsql = null, $orderby = "blog.dateline DESC")
 {
-	global $vbulletin;
+	global $vbulletin, $vbphrase;
 
 	$userperms = array();
 	$cats = $vbulletin->db->query_read_slave("
@@ -153,6 +153,10 @@ function &fetch_blog_list($blogids, $attachcount, &$postattach, &$categories, $s
 		$perms = $userperms["$cat[userid]"];
 		if ($perms['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_cancreatecategory'] OR !$cat['creatorid'])
 		{
+			if (!$cat['creatorid'])
+			{
+				$cat['title'] = $vbphrase['category' . $cat['blogcategoryid'] . '_title'];
+			}
 			$categories["$cat[blogid]"][] = $cat;
 		}
 	}
@@ -479,21 +483,29 @@ function &fetch_latest_blogs($type = 'latest')
 	}
 
 	// Recently Updated
+
+	$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+	($hook = vBulletinHook::fetch_hook('blog_latest_blogs_query')) ? eval($hook) : false;
+
 	$recentupdates = $vbulletin->db->query_read_slave("
 		SELECT
 			blog.blogid, blog.title, blog.dateline, blog.state, blog.options AS blogoptions, user.*, blog.postedby_userid, blog.postedby_username,
 			blog_user.title AS blogtitle, blog_user.bloguserid,
 			IF(user.displaygroupid = 0, user.usergroupid, user.displaygroupid) AS displaygroupid, infractiongroupid, options_ignore, options_buddy, options_member, options_guest, blog_user.bloguserid
 		" . ($vbulletin->options['avatarenabled'] ? ",avatar.avatarpath, NOT ISNULL(customavatar.userid) AS hascustomavatar, customavatar.dateline AS avatardateline,customavatar.width AS avwidth,customavatar.height AS avheight" : "") . "
+		$hook_query_fields
 		FROM " . TABLE_PREFIX . "blog AS blog " . ($index ? "USE INDEX ($index)" : "") . "
 		LEFT JOIN " . TABLE_PREFIX . "user AS user ON (user.userid = blog.postedby_userid)
 		LEFT JOIN " . TABLE_PREFIX . "blog_user AS blog_user ON (blog_user.bloguserid = blog.userid)
 		" . (!empty($sql_join) ? implode("\r\n", $sql_join) : "") . "
 		" . ($vbulletin->options['avatarenabled'] ? "LEFT JOIN " . TABLE_PREFIX . "avatar AS avatar ON(avatar.avatarid = user.avatarid) LEFT JOIN " . TABLE_PREFIX . "customavatar AS customavatar ON(customavatar.userid = user.userid)" : "") . "
+		$hook_query_joins
 		WHERE " . implode("\r\n\tAND ", $sql_and) . "
+		$hook_query_where
 		ORDER BY $orderby
 		LIMIT $limit
 	");
+
 	while ($updated = $vbulletin->db->fetch_array($recentupdates))
 	{
 		$updated['blogtitle'] = $updated['blogtitle'] ? $updated['blogtitle'] : $updated['username'];
@@ -501,7 +513,7 @@ function &fetch_latest_blogs($type = 'latest')
 		$updated = array_merge($updated, convert_bits_to_array($updated['adminoptions'], $vbulletin->bf_misc_adminoptions));
 		$updated = array_merge($updated, convert_bits_to_array($updated['blogoptions'], $vbulletin->bf_misc_vbblogoptions));
 		fetch_musername($updated);
-		fetch_avatar_html($updated);
+		fetch_avatar_html($updated, true);
 		$updated['title'] = fetch_word_wrapped_string($updated['title'], $vbulletin->options['blog_wordwrap']);
 		$updated['postdate'] = vbdate($vbulletin->options['dateformat'], $updated['dateline'], true);
 		$updated['posttime'] = vbdate($vbulletin->options['timeformat'], $updated['dateline']);
@@ -520,6 +532,9 @@ function &fetch_latest_blogs($type = 'latest')
 				$show['private'] = true;
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('blog_latest_blogs_entry')) ? eval($hook) : false;
+
 		$templater = vB_Template::create('blog_home_list_entry');
 			$templater->register('updated', $updated);
 		$recentblogbits .= $templater->render();
@@ -643,27 +658,37 @@ function &fetch_latest_comments($type = 'latest')
 	}
 
 	// Recently Updated
+	$orderby = 'blog_text.dateline DESC';
+	$limit = intval($vbulletin->options['vbblog_maxrecentcomment']);
+
+	$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+	($hook = vBulletinHook::fetch_hook('blog_latest_comments_query')) ? eval($hook) : false;
+
 	$recentupdates = $vbulletin->db->query_read_slave("
 		SELECT blog.blogid, user.username, blogtextid, blog.title, blog_text.dateline, blog_text.pagetext, user.*, blog_user.title AS blogtitle, blog_text.title AS commenttitle,
 			blog_text.state,
 			IF(user.displaygroupid = 0, user.usergroupid, user.displaygroupid) AS displaygroupid, infractiongroupid, options_ignore, options_buddy, options_member, options_guest
 			" . ($vbulletin->options['avatarenabled'] ? ",avatar.avatarpath, NOT ISNULL(customavatar.userid) AS hascustomavatar, customavatar.dateline AS avatardateline,customavatar.width AS avwidth,customavatar.height AS avheight" : "") . "
+		$hook_query_fields
 		FROM " . TABLE_PREFIX . "blog_text AS blog_text
 		LEFT JOIN " . TABLE_PREFIX . "blog AS blog ON (blog.blogid = blog_text.blogid)
 		LEFT JOIN " . TABLE_PREFIX . "user AS user ON (user.userid = blog_text.userid)
 		LEFT JOIN " . TABLE_PREFIX . "blog_user AS blog_user ON (blog_user.bloguserid = blog.userid)
 		" . (!empty($sql_join) ? implode("\r\n", $sql_join) : "") . "
 		" . ($vbulletin->options['avatarenabled'] ? "LEFT JOIN " . TABLE_PREFIX . "avatar AS avatar ON(avatar.avatarid = user.avatarid) LEFT JOIN " . TABLE_PREFIX . "customavatar AS customavatar ON(customavatar.userid = user.userid)" : "") . "
+		$hook_query_joins
 		WHERE " . implode("\r\n\tAND ", $sql_and) . "
-		ORDER BY blog_text.dateline DESC
-		LIMIT " .  intval($vbulletin->options['vbblog_maxrecentcomment']) . "
+		$hook_query_where
+		ORDER BY $orderby
+		LIMIT $limit
 	");
+
 	while ($updated = $vbulletin->db->fetch_array($recentupdates))
 	{
 		$updated = array_merge($updated, convert_bits_to_array($updated['options'], $vbulletin->bf_misc_useroptions));
 		$updated = array_merge($updated, convert_bits_to_array($updated['adminoptions'], $vbulletin->bf_misc_adminoptions));
 		fetch_musername($updated);
-		fetch_avatar_html($updated);
+		fetch_avatar_html($updated, true);
 		$updated['postdate'] = vbdate($vbulletin->options['dateformat'], $updated['dateline'], true);
 		$updated['posttime'] = vbdate($vbulletin->options['timeformat'], $updated['dateline']);
 		$updated['title'] = fetch_word_wrapped_string($updated['title'], $vbulletin->options['blog_wordwrap']);
@@ -702,6 +727,8 @@ function &fetch_latest_comments($type = 'latest')
 				$show['private'] = true;
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('blog_latest_comments_entry')) ? eval($hook) : false;
 
 		$templater = vB_Template::create('blog_home_list_comment');
 			$templater->register('updated', $updated);
@@ -777,24 +804,34 @@ function &fetch_rated_blogs()
 	}
 
 	// Highest Rated
+	$orderby = 'bu.rating DESC';
+	$limit = intval($vbulletin->options['vbblog_maxratedblog']);
+
+	$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+	($hook = vBulletinHook::fetch_hook('blog_rated_blogs_query')) ? eval($hook) : false;
+
 	$recentupdates = $vbulletin->db->query_read_slave("
 		SELECT user.*, bu.ratingnum, bu.ratingtotal, bu.title,
 			IF(user.displaygroupid = 0, user.usergroupid, user.displaygroupid) AS displaygroupid, infractiongroupid, options_ignore, options_buddy, options_member, options_guest
 			" . ($vbulletin->options['avatarenabled'] ? ",avatar.avatarpath, NOT ISNULL(customavatar.userid) AS hascustomavatar, customavatar.dateline AS avatardateline,customavatar.width AS avwidth,customavatar.height AS avheight" : "") . "
+		$hook_query_fields
 		FROM " . TABLE_PREFIX . "blog_user AS bu " . ($index ? "USE INDEX ($index)" : "") . "
 		LEFT JOIN " . TABLE_PREFIX . "user AS user ON (user.userid = bu.bloguserid)
 		" . (!empty($sql_join) ? implode("\r\n", $sql_join) : "") . "
 		" . ($vbulletin->options['avatarenabled'] ? "LEFT JOIN " . TABLE_PREFIX . "avatar AS avatar ON(avatar.avatarid = user.avatarid) LEFT JOIN " . TABLE_PREFIX . "customavatar AS customavatar ON(customavatar.userid = user.userid)" : "") . "
+		$hook_query_joins
 		WHERE " . implode("\r\n\tAND ", $sql_and) . "
-		ORDER BY bu.rating DESC
-		LIMIT " .  intval($vbulletin->options['vbblog_maxratedblog']) . "
+		$hook_query_where
+		ORDER BY $orderby
+		LIMIT $limit
 	");
+
 	while ($updated = $vbulletin->db->fetch_array($recentupdates))
 	{
 		$updated = array_merge($updated, convert_bits_to_array($updated['options'], $vbulletin->bf_misc_useroptions));
 		$updated = array_merge($updated, convert_bits_to_array($updated['adminoptions'], $vbulletin->bf_misc_adminoptions));
 		fetch_musername($updated);
-		fetch_avatar_html($updated);
+		fetch_avatar_html($updated, true);
 		if ($updated['ratingnum'] > 0)
 		{
 			$updated['voteavg'] = vb_number_format($updated['ratingtotal'] / $updated['ratingnum'], 2);
@@ -818,6 +855,8 @@ function &fetch_rated_blogs()
 			}
 		}
 
+		($hook = vBulletinHook::fetch_hook('blog_rated_blogs_entry')) ? eval($hook) : false;
+
 		$templater = vB_Template::create('blog_home_list_blog');
 			$templater->register('updated', $updated);
 		$recentblogbits .= $templater->render();
@@ -828,7 +867,6 @@ function &fetch_rated_blogs()
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 27303 $
 || ####################################################################
 \*======================================================================*/

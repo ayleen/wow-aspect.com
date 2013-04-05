@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 38970 $
- * @since $Date: 2010-09-14 15:30:50 -0700 (Tue, 14 Sep 2010) $
+ * @version $Revision: 61698 $
+ * @since $Date: 2012-04-19 14:46:06 -0700 (Thu, 19 Apr 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Content_PhpEval extends vBCms_Content_StaticPage
@@ -189,6 +189,7 @@ class vBCms_Content_PhpEval extends vBCms_Content_StaticPage
 			}
 
 		}
+
 		return $view;
 
 	}

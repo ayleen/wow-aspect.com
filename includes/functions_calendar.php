@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -29,6 +29,7 @@ $_CALENDAROPTIONS = array(
 	'weekly'        => 128,
 	'yearly'        => 256,
 	'showupcoming'  => 512, # Display upcoming events from this calendar on the front page
+	'allowvideocode'=> 1024,
 );
 
 // Defined constants for pre-defined holidays
@@ -1423,7 +1424,7 @@ function cache_event_info(&$event, $month, $day, $year, $adjust = 1, $cache = tr
 				return false;
 			}
 
-			if (empty($e["$eventid"]['currentmonth']))
+			if (empty($e["$eventid"]['currentmonth']) OR $e["$eventid"]['currentmonth'] > $thismonth)
 			{
 				if ($e["$eventid"]['startday'] > gmmktime(0, 0, 0, gmdate('n', $event['dateline_from_user']), $monthbit[0], gmdate('Y', $event['dateline_from_user'])))
 				{
@@ -1702,7 +1703,6 @@ function build_events()
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44605 $
+|| # CVS: $RCSfile$ - $Revision: 57655 $
 || ####################################################################
 \*======================================================================*/

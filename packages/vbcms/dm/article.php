@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -32,7 +32,7 @@ class vBCms_DM_Article extends vBCms_DM_Node
 	*/
 	protected $type_fields = array(
 		'pagetext'     => array(vB_Input::TYPE_STR,		self::REQ_YES,	self::VM_CALLBACK,	array('$this', 'verifyPageText')),
-		'threadid'     =>	array(vB_Input::TYPE_INT,		self::REQ_NO),
+		'threadid'     => array(vB_Input::TYPE_INT,		self::REQ_NO),
 		'blogid'       => array(vB_Input::TYPE_INT,		self::REQ_NO),
 		'blogpostid'   => array(vB_Input::TYPE_INT,		self::REQ_NO),
 		'postid'       => array(vB_Input::TYPE_INT,		self::REQ_NO),
@@ -45,7 +45,10 @@ class vBCms_DM_Article extends vBCms_DM_Node
 		'imagewidth'   => array(vB_Input::TYPE_INT,		self::REQ_NO),
 		'imageheight'  => array(vB_Input::TYPE_INT,		self::REQ_NO),
 		'previewvideo' => array(vB_Input::TYPE_STR,		self::REQ_NO),
-		'htmlstate'    => array(vB_Input::TYPE_STR,   self::REQ_NO),
+		'htmlstate'    => array(vB_Input::TYPE_STR, 	self::REQ_NO),
+		'keepthread' =>  array(vB_Input::TYPE_UINT,		self::REQ_NO),
+		'allcomments' => array(vB_Input::TYPE_UINT,		self::REQ_NO),
+		'movethread' => array(vB_Input::TYPE_UINT,		self::REQ_NO),
 	);
 
 	/**
@@ -71,6 +74,9 @@ class vBCms_DM_Article extends vBCms_DM_Node
 			'previewvideo',
 			'imageheight',
 			'htmlstate',
+			'keepthread',
+			'allcomments',
+			'movethread'
 		)
 	);
 
@@ -123,39 +129,43 @@ class vBCms_DM_Article extends vBCms_DM_Node
 	}
 
 	/**
-	 * Prepare meta description to use first 20 keywords of the artile if it's not set. See bug #30456
+	 * Prepare meta description to use first 150 words of the article (if it's not set).
+	 * Prepare meta keywords to use most popular 5 words of the article (if it's not set).
 	 */
 	protected function prepareFields()
 	{
 		parent::prepareFields();
 
-		if ((empty($this->set_fields['description']) OR $this->set_fields['description'] == (string) new vB_Phrase('vbcms', 'new_article'))
-			AND !empty($this->type_set_fields['pagetext']))
+		if (!empty($this->type_set_fields['pagetext']))
 		{
 			require_once(DIR . '/includes/functions_databuild.php');
+			$wordarray = split_string(fetch_postindex_text($this->type_set_fields['pagetext']));
+			$preview = split_string(strip_tags(strip_bbcode($this->type_set_fields['pagetext'])));
+			$words = array_slice($preview, 0, 150, true);
 
-			$words = fetch_postindex_text($this->type_set_fields['pagetext']);
-
-			$wordarray = split_string($words);
-			$scores = array();
-			foreach ($wordarray AS $word)
+			if (empty($this->set_fields['description']) OR $this->set_fields['description'] == (string) new vB_Phrase('vbcms', 'new_article'))
 			{
-				if (!is_index_word($word))
+				$this->set_fields['description'] = implode(' ',$words);
+			}
+
+			if (empty($this->set_fields['keywords']))
+			{
+				$scores = array();
+				foreach ($wordarray AS $word)
 				{
-					continue;
+					if (!is_index_word($word))
+					{
+						continue;
+					}
+					$scores[$word]++;
 				}
-				$scores[$word]++;
+
+				arsort($scores, SORT_NUMERIC);
+				$scores = array_slice($scores, 0, 5, true);
+				$this->set_fields['keywords'] = implode(',',array_keys($scores));
 			}
 
-			// Sort scores
-			arsort($scores, SORT_NUMERIC);
-			$scores = array_slice($scores, 0, 10, true);
-			$this->set_fields['description'] = '';
-			foreach ($scores as $k => $v)
-			{
-				$this->set_fields['description'] .= $k . ' ';
-			}
-			$this->set_fields['description'] = trim($this->set_fields['description']);
+			unset($words, $scores, $wordarray);
 		}
 	}
 
@@ -165,7 +175,6 @@ class vBCms_DM_Article extends vBCms_DM_Node
 	****/
 	protected function postSave($result, $deferred, $replace, $ignore)
 	{
-
 		$result = parent::postSave($result, $deferred, $replace, $ignore);
 
 		vB::$vbulletin->input->clean_array_gpc('p', array(
@@ -179,6 +188,23 @@ class vBCms_DM_Article extends vBCms_DM_Node
 				vB_Types::instance()->getContentTypeID("vBCms_Article"),
 				$this->getField('contentid'));
 			$taggable->add_tags_to_content(vB::$vbulletin->GPC['taglist'], array('content_limit' => 25));
+		}
+
+		if (!$this->isUpdating())
+		{
+			$activity = new vB_ActivityStream_Manage('cms', 'article');
+			$activity->set('contentid', $this->getField('nodeid'));
+			$activity->set('userid', $this->getField('userid'));
+			$activity->set('dateline', $this->getField('publishdate'));
+			$activity->set('action', 'create');
+			$activity->save();
+		}
+		else if ($this->getField('publishdate') AND $this->getField('nodeid'))
+		{
+			$activity = new vB_ActivityStream_Manage('cms', 'article');
+			$activity->set('contentid', $this->getField('nodeid'));
+			$activity->set('dateline', $this->getField('publishdate'));
+			$activity->update();
 		}
 
 		$result = (intval($result) ? $result : true);
@@ -215,11 +241,31 @@ class vBCms_DM_Article extends vBCms_DM_Node
 
 		return parent::preDelete($result);
 	}
+
+	/**
+	* Additional tasks to perform after a delete
+	*
+	* @param mixed								- The result of execDelete()
+	*/
+	protected function postDelete($result)
+	{
+		$this->assertItem();
+
+		$activity = new vB_ActivityStream_Manage('cms', 'article');
+		$activity->set('contentid', intval($this->item->getNodeId()));
+		$activity->delete();
+
+		$contenttypeid = intval(vB_Types::instance()->getContentTypeID("vBCms_Article"));
+		$attachdata =& datamanager_init('Attachment', vB::$vbulletin, ERRTYPE_SILENT, 'attachment');
+		$attachdata->condition = "a.contentid = " . intval($this->item->getNodeId()) . " AND a.contenttypeid = " . $contenttypeid;
+		$attachdata->delete(true, false);
+
+		return parent::postDelete($result);
+	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 28749 $
 || ####################################################################
 \*======================================================================*/

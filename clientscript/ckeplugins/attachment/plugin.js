@@ -55,7 +55,7 @@
 			}
 			else
 			{
-				this.windows[hash] = openWindow(url, width, height, 'Attach' + hash);
+				this.windows[hash] = openWindow(fetch_ajax_url(url), width, height, 'Attach' + hash);
 			}
 		},
 		
@@ -150,7 +150,7 @@
 				{
 					for (var id in vB_Attachments.attachments)
 					{
-						editor.insert_attachment(id);
+						editor.insert_attachment(id, vB_Attachments.attachments[id]["thumbnail"]);
 					}
 				}
 			});

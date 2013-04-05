@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 39940 $
- * @since $Date: 2010-10-19 13:28:19 -0700 (Tue, 19 Oct 2010) $
+ * @version $Revision: 60418 $
+ * @since $Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Widget_RecentBlog extends vBCms_Widget
@@ -523,12 +523,12 @@ class vBCms_Widget_RecentBlog extends vBCms_Widget
 			$thread['lastpostdate'] = vbdate(vB::$vbulletin->options['dateformat'], $thread['lastcomment'], true);
 			$thread['lastposttime'] = vbdate(vB::$vbulletin->options['timeformat'], $thread['lastcomment']);
 
-			$row['message'] = $this->getSummary($row['message'], $this->config['messagemaxchars']);
+			$row['message'] = $parser->do_parse($this->getSummary($row['message'], $this->config['messagemaxchars']));
 
 			//get the avatar
 			if (vB::$vbulletin->options['avatarenabled'])
 			{
-				$row['avatar'] = fetch_avatar_from_record($row);
+				$row['avatar'] = fetch_avatar_from_record($row,true);
 			}
 			else
 			{
@@ -566,20 +566,20 @@ class vBCms_Widget_RecentBlog extends vBCms_Widget
 
 		//figure out how to handle the 'cancelwords'
 		$display['highlight'] = array();
-		$page_text =  preg_replace('#\[quote(=(&quot;|"|\'|)??.*\\2)?\](((?>[^\[]*?|(?R)|.))*)\[/quote\]#siUe',
-			"process_quote_removal('\\3', \$display['highlight'])", $pagetext);
+		$find = array(
+			'#\[quote(=(&quot;|"|\'|)??.*\\2)?\](((?>[^\[]*?|(?R)|.))*)\[/quote\]#siUe',
+			//stripping out img|attachment|video bbcode
+			'#\[(attach|img|video).*\].+\[\/\\1\]#siU',	
+		);
+		$replace = array(
+			"process_quote_removal('\\3', \$display['highlight'])",
+			'',
+		);
 
-		$strip_quotes = true;
-
-		// Deal with the case that quote was the only content of the post
-		if (trim($page_text) == '')
-		{
-			$page_text = $pagetext;
-			$strip_quotes = false;
-		}
-
-		return htmlspecialchars_uni(fetch_censored_text(
-			trim(fetch_trimmed_title(strip_bbcode($page_text, $strip_quotes, false, false, true), $length))));
+		$page_text = preg_replace($find, $replace, $pagetext);
+		$page_text = strip_quotes($page_text);
+		
+		return fetch_censored_text(trim(fetch_trimmed_title($page_text, $length)));
 	}
 
 
@@ -591,22 +591,18 @@ class vBCms_Widget_RecentBlog extends vBCms_Widget
 	 */
 	protected function getHash()
 	{
-		$context = new vB_Context('widget' ,
+		$context = new vB_Context('widget_' . $this->widget->getId() ,
 		array(
 			'widgetid' => $this->widget->getId(),
 			'permissions' => vB::$vbulletin->userinfo['permissions']['vbblog_general_permissions'])
 		);
 
 		return strval($context);
-
 	}
-
-
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 39940 $
+|| # SVN: $Revision: 60418 $
 || ####################################################################
 \*======================================================================*/

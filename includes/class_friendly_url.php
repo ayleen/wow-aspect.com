@@ -1,9 +1,9 @@
 <?php if (!class_exists('vB_Database')) exit;
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright Â©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -41,7 +41,7 @@ abstract class vB_Friendly_Url
 	 *
 	 * @var string
 	 */
-	const CLEAN_URL_REGEX = '*([\s$+,/:=\?@"\'<>%{}|\\^~[\]`\r\n\t\x00-\x1f\x7f]|(?(?<!&)#|#(?![0-9]+;))|&(?!#[0-9]+;)|(?<!&#\d|&#\d{2}|&#\d{3}|&#\d{4}|&#\d{5});)*s';
+	const CLEAN_URL_REGEX = '*([\s$+,/:=\?@"\'<>%{}|\\^~[\]\.\\\`\r\n\t\x00-\x1f\x7f]|(?(?<!&)#|#(?![0-9]+;))|&(?!#[0-9]+;)|(?<!&#\d|&#\d{2}|&#\d{3}|&#\d{4}|&#\d{5});)*s';
 
 	/**
 	 * Unicode URL options
@@ -362,6 +362,11 @@ abstract class vB_Friendly_Url
 	public static function clean_fragment($fragment, $canonical = false)
 	{
 		global $vbulletin;
+
+		if (class_exists('vBulletinHook', false))
+		{
+			($hook = vBulletinHook::fetch_hook('friendlyurl_clean_fragment')) ? eval($hook) : false;
+		}
 
 		// Convert to UTF-8
 		if (self::UNI_CONVERT == $vbulletin->options['friendlyurl_unicode'])
@@ -780,6 +785,7 @@ abstract class vB_Friendly_Url
 				break;
 
 			case FRIENDLY_URL_OFF:
+
 			default:
 				$fullquery = array();
 				if ($this->id)
@@ -800,6 +806,11 @@ abstract class vB_Friendly_Url
 				$fullquery = implode($amp, $fullquery);
 				$url = $base . ($fullquery ? '?' : '') . $fullquery;
 				break;
+		}
+
+		if (class_exists('vBulletinHook', false))
+		{
+			($hook = vBulletinHook::fetch_hook('friendlyurl_geturl')) ? eval($hook) : false;
 		}
 
 		return $url;
@@ -913,7 +924,13 @@ abstract class vB_Friendly_Url
 				$url = str_replace('&goto=nextnewest', '', str_replace('&goto=nextoldest', '',
 						str_replace('?goto=nextnewest', '', str_replace('?goto=nextoldest', '', $url))));
 
-				$code = 302;
+				$code = 303;
+			}
+
+			// if its pointing to a post, add the anchor.
+			if ($args['p'])
+			{
+				$url .= '#post'.$args['p'];
 			}
 
 			// redirect to the correct url
@@ -1966,6 +1983,8 @@ class vB_Friendly_Url_vBCms extends vB_Friendly_Url
 		$this->idvar = $this->ignorelist[] = $registry->options['route_requestvar'];
 		$this->script = basename(SCRIPT);
 
+		list($this->rewrite_segment) = explode('.',$this->script);
+
 		parent::__construct($registry, $linkinfo, $pageinfo, $idkey, $titlekey, $urloptions);
 	}
 }
@@ -1973,7 +1992,6 @@ class vB_Friendly_Url_vBCms extends vB_Friendly_Url
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 27657 $
 || ####################################################################
 \*======================================================================*/

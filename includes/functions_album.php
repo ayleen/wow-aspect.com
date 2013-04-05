@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -207,9 +207,6 @@ function fetch_count_overage($userid, $albumid, $maxpics, $upload_count = 1)
 		return -1;
 	}
 
-	require_once(DIR . '/includes/class_bootstrap_framework.php');
-	require_once(DIR . '/vb/types.php');
-	vB_Bootstrap_Framework::init();
 	$types = vB_Types::instance();
 	$contenttypeid = intval($types->getContentTypeID('vBForum_Album'));
 
@@ -247,9 +244,6 @@ function fetch_size_overage($userid, $maxsize, $upload_bytes = 0)
 		return -1;
 	}
 
-	require_once(DIR . '/includes/class_bootstrap_framework.php');
-	require_once(DIR . '/vb/types.php');
-	vB_Bootstrap_Framework::init();
 	$types = vB_Types::instance();
 	$contenttypeid = intval($types->getContentTypeID('vBForum_Album'));
 
@@ -271,10 +265,11 @@ function fetch_size_overage($userid, $maxsize, $upload_bytes = 0)
 * for the specified album owner.
 *
 * @param	integer	Album owner user ID
+* @param	bool	Send in buddy status to avoid the query at the end of this function
 *
 * @return	boolean True if yes
 */
-function can_view_private_albums($albumuserid)
+function can_view_private_albums($albumuserid, $buddy = false)
 {
 	global $vbulletin;
 	static $albumperms_cache = array();
@@ -294,6 +289,10 @@ function can_view_private_albums($albumuserid)
 		$can_see_private = false;
 	}
 	else if (can_moderate(0, 'caneditalbumpicture') OR can_moderate(0, 'candeletealbumpicture'))
+	{
+		$can_see_private = true;
+	}
+	else if ($buddy)
 	{
 		$can_see_private = true;
 	}
@@ -415,8 +414,7 @@ function exec_rebuild_album_updates()
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 34703 $
+|| # CVS: $RCSfile$ - $Revision: 62619 $
 || ####################################################################
 \*======================================================================*/
 ?>

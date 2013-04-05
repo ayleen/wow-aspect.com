@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -35,11 +35,13 @@ class vB_Attachment_Display_Single_vBForum_Album extends vB_Attachment_Display_S
 	{
 		if (!($this->registry->options['socnet'] & $this->registry->bf_misc_socnet['enable_albums']))
 		{
+			error_log('die 1');
 			return false;
 		}
 
-		$hook_query_fields = $hook_query_joins = $hook_query_where = '';
-		($hook = vBulletinHook::fetch_hook('attachment_start')) ? eval($hook) : false;
+//		Called in verify_attachment_specific().
+//		$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+//		($hook = vBulletinHook::fetch_hook('attachment_start')) ? eval($hook) : false;
 
 		$selectsql = array(
 			"album.state AS albumstate, album.albumid, album.userid AS albumuserid",
@@ -53,6 +55,7 @@ class vB_Attachment_Display_Single_vBForum_Album extends vB_Attachment_Display_S
 
 		if (!$this->verify_attachment_specific('vBForum_Album', $selectsql, $joinsql))
 		{
+//			error_log('die 2');
 			return false;
 		}
 
@@ -72,6 +75,7 @@ class vB_Attachment_Display_Single_vBForum_Album extends vB_Attachment_Display_S
 			// there may be a condition where certain moderators could benefit by seeing these, I just don't know of any conditions at present
 			if ($this->registry->userinfo['userid'] != $this->attachmentinfo['userid'])
 			{
+				error_log('die 3');
 				return false;
 			}
 		}
@@ -109,6 +113,9 @@ class vB_Attachment_Display_Single_vBForum_Album extends vB_Attachment_Display_S
 			)
 		)
 		{
+			error_log('die 4 ' . var_export($this->attachmentinfo['albumstate'] == 'private'
+					AND
+				!can_view_private_albums($this->attachmentinfo['userid']), true));
 			// echo clear.gif, not permissions error. This may only be needed for 'albumstate' == 'profile'
 			return 0;
 		}
@@ -688,7 +695,7 @@ class vB_Attachment_Dm_vBForum_Album extends vB_Attachment_Dm
 			}
 
 			require_once(DIR . '/includes/class_usercss.php');
-			$usercss = new vB_UserCSS($vbulletin, $this->info['albuminfo']['userid'], false);
+			$usercss = new vB_UserCSS($this->registry, $this->info['albuminfo']['userid'], false);
 			$usercss->update_css_cache();
 		}
 	}
@@ -1030,7 +1037,6 @@ class vB_Attachment_Upload_Displaybit_vBForum_Album extends vB_Attachment_Upload
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 29983 $
 || ####################################################################
 \*======================================================================*/

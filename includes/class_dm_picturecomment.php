@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,8 +19,8 @@ if (!class_exists('vB_DataManager', false))
 * Class to do data save/delete operations for picture comments
 *
 * @package	vBulletin
-* @version	$Revision: 42666 $
-* @date		$Date: 2011-04-05 15:17:42 -0700 (Tue, 05 Apr 2011) $
+* @version	$Revision: 62620 $
+* @date		$Date: 2012-05-15 16:55:47 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_PictureComment extends vB_DataManager
 {
@@ -30,19 +30,22 @@ class vB_DataManager_PictureComment extends vB_DataManager
 	* @var	array
 	*/
 	var $validfields = array(
-		'commentid'      => array(TYPE_UINT,       REQ_INCR, VF_METHOD, 'verify_nonzero'),
-		'filedataid'     => array(TYPE_UINT,       REQ_YES),
-		'userid'         => array(TYPE_UINT,       REQ_YES),
-		'postuserid'     => array(TYPE_UINT,       REQ_NO,   VF_METHOD, 'verify_userid'),
-		'postusername'   => array(TYPE_NOHTMLCOND, REQ_NO,   VF_METHOD, 'verify_username'),
-		'dateline'       => array(TYPE_UNIXTIME,   REQ_AUTO),
-		'state'          => array(TYPE_STR,        REQ_NO),
-		//'title'          => array(TYPE_NOHTMLCOND, REQ_NO,   VF_METHOD),
-		'pagetext'       => array(TYPE_STR,        REQ_YES,  VF_METHOD),
-		'ipaddress'      => array(TYPE_STR,        REQ_AUTO, VF_METHOD),
-		'allowsmilie'    => array(TYPE_UINT,       REQ_NO),
-		'reportthreadid' => array(TYPE_UINT,       REQ_NO),
-		'messageread'    => array(TYPE_BOOL,       REQ_NO),
+		'commentid'           => array(TYPE_UINT,       REQ_INCR, VF_METHOD, 'verify_nonzero'),
+		'filedataid'          => array(TYPE_UINT,       REQ_YES),
+		'userid'              => array(TYPE_UINT,       REQ_YES),
+		'postuserid'          => array(TYPE_UINT,       REQ_NO,   VF_METHOD, 'verify_userid'),
+		'postusername'        => array(TYPE_NOHTMLCOND, REQ_NO,   VF_METHOD, 'verify_username'),
+		'dateline'            => array(TYPE_UNIXTIME,   REQ_AUTO),
+		'state'               => array(TYPE_STR,        REQ_NO),
+		//'title'             => array(TYPE_NOHTMLCOND, REQ_NO,   VF_METHOD),
+		'pagetext'            => array(TYPE_STR,        REQ_YES,  VF_METHOD),
+		'ipaddress'           => array(TYPE_STR,        REQ_AUTO, VF_METHOD),
+		'allowsmilie'         => array(TYPE_UINT,       REQ_NO),
+		'reportthreadid'      => array(TYPE_UINT,       REQ_NO),
+		'messageread'         => array(TYPE_BOOL,       REQ_NO),
+		'sourcecontenttypeid' => array(TYPE_UINT,       REQ_NO),
+		'sourcecontentid'     => array(TYPE_UINT,       REQ_NO),
+		'sourceattachmentid'  => array(TYPE_UINT,       REQ_NO),
 	);
 
 	/**
@@ -166,18 +169,18 @@ class vB_DataManager_PictureComment extends vB_DataManager
 
 			if ($this->info['hard_delete'])
 			{
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "deletionlog WHERE primaryid = $commentid AND type = 'picturecomment'
-				");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "deletionlog WHERE primaryid = $commentid AND type = 'picturecomment'");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "picturecomment WHERE commentid = $commentid");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "moderation WHERE primaryid = $commentid AND type = 'picturecomment'");
 
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "picturecomment WHERE commentid = $commentid
-				");
+				// Albums and Social Group photos share comments
+				$activity = new vB_ActivityStream_Manage('socialgroup', 'photocomment');
+				$activity->set('contentid', $commentid);
+				$activity->delete();
 
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "moderation WHERE primaryid = $commentid AND type = 'picturecomment'
-				");
-
+				$activity = new vB_ActivityStream_Manage('album', 'comment');
+				$activity->set('contentid', $commentid);
+				$activity->delete();
 				// Logging?
 			}
 			else
@@ -260,6 +263,31 @@ class vB_DataManager_PictureComment extends vB_DataManager
 				}
 
 				$userdata->save();
+			}
+
+			if ($this->info['pictureinfo']['groupid'])
+			{
+				$section = 'socialgroup';
+				$type = 'photocomment';
+			}
+			else if ($this->info['pictureinfo']['albumid'])
+			{
+				$section = 'album';
+				$type = 'comment';
+			}
+			else
+			{
+				($hook = vBulletinHook::fetch_hook('picturecommentdata_postsave_activitystream')) ? eval($hook) : false;
+			}
+
+			if ($section AND $type)
+			{
+				$activity = new vB_ActivityStream_Manage($section, $type);
+				$activity->set('contentid', $commentid);
+				$activity->set('userid', $this->fetch_field('postuserid'));
+				$activity->set('dateline', $this->fetch_field('dateline'));
+				$activity->set('action', 'create');
+				$activity->save();
 			}
 		}
 
@@ -453,8 +481,7 @@ class vB_DataManager_PictureComment extends vB_DataManager
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 42666 $
+|| # CVS: $RCSfile$ - $Revision: 62620 $
 || ####################################################################
 \*======================================================================*/
 ?>

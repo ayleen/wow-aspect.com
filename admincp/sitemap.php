@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -114,6 +114,8 @@ $default_settings = array(
 	'1.0' => vb_number_format('1.0', 1),
 );
 
+($hook = vBulletinHook::fetch_hook('sitemap_admin_start')) ? eval($hook) : false;
+
 // ########################################################################
 if ($_POST['do'] == 'saveforum')
 {
@@ -191,6 +193,8 @@ if ($_REQUEST['do'] == 'forum')
 				), 1, 'tcat');
 			}
 
+			($hook = vBulletinHook::fetch_hook('sitemap_forum_row')) ? eval($hook) : false;
+
 			print_cells_row($cell);
 		}
 	}
@@ -261,6 +265,8 @@ if ($_REQUEST['do'] == 'blog')
 		$vbphrase['but_not_more_than'],
 		"<input name=\"comm_max\" value=\"" . $settings['comm_max'] . "\" style=\"width:35px\" />"));
 
+	($hook = vBulletinHook::fetch_hook('sitemap_blog_row')) ? eval($hook) : false;
+
 	print_submit_row($vbphrase['save_priority']);
 }
 
@@ -323,6 +329,8 @@ if ($_REQUEST['do'] == 'cms')
 						construct_phrase($vbphrase['priority_default_x'], vb_number_format($vbulletin->options['sitemap_priority'], 1))
 					), 1, '');
 				}
+
+				($hook = vBulletinHook::fetch_hook('sitemap_cms_row')) ? eval($hook) : false;
 
 				print_cells_row($cell);
 			}
@@ -465,13 +473,14 @@ if ($_POST['do'] == 'dobuildsitemap')
 	}
 }
 
+($hook = vBulletinHook::fetch_hook('sitemap_admin_complete')) ? eval($hook) : false;
+
 // ########################################################################
 
 print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision:  $
 || ####################################################################
 \*======================================================================*/

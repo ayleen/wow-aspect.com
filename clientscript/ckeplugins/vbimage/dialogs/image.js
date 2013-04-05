@@ -65,7 +65,7 @@
 			};
 			
 			var responseXML = CKEDITOR.vbajax.open({
-				url: 'ajax.php',
+				url: fetch_ajax_url('ajax.php'),
 				type: 'POST',
 				data: postData,
 				async: false,
@@ -122,24 +122,34 @@
 				};
 				
 				var responseText = CKEDITOR.vbajax.open({
-					url: 'newattachment.php',
+					url: fetch_ajax_url('newattachment.php'),
 					type: 'POST',
 					data: CKEDITOR.vbajax.parseRequestData(postData) + this.editor.config.vbulletin.attachinfo.valuestring,
 					async: false
 				}).responseText;
-				
+								
 				var response = responseText.split(' - ');
 				if (response[0] == 'ok')
 				{
-					this.editor.insert_attachment(response[1]);
+					if (response[1] != 0)
+					{
+						this.editor.insert_attachment(response[1]);
+					}
 				}
 				else
 				{
-					alert(this.editor.lang.vbulletin.invalidurl);
+					if (response[0] != '')
+					{
+						alert(response[0]);
+					}
+					else
+					{
+						alert(this.editor.lang.vbulletin.invalidurl);
+					}
 					return false;
 				}
 			}
-			else
+			else if (url != '')
 			{
 				this.editor.insertHtml('[IMG]' + url + '[/IMG]');
 			}
@@ -177,7 +187,7 @@
 
 					if (me.editor.config.vbulletin.attachinfo && me.editor.config.vbulletin.attachinfo.advimagepopup != 0 && me.editor.config.vbulletin.attachinfo.contenttypeid != 0)
 					{
-						YAHOO.vBulletin.LoadCss("css.php?sheet=yuiupload.css");
+						YAHOO.vBulletin.LoadCss(me.editor.config.yuiUploadCss);
 						YAHOO.vBulletin.LoadScript("clientscript/yui/combo/imageupload.js?v=" + SIMPLEVERSION, function() {
 							YAHOO.vBulletin.LoadScript("clientscript/vbulletin_yuiupload.js?v=" + SIMPLEVERSION, function() {
 								YAHOO.vBulletin.LoadScript("clientscript/vbulletin_imageup.js?v=" + SIMPLEVERSION, function() { 

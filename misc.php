@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -114,6 +114,7 @@ if ($_REQUEST['do'] == 'buddylist')
 
 	$onlineusers = '';
 	$offlineusers = '';
+	$newonlineusers = '';
 	$newusersound = '';
 	$lastonline = array();
 
@@ -165,7 +166,7 @@ if ($_REQUEST['do'] == 'buddylist')
 				// add name to top of list
 				$templater = vB_Template::create('buddylistbit');
 					$templater->register('buddy', $buddy);
-				$onlineusers = $templater->render() . $onlineusers;
+				$newonlineusers .= $templater->render();
 			}
 			else
 			{
@@ -181,6 +182,8 @@ if ($_REQUEST['do'] == 'buddylist')
 			$offlineusers .= $templater->render();
 		}
 	}
+
+	$onlineusers = $newonlineusers . $onlineusers;
 
 	$buddies = urlencode(trim($buddies));
 
@@ -291,9 +294,6 @@ if ($_REQUEST['do'] == 'showattachments')
 		print_no_permission();
 	}
 
-	require_once(DIR . '/includes/class_bootstrap_framework.php');
-	require_once(DIR . '/vb/types.php');
-	vB_Bootstrap_Framework::init();
 	$types = vB_Types::instance();
 	$contenttypeid = $types->getContentTypeID('vBForum_Post');
 
@@ -628,7 +628,6 @@ if ($_REQUEST['do'] == 'showsmilies')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 35803 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/

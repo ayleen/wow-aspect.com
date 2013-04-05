@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -17,8 +17,6 @@ class vB_APIMethod_api_cmssectionlist extends vBI_APIMethod
 	{
 		global $vbulletin;
 
-		bootstrap_framework();
-
 		if (! isset($vbulletin->userinfo['permissions']['cms']))
 		{
 			vBCMS_Permissions::getUserPerms();
@@ -27,7 +25,7 @@ class vB_APIMethod_api_cmssectionlist extends vBI_APIMethod
 
 		$publishlist = implode(', ', vB::$vbulletin->userinfo['permissions']['cms']['canpublish']);
 		$viewlist = implode(', ', vB::$vbulletin->userinfo['permissions']['cms']['allview']);
-			$rst = vB::$vbulletin->db->query_read("SELECT node.nodeid, node.parentnode, node.url, node.permissionsfrom,
+			$rst = vB::$vbulletin->db->query_read_slave("SELECT node.nodeid, node.parentnode, node.url, node.permissionsfrom,
 			node.setpublish, node.publishdate, node.noderight, info.title FROM " . TABLE_PREFIX .
 			"cms_node AS node INNER JOIN " . TABLE_PREFIX . "cms_nodeinfo AS info ON info.nodeid = node.nodeid
 			 WHERE node.contenttypeid = " .
@@ -108,7 +106,6 @@ class vB_APIMethod_api_cmssectionlist extends vBI_APIMethod
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 26995 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -44,8 +44,8 @@ if (!function_exists('ini_size_to_bytes') OR (($current_memory_limit = ini_size_
 *
 * @package 		vBulletin
 * @author		Scott MacVicar
-* @version		$Revision: 41161 $
-* @date 		$Date: 2010-12-20 12:32:25 -0800 (Mon, 20 Dec 2010) $
+* @version		$Revision: 59788 $
+* @date 		$Date: 2012-02-29 16:39:09 -0800 (Wed, 29 Feb 2012) $
 * @copyright 	http://www.vbulletin.com/license.html
 *
 */
@@ -167,12 +167,17 @@ class vB_XML_Parser
 	*
 	* @param	mixed	XML data or boolean false
 	* @param	string	Path to XML file to be parsed
+	* @param	bool	Read encoding from XML header
 	*/
-	function vB_XML_Parser($xml, $path = '')
+	function vB_XML_Parser($xml, $path = '', $readencoding = false)
 	{
 		if ($xml !== false)
 		{
 			$this->xmldata = $xml;
+			if ($readencoding AND preg_match('#(<?xml.*encoding=[\'"])(.*?)([\'"].*?>)#m', $this->xmldata, $match))
+			{
+				$this->set_encoding(strtoupper($match[2]));
+			}
 		}
 		else
 		{
@@ -198,7 +203,10 @@ class vB_XML_Parser
 	function &parse($encoding = 'ISO-8859-1', $emptydata = true)
 	{
 		// Set our own encoding to that passed
-		$this->encoding = $encoding;
+		if (!$this->encoding)
+		{
+			$this->encoding = $encoding;
+		}
 
 		// Ensure the target encoding is set
 		if (!$this->legacy_mode)
@@ -208,11 +216,11 @@ class vB_XML_Parser
 
 		if (empty($this->xmldata) OR $this->error_no > 0)
 		{
-			$this->error_code = XML_ERROR_NO_ELEMENTS + (PHP_VERSION > '5.2.8' ? 0 : 1);
+			$this->error_code = XML_ERROR_NO_ELEMENTS + (version_compare(PHP_VERSION, '5.2.8') > 0 ? 0 : 1);
 			return false;
 		}
 
-		if (!($this->xml_parser = xml_parser_create($encoding)))
+		if (!($this->xml_parser = xml_parser_create($this->encoding)))
 		{
 			return false;
 		}
@@ -299,10 +307,11 @@ class vB_XML_Parser
 		if ('UTF-8' !== $this->encoding)
 		{
 			$this->xmldata = to_utf8($this->xmldata, $this->encoding);
+			$this->encoding = 'UTF-8';
 		}
 
 		// Parse the XML as UTF-8
-		if (!$this->parse('UTF-8'))
+		if (!$this->parse())
 		{
 			return false;
 		}
@@ -940,7 +949,25 @@ class vB_XML_Builder
 	 */
 	function fetch_send_content_length_header()	
 	{
-		return (strpos($_SERVER['SERVER_SOFTWARE'], 'Microsoft-IIS') !== false);
+		if (VB_AREA == 'Install' OR VB_AREA == 'Upgrade')
+		{
+			return (strpos($_SERVER['SERVER_SOFTWARE'], 'Microsoft-IIS') !== false);
+		}
+		else
+		{
+			switch($this->registry->options['ajaxheader'])
+			{
+				case 0 :
+					return true;
+					
+				case 1 :
+					return false;
+					
+				case 2 :
+				default:
+					return (strpos($_SERVER['SERVER_SOFTWARE'], 'Microsoft-IIS') !== false);
+			}
+		}
 	}
 
 	/**
@@ -978,7 +1005,6 @@ class XMLexporter extends vB_XML_Builder
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 41161 $
+|| # CVS: $RCSfile$ - $Revision: 59788 $
 || ####################################################################
 \*======================================================================*/

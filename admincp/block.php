@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -178,6 +178,8 @@ if ($_REQUEST['do'] == 'addblock2')
 		print_input_row($vbphrase['cache_time'], 'cachettl', 60);
 	}
 
+	print_input_row($vbphrase['display_order'], 'displayorder');
+
 	echo "<thead>\r\n";
 	print_table_header($vbphrase['block_config']);
 	echo "</thead>\r\n";
@@ -197,12 +199,13 @@ if ($_REQUEST['do'] == 'insertblock')
 		'blocktypeid' => TYPE_INT,
 		'title'	=> TYPE_NOHTML,
 		'description' => TYPE_NOHTML,
-		'cachettl'	=> TYPE_UINT
+		'cachettl'	=> TYPE_UINT,
+		'displayorder' => TYPE_UINT
 	));
 
 	try
 	{
-		$blockmanager->saveNewBlock($vbulletin->GPC['blocktypeid'], $vbulletin->GPC['title'], $vbulletin->GPC['description'], $vbulletin->GPC['cachettl'], $vbulletin->GPC['setting']);
+		$blockmanager->saveNewBlock($vbulletin->GPC['blocktypeid'], $vbulletin->GPC['title'], $vbulletin->GPC['description'], $vbulletin->GPC['cachettl'], $vbulletin->GPC['displayorder'], $vbulletin->GPC['setting']);
 	}
 	catch (Exception $e)
 	{
@@ -239,6 +242,8 @@ if ($_REQUEST['do'] == 'editblock')
 		print_input_row($vbphrase['cache_time'], 'cachettl', $blockinfo['cachettl']);
 	}
 
+	print_input_row($vbphrase['display_order'], 'displayorder', $blockinfo['displayorder']);
+
 	print_yes_no_row($vbphrase['active'], 'active', $blockinfo['active']);
 
 	echo "<thead>\r\n";
@@ -260,12 +265,13 @@ if ($_REQUEST['do'] == 'updateblock')
 		'title'	=> TYPE_NOHTML,
 		'description' => TYPE_NOHTML,
 		'cachettl'	=> TYPE_UINT,
-		'active'	=> TYPE_BOOL
+		'active'	=> TYPE_BOOL,
+		'displayorder' => TYPE_UINT
 	));
 
 	try
 	{
-		$blockmanager->updateBlock($vbulletin->GPC['blockid'], $vbulletin->GPC['title'], $vbulletin->GPC['description'], $vbulletin->GPC['cachettl'], $vbulletin->GPC['active'], $vbulletin->GPC['setting']);
+		$blockmanager->updateBlock($vbulletin->GPC['blockid'], $vbulletin->GPC['title'], $vbulletin->GPC['description'], $vbulletin->GPC['cachettl'], $vbulletin->GPC['displayorder'], $vbulletin->GPC['active'], $vbulletin->GPC['setting']);
 	}
 	catch (Exception $e)
 	{
@@ -330,7 +336,6 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35105 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -304,12 +304,16 @@ class vB_Search_Criteria
 			$sql_filter =  "username LIKE('%" . sanitize_word_for_sql($username) . "%')";
 		}
 
+		($hook = vBulletinHook::fetch_hook('search_add_user_filter')) ? eval($hook) : false;
+
 		$users = $this->get_user_data($sql_filter);
+
 		if (count($users))
 		{
 			$this->add_filter($field, vB_Search_Core::OP_EQ, array_keys($users), true);
 			$this->set_user_display_string($intro, $users);
 		}
+
 	}
 
 	/**
@@ -508,6 +512,8 @@ class vB_Search_Criteria
 				$this->display_strings['newitem'] = construct_phrase($vbphrase['posts_from_last_x_days'], $days);
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_addnew_filter')) ? eval($hook) : false;
 	}
 
 	//**************************************************************************
@@ -802,6 +808,18 @@ class vB_Search_Criteria
 	}
 
 	/**
+	*	Return a specific search term, or all of them.
+	*
+	* @param string search term to return, or empty for all of them.
+	*
+	* @return mixed the specific terms contents, or an array of all of them.
+	*/
+	public function get_search_term($term = '')
+	{
+		return ( empty($term) ? $this->searchterms : $this->searchterms[$term] );
+	}
+
+	/**
 	 * Create a unique hash for the sort criteria.
 	 *
 	 * Used as a hash key to store sorts in the case where a user types the same
@@ -813,7 +831,6 @@ class vB_Search_Criteria
 	 */
 	public function get_hash()
 	{
-		global $vbulletin;
 		$hashstrings = array();
 		ksort($this->filters);
 		foreach ($this->filters as $field => $filter)
@@ -851,6 +868,8 @@ class vB_Search_Criteria
 		}
 		$hashstrings[] = 'keywords:' . $this->raw_keywords;
 		$hashstrings[] = 'titleonly:' . $this->titleonly;
+
+		($hook = vBulletinHook::fetch_hook('search_criteria_gethash')) ? eval($hook) : false;
 
 		return md5(join('||', $hashstrings));
 	}
@@ -1390,7 +1409,6 @@ class vB_Search_Criteria
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

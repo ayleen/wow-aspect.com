@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -125,6 +125,13 @@ class vB_DataManager_Discussion extends vB_DataManager
 				WHERE gmid = " . intval($this->fetch_field('firstpostid')) . " 
 				AND discussionid = 0" 
 			);
+			
+			$activity = new vB_ActivityStream_Manage('socialgroup', 'discussion');
+			$activity->set('contentid', $this->fetch_field('discussionid'));
+			$activity->set('userid', $this->fetch_field('lastposterid'));
+			$activity->set('dateline', $this->fetch_field['lastpost'] ? $this->fetch_field['lastpost'] : TIMENOW);
+			$activity->set('action', 'create');
+			$activity->save();				
 		}
 
 		$update_counters = (isset($this->rawfields['visible']) OR isset($this->rawfields['moderation']) OR isset($this->rawfields['deleted']));
@@ -245,6 +252,28 @@ class vB_DataManager_Discussion extends vB_DataManager
 			$deletionlog_table = TABLE_PREFIX . 'deletionlog';
 			$moderation_table = TABLE_PREFIX . 'moderation';
 
+			$activity = new vB_ActivityStream_Manage('socialgroup', 'discussion');
+			$activity->set('contentid', $this->existing['discussionid']);			
+			$activity->delete();
+			
+			$idlist = array();
+			$ids = $this->registry->db->query_read("
+				SELECT gmid
+				FROM " . TABLE_PREFIX . "groupmessage
+				WHERE discussionid = {$this->existing['discussionid']}
+			");
+			while ($id = $this->registry->db->fetch_array($ids))
+			{
+				$idlist[] = $id['gmid'];
+			}
+				
+			if ($idlist)
+			{
+				$activity = new vB_ActivityStream_Manage('socialgroup', 'groupmessage');
+				$activity->set('contentid', $idlist);
+				$activity->delete();				
+			}
+			
 			/*
 			 
 			KEVIN :  Need to add SocialGroup ? So this can all be done in one ?
@@ -306,7 +335,6 @@ class vB_DataManager_Discussion extends vB_DataManager
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 26681 $
 || ####################################################################
 \*======================================================================*/

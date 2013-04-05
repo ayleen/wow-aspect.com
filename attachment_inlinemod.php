@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -124,7 +124,7 @@ if ($_POST['do'] == 'clearattachment')
 {
 	setcookie('vbulletin_inlineattachment', '', TIMENOW - 3600, '/');
 
-	eval(print_standard_redirect('redirect_inline_messagelist_cleared', true, $forceredirect));
+	print_standard_redirect('redirect_inline_messagelist_cleared', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'attachmentapprove')
@@ -138,7 +138,7 @@ if ($_POST['do'] == 'attachmentapprove')
 
 	($hook = vBulletinHook::fetch_hook('attachment_inlinemod_approve')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_approvedattachments', true, $forceredirect));
+	print_standard_redirect('redirect_inline_approvedattachments', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'attachmentunapprove')
@@ -152,7 +152,7 @@ if ($_POST['do'] == 'attachmentunapprove')
 
 	($hook = vBulletinHook::fetch_hook('attachment_inlinemod_unapprove')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_approvedattachments', true, $forceredirect));
+	print_standard_redirect('redirect_inline_approvedattachments', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'attachmentdelete')
@@ -188,13 +188,12 @@ if ($_POST['do'] == 'doattachmentdelete')
 
 	($hook = vBulletinHook::fetch_hook('attachment_inlinemod_dodelete')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_deletedattachments', true, $forceredirect));
+	print_standard_redirect('redirect_inline_deletedattachments', true, $forceredirect);  
 
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 30287 $
 || ####################################################################
 \*======================================================================*/

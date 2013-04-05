@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -73,7 +73,6 @@ $globaltemplates = array(
 	'blog_sidebar_calendar',
 	'blog_sidebar_calendar_day',
 	'blog_tag_cloud_link',
-	'memberinfo_visitorbit',
 	'ad_blogsidebar_start',
 	'ad_blogsidebar_middle',
 	'ad_blogsidebar_end',
@@ -134,8 +133,6 @@ if (empty($_REQUEST['do']))
 
 // ######################### REQUIRE BACK-END ############################
 require_once('./global.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 require_once(DIR . '/includes/blog_init.php');
 require_once(DIR . '/includes/blog_functions_post.php');
 
@@ -206,7 +203,7 @@ if ($_POST['do'] == 'donotify')
 	}
 
 	$vbulletin->url = fetch_seo_url('entry', $bloginfo);
-	eval(print_standard_redirect('redirect_blog_entrythanks'));
+	print_standard_redirect('redirect_blog_entrythanks');  
 }
 
 // #######################################################################
@@ -360,6 +357,15 @@ if ($_POST['do'] == 'updateblog')
 			$userinfo =& $vbulletin->userinfo;
 		}
 
+		if (	// VBIV-13291, Check blog posting permission.
+				!($userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_canpost'])
+					OR
+				!($userinfo['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewown']	)
+		)
+		{
+			print_no_permission();
+		}
+
 		$bloguserid = $userinfo['userid'];
 		$blogman->set('userid', $userinfo['userid']);
 		$blogman->set('bloguserid', $userinfo['userid']);
@@ -428,6 +434,7 @@ if ($_POST['do'] == 'updateblog')
 			{
 				$blogman->set('dateline', $blog['dateline']);
 			}
+			$blogman->set_info('notify', $blog['notify']);
 
 			/* Drafts are exempt from initial moderation */
 			if ($blog['status'] == 'draft')
@@ -445,7 +452,7 @@ if ($_POST['do'] == 'updateblog')
 					AND
 				!can_moderate_blog('canmoderateentries', $userinfo)
 					AND
-				!$bloginfo['blogid']
+				(!$bloginfo['blogid'] OR ($bloginfo['state'] == 'draft' AND $blog['status'] != 'draft'))
 			)
 			{
 				$blogman->set('state', 'moderation');
@@ -537,6 +544,7 @@ if ($_POST['do'] == 'updateblog')
 			$postattach = $attach->fetch_postattach($posthash, $bloginfo['blogid'], explode(',', $userinfo['memberids']));
 		}
 
+		$blog['blogid'] = ($blogid ? $blogid : 0);
 		$preview = process_blog_preview($blog, 'entry', $postattach);
 
 		$_REQUEST['do'] = $bloginfo ? 'editblog' : 'newblog';
@@ -634,12 +642,12 @@ if ($_POST['do'] == 'updateblog')
 					if ($urls = fetch_urls($vbulletin->GPC['message']))
 					{
 						$vbulletin->url = fetch_seo_url('blogpost', array(), array('do' => 'notify', 'b' => $bloginfo['blogid']));
-						eval(print_standard_redirect('blog_editthanks_notify'));
+						print_standard_redirect('blog_editthanks_notify');  
 					}
 				}
 
 				$vbulletin->url = fetch_seo_url('entry', $bloginfo);
-				eval(print_standard_redirect('redirect_blog_editthanks'));
+				print_standard_redirect('redirect_blog_editthanks');  
 			}
 		}
 		else
@@ -659,7 +667,7 @@ if ($_POST['do'] == 'updateblog')
 			{
 				// won't have the title set, shouldn't matter
 				$vbulletin->url = fetch_seo_url('entry', $prevcomment);				
-				eval(print_standard_redirect('blog_duplicate_comment', true, true));
+				print_standard_redirect('blog_duplicate_comment', true, true);  
 			}
 			else
 			{
@@ -680,12 +688,14 @@ if ($_POST['do'] == 'updateblog')
 						$content->add_tags_to_content($blog['taglist'], $limits);
 					}
 
+					($hook = vBulletinHook::fetch_hook('blog_post_updateentry_complete')) ? eval($hook) : false;
+
 					if ($show['notify'] AND $blog['notify'])
 					{
 						if ($urls = fetch_urls($vbulletin->GPC['message']))
 						{
 							$vbulletin->url = fetch_seo_url('blogpost', array(), array('do' => 'notify', 'b' => $blogcomment));
-							eval(print_standard_redirect('blog_entrythanks_notify'));
+							print_standard_redirect('blog_entrythanks_notify');  
 						}
 					}
 				}
@@ -696,13 +706,14 @@ if ($_POST['do'] == 'updateblog')
 
 				$vbulletin->url = fetch_seo_url('entry', $blogman->blog, array(), 'blogid', 'title');
 
+				$pending = ($vbulletin->GPC['status'] == 'publish_on' AND $blog['dateline'] > TIMENOW) ? true : false;
 				// attempt to publish blog entry to user's Facebook feed (if this is not a draft)
-				if (is_facebookenabled() AND $vbulletin->GPC['status'] != 'draft')
+				if (is_facebookenabled() AND $vbulletin->GPC['status'] != 'draft' AND !$pending)
 				{
 					publishtofacebook_blogentry($blog['title'], $blog['message'], create_full_url(fetch_seo_url('entry|js', $blogman->blog)));
 				}
 
-				eval(print_standard_redirect('redirect_blog_entrythanks'));
+				print_standard_redirect('redirect_blog_entrythanks');  
 			}
 		}
 	}
@@ -768,20 +779,6 @@ if ($_REQUEST['do'] == 'newblog')
 	require_once(DIR . '/includes/functions_newpost.php');
 
 	($hook = vBulletinHook::fetch_hook('blog_post_newentry_start')) ? eval($hook) : false;
-
-	if ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_canpostattach'])
-	{
-		$values = !$userid ? "" : "values[u]=$userid";
-		require_once(DIR . '/packages/vbattach/attach.php');
-		$attach = new vB_Attach_Display_Content($vbulletin, 'vBBlog_BlogEntry');
-		$attachmentoption = $attach->fetch_edit_attachments($posthash, $poststarttime, $postattach, 0, $values, $editorid, $attachcount, explode(',', $userinfo['memberids']));
-		$contenttypeid = $attach->fetch_contenttypeid();
-	}
-	else
-	{
-		$attachmentoption = '';
-		$contenttypeid = 0;
-	}
 
 	$draft_options = '';
 	$blog_drafts = $db->query_read("SELECT * FROM " . TABLE_PREFIX . "blog WHERE userid = $userinfo[userid] AND state = 'draft'");
@@ -893,12 +890,50 @@ if ($_REQUEST['do'] == 'newblog')
 			$originalposter = fetch_quote_username($postinfo['username'] . ";$postinfo[postid]");
 			$postdate = vbdate($vbulletin->options['dateformat'], $postinfo['dateline']);
 			$posttime = vbdate($vbulletin->options['timeformat'], $postinfo['dateline']);
-			$pagetext = trim(strip_quotes(htmlspecialchars_uni($postinfo['pagetext'])));
+			$pagetext = trim(htmlspecialchars_uni($postinfo['pagetext']));
 
 			$templater = vB_Template::create('blog_blogpost_quote');
 				$templater->register('originalposter', $originalposter);
 				$templater->register('pagetext', $pagetext);
 			$blog['message'] = $templater->render(true);
+		}
+	}
+
+	// VBIV-9941
+	if ($postinfo['attach']
+		AND	($forumperms & $vbulletin->bf_ugp_forumpermissions['cangetattachment'])
+		AND ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_canpostattach']))
+	{
+		// Copy attachments from forum post.
+		$attachments = $db->query_read_slave("
+			SELECT *
+			FROM " . TABLE_PREFIX . "attachment
+			WHERE contentid = $postinfo[postid]
+			AND contenttypeid = " . vB_Types::instance()->getContentTypeID('vBForum_Post') . "
+		");
+
+		$poststarttime = TIMENOW;
+		$posthash = md5($poststarttime . $userinfo['userid'] . $userinfo['salt']);
+
+		while ($attachment = $db->fetch_array($attachments))
+		{
+			$attachdata =& datamanager_init('Attachment', $vbulletin, ERRTYPE_ARRAY, 'attachment');
+			$attachdata->set('userid', $userinfo['userid']);
+			$attachdata->set('dateline', $poststarttime);
+			$attachdata->set('contentid', 0);
+			$attachdata->set('posthash', $posthash);
+			$attachdata->set('state', $attachment['state']);
+			$attachdata->set('contenttypeid', vB_Types::instance()->getContentTypeID('vBBlog_BlogEntry'));
+			$attachdata->set('filedataid', $attachment['filedataid']);
+			$attachdata->set('filename', $attachment['filename']);
+			$attachdata->set('settings', $attachment['settings']);
+
+			if ($newattachmentid = $attachdata->save())
+			{ // Adjust inline attachment id.
+				$blog['message'] = preg_replace('#\[ATTACH(?:(=right|=left|=config))?\]' . $attachment['attachmentid'] . '\[/ATTACH\]#i', '[ATTACH$1]' . $newattachmentid . '[/ATTACH]', $blog['message']);
+			}
+
+			unset($attachdata);
 		}
 	}
 
@@ -919,10 +954,24 @@ if ($_REQUEST['do'] == 'newblog')
 		$tag_delimiters = addslashes_js($vbulletin->options['tagdelimiter']);
 	}
 
-	require_once(DIR . '/includes/functions_file.php');
-	$attachinfo = fetch_attachmentinfo($posthash, $poststarttime, $contenttypeid);
+	// VBIV-9941
+	if ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_canpostattach'])
+	{
+		$values = !$userid ? "" : "values[u]=$userid";
+		require_once(DIR . '/packages/vbattach/attach.php');
+		$attach = new vB_Attach_Display_Content($vbulletin, 'vBBlog_BlogEntry');
+		$attachmentoption = $attach->fetch_edit_attachments($posthash, $poststarttime, $postattach, 0, $values, $editorid, $attachcount, explode(',', $userinfo['memberids']));
+		$contenttypeid = $attach->fetch_contenttypeid();
+	}
+	else
+	{
+		$attachmentoption = '';
+		$contenttypeid = 0;
+	}
 
 	$vbulletin->options['ignorequotechars'] = 0;
+	require_once(DIR . '/includes/functions_file.php');
+	$attachinfo = fetch_attachmentinfo($posthash, $poststarttime, $contenttypeid);
 
 	$editorid = construct_edit_toolbar(
 		$blog['message'],
@@ -964,9 +1013,23 @@ if ($_REQUEST['do'] == 'newblog')
 	$show['post_options'] = true;
 	$show['datepicker'] = true;
 	$show['draftpublish'] = true;
+	$show['lightbox'] = ($vbulletin->options['lightboxenabled'] AND $vbulletin->options['usepopups']);
+	$show['blogattach'] = ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_canpostattach']) ? 1 : 0;
 
-	// display publish to Facebook checkbox in quick editor?
-	if (is_facebookenabled())
+	$guestuser = array(
+		'userid'      => 0,
+		'usergroupid' => 0,
+	);
+	cache_permissions($guestuser, false);
+	if (
+		$guestuser['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview']
+			AND
+		$guestuser['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewothers']
+			AND
+		$vbulletin->userinfo['guest_canviewmyblog']
+			AND
+		is_facebookenabled()
+	)
 	{
 		$fbpublishcheckbox = construct_fbpublishcheckbox();
 	}
@@ -1086,7 +1149,7 @@ if ($_POST['do'] == 'deleteblog')
 			{
 				$vbulletin->url = fetch_seo_url('blog', $bloginfo);
 			}
-			eval(print_standard_redirect('redirect_blog_delete'));
+			print_standard_redirect('redirect_blog_delete');  
 		}
 		else
 		{ // just deleting a comment
@@ -1119,7 +1182,7 @@ if ($_POST['do'] == 'deleteblog')
 				{
 					$vbulletin->url = fetch_seo_url('entry', $bloginfo);
 				}
-				eval(print_standard_redirect('redirect_blog_deletecomment'));
+				print_standard_redirect('redirect_blog_deletecomment');  
 			}
 			else
 			{
@@ -1130,7 +1193,7 @@ if ($_POST['do'] == 'deleteblog')
 	else
 	{
 		$vbulletin->url = fetch_seo_url('entry', $bloginfo);
-		eval(print_standard_redirect('redirect_blog_entry_nodelete'));
+		print_standard_redirect('redirect_blog_entry_nodelete');  
 	}
 }
 
@@ -1291,6 +1354,7 @@ if ($_REQUEST['do'] == 'editblog')
 	$show['datepicker'] = true;
 	$show['draftpublish'] = ($bloginfo['state'] == 'draft');
 	$show['tag_option'] = false;
+	$show['lightbox'] = ($vbulletin->options['lightboxenabled'] AND $vbulletin->options['usepopups']);
 
 	$bloginfo['entrydate'] = vbdate($vbulletin->options['dateformat'], $bloginfo['dateline']);
 	$bloginfo['entrytime'] = vbdate($vbulletin->options['timeformat'], $bloginfo['dateline']);
@@ -1690,11 +1754,11 @@ if ($_POST['do'] == 'postcomment')
 			$vbulletin->url = fetch_seo_url('entry', $bloginfo, array('bt' => $blogcommentid));
 			if ($blogman->fetch_field('state') == 'moderation')
 			{
-				eval(print_standard_redirect('redirect_blog_commentthanks_moderate', true, true));
+				print_standard_redirect(array('redirect_blog_commentthanks_moderate',$bloginfo['username']), true, true);  
 			}
 			else if ($blogtextid)
 			{
-				eval(print_standard_redirect('redirect_blog_edit_commentthanks'));
+				print_standard_redirect('redirect_blog_edit_commentthanks');  
 			}
 			else
 			{
@@ -1705,7 +1769,7 @@ if ($_POST['do'] == 'postcomment')
 					publishtofacebook_blogcomment($bloginfo['title'], $blog['message'], create_full_url($fblink));
 				}
 
-				eval(print_standard_redirect('redirect_blog_commentthanks'));
+				print_standard_redirect('redirect_blog_commentthanks');  
 			}
 		}
 	}
@@ -1899,12 +1963,28 @@ if ($_REQUEST['do'] == 'comment')
 	$show['misc_options'] = ($show['parseurl'] OR !empty($disablesmiliesoption));
 	$show['additional_options'] = ($show['misc_options'] OR !empty($attachmentoption));
 	
-	// display publish to Facebook checkbox?
-	if (is_facebookenabled())
+	$guestuser = array(
+		'userid'      => 0,
+		'usergroupid' => 0,
+	);
+	cache_permissions($guestuser, false);
+	if (
+		$guestuser['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview']
+			AND
+		$guestuser['permissions']['vbblog_general_permissions'] & $vbulletin->bf_ugp_vbblog_general_permissions['blog_canviewothers']
+			AND
+		$bloginfo['state'] == 'visible'
+			AND
+		$bloginfo['guest_canviewmyblog']
+			AND
+		!$bloginfo['pending']
+			AND
+		is_facebookenabled()
+	)	
 	{
 		$fbpublishcheckbox = construct_fbpublishcheckbox();
 	}
-	
+
 	($hook = vBulletinHook::fetch_hook('blog_post_comment_complete')) ? eval($hook) : false;
 
 	// complete
@@ -2119,7 +2199,7 @@ if ($_POST['do'] == 'updatetrackback')
 			blog_moderator_action($trackbackinfo, 'trackback_x_edited', array($trackbackinfo['title']));
 		}
 
-		eval(print_standard_redirect('redirect_blog_edittrackback'));
+		print_standard_redirect('redirect_blog_edittrackback');  
 	}
 }
 
@@ -2208,8 +2288,7 @@ print_output($templater->render());
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 46104 $
+|| # SVN: $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

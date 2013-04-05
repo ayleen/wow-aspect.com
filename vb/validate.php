@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -416,7 +416,7 @@ abstract class vB_Validate
 	*/
 	public static function verify_email(&$email)
 	{
-		return is_valid_email($email);
+		return (is_valid_email($email) ? true : false);
 	}
 
 	/**
@@ -572,23 +572,33 @@ abstract class vB_Validate
 		$_allowsmilie =& $this->fetch_field($allowsmilie, $table);
 		$_pagetext =& $this->fetch_field($pagetext, $table);
 
-		if ($_allowsmilie !== null AND $_pagetext !== null)
+		if ($_pagetext !== null)
 		{
 			// check max images
 			require_once(DIR . '/includes/functions_misc.php');
 			require_once(DIR . '/includes/class_bbcode_alt.php');
 			$bbcode_parser = new vB_BbCodeParser_ImgCheck($this->registry, fetch_tag_list());
 			$bbcode_parser->set_parse_userinfo($vbulletin->userinfo);
+			$parsed = $bbcode_parser->parse($_pagetext, $parsetype, $_allowsmilie, true);
 
-			if ($this->registry->options['maximages'] AND !$this->info['is_automated'])
+			if ($_allowsmilie !== null AND $this->registry->options['maximages'] AND !$this->info['is_automated'])
 			{
-				$imagecount = fetch_character_count($bbcode_parser->parse($_pagetext, $parsetype, $_allowsmilie, true), '<img');
+				$imagecount = fetch_character_count($parsed, '<img');
 				if ($imagecount > $this->registry->options['maximages'])
 				{
 					$this->error('toomanyimages', $imagecount, $this->registry->options['maximages']);
 					return false;
 				}
 			}
+			if ($this->registry->options['maxvideos'] AND !$this->info['is_automated'])
+			{
+				$videocount = fetch_character_count($parsed, '<video />');
+				if ($videocount > $this->registry->options['maxvideos'])
+				{
+					$this->error('toomanyvideos', $videocount, $this->registry->options['maxvideos']);
+					return false;
+				}
+			}			
 		}
 
 		return true;
@@ -597,7 +607,6 @@ abstract class vB_Validate
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 28749 $
 || ####################################################################
 \*======================================================================*/

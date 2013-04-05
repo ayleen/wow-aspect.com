@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ï¿½2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -13,7 +13,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 define('VB_API', true);
-define('VB_API_VERSION', 3);
+define('VB_API_VERSION', 6);
 define('VB_API_VERSION_MIN', 1);
 define('CWD_API', (($getcwd = getcwd()) ? $getcwd : '.') . '/includes/api');
 define('NOCOOKIES', true);
@@ -22,7 +22,6 @@ require_once(CWD_API . '/functions_api.php');
 require_once(CWD_API . '/class_api.php');
 
 $api_m = trim($_REQUEST['api_m']);
-
 if (strpos($api_m, 'cms.') !== 0)
 {
 	// Method name should be in the format "scriptname_action" or "scriptname"
@@ -40,7 +39,6 @@ else
 	$_REQUEST['r'] = implode('/', $methodsegments);
 	define('VB_API_CMS', true);
 }
-
 // API Version
 $api_version = intval($_REQUEST['api_v']);
 if (!$api_version)
@@ -66,7 +64,8 @@ $api_s = trim($_REQUEST['api_s']);
 $api_sig = trim($_REQUEST['api_sig']);
 unset($_GET['']); // See VBM-835
 $VB_API_PARAMS_TO_VERIFY = $_GET;
-unset($VB_API_PARAMS_TO_VERIFY['api_c'], $VB_API_PARAMS_TO_VERIFY['api_v'], $VB_API_PARAMS_TO_VERIFY['api_s'], $VB_API_PARAMS_TO_VERIFY['api_sig'], $VB_API_PARAMS_TO_VERIFY['debug'], $VB_API_PARAMS_TO_VERIFY['showall'], $VB_API_PARAMS_TO_VERIFY['do'], $VB_API_PARAMS_TO_VERIFY['r']);
+unset($VB_API_PARAMS_TO_VERIFY['api_c'], $VB_API_PARAMS_TO_VERIFY['api_v'], $VB_API_PARAMS_TO_VERIFY['api_s'], $VB_API_PARAMS_TO_VERIFY['api_sig'], 
+$VB_API_PARAMS_TO_VERIFY['debug'], $VB_API_PARAMS_TO_VERIFY['showall'], $VB_API_PARAMS_TO_VERIFY['do'], $VB_API_PARAMS_TO_VERIFY['r'], $VB_API_PARAMS_TO_VERIFY['vbseourl']);
 ksort($VB_API_PARAMS_TO_VERIFY);
 $VB_API_REQUESTS = array(
 	'api_m' => $api_m,
@@ -85,7 +84,22 @@ if (!$api_script)
 // Check if the api method has been defined in versions
 $api_script = loadAPI($api_script, $_REQUEST['do'], $api_version);
 
-$api_classname = 'vB_APIMethod_' . $api_m;
+//find the latest version of the class defined.  This could be written more 
+//cleanly but I'm trying not to touch the logic below that runs the class.
+for($i = $api_version; $i > 0; $i--)
+{
+	$api_classname = 'vB_APIMethod_' . $api_m . '_' . $i;
+	if (class_exists($api_classname))
+	{
+		break;
+	}
+}
+
+if (!class_exists($api_classname))
+{
+	$api_classname = 'vB_APIMethod_' . $api_m;
+}
+
 if (class_exists($api_classname))
 {
 	$apimethod = new $api_classname();
@@ -125,7 +139,6 @@ include($api_script . '.php');
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35584 $
 || ####################################################################
 \*======================================================================*/

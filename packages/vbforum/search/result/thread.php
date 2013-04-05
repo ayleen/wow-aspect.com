@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ï¿½2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -66,12 +66,10 @@ class vBForum_Search_Result_Thread extends vB_Search_Result
 	//set reply data
 	private function set_replydata($threadid, $current_user)
 	{
-		global $vbulletin;
-		$this->replydata = $vbulletin->db->query_first("SELECT
-			(SELECT MAX(tr.readtime) from " . TABLE_PREFIX . "threadread AS tr where
-			tr.threadid = $threadid AND tr.userid = " . $current_user->get_field('userid'). ") AS readtime,
-			MAX(p.dateline)FROM " . TABLE_PREFIX . "post AS p
-			WHERE p.threadid = $threadid");
+		$this->replydata = array(
+			'readtime' => $this->thread->get_lastread($current_user),
+			'mylastpost' => 0,
+		);
 	}
 
 	protected function __construct() {}
@@ -98,13 +96,11 @@ class vBForum_Search_Result_Thread extends vB_Search_Result
 	{
 		require_once(DIR . '/includes/functions_forumdisplay.php');
 		require_once(DIR . '/includes/functions_user.php');
-		global $vbulletin;
-		global $show;
+		global $vbulletin, $show;
 
 		if (!strlen($template_name)) {
 			$template_name = 'search_threadbit';
 		}
-
 
 		$show['forumlink'] = true;
 
@@ -112,6 +108,9 @@ class vBForum_Search_Result_Thread extends vB_Search_Result
 		$show['threadtitle'] = true;
 		$show['viewthread'] = true;
 		$show['managethread'] = true;
+
+
+		($hook = vBulletinHook::fetch_hook('search_results_thread_start')) ? eval($hook) : false;
 
 		//thread isn't a great name for this, but it stays consistant with
 		//previous use and what will be expected in the hook.
@@ -190,7 +189,11 @@ class vBForum_Search_Result_Thread extends vB_Search_Result
 		$show['disabled'] = !$this->can_inline_mod($current_user);
 
 		$lastread = $forum->get_last_read_by_current_user($current_user);
+
+	/*	This uses $dotthreads which is built by calling fetch_dot_threads_array() in search/type/thread.php
+		The data is very similar to data we now have, and at some point this call could probably be eliminated. */  
 		$thread = process_thread_array($thread, $lastread);
+		 
 		($hook = vBulletinHook::fetch_hook('search_results_threadbit')) ? eval($hook) : false;
 
 		$pageinfo = $pageinfo_lastpost = $pageinfo_firstpost = $pageinfo_lastpage = array();
@@ -210,11 +213,20 @@ class vBForum_Search_Result_Thread extends vB_Search_Result
 			$pageinfo_firstpost['highlight'] = urlencode(implode(' ', $thread['highlight']));
 		}
 		
+		// Work out if unread below notification needed
+		if ($criteria->get_searchtype() == vB_Search_Core::SEARCH_NEW AND $criteria->get_sort() == 'groupdateline'
+			AND $show['below_unread'] == 0 AND $thread['lastpost'] < $vbulletin->userinfo['lastvisit'])
+		{
+			$show['below_unread'] = ( $criteria->get_search_term('searchdate') == 'lastvisit' ? 1 : 2 );
+		}
+
 		if ($vbulletin->options['avatarenabled'])
 		{
-			$thread['lastpost_avatar'] = fetch_avatar_url($thread['lastposterid']);
-			$thread['post_avatar'] = fetch_avatar_url($thread['postuserid']);
+			$thread['lastpost_avatar'] = fetch_avatar_from_record($thread, true);
+			$thread['firstpost_avatar'] = fetch_avatar_from_record($thread, true, 'postuserid','first_');
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_results_thread_process')) ? eval($hook) : false;
 
 		$template = vB_Template::create($template_name);
 		$template->register('post_statusicon', $post_statusicon);
@@ -224,16 +236,20 @@ class vBForum_Search_Result_Thread extends vB_Search_Result
 		$template->register('pageinfo_newpost', $pageinfo_newpost);
 		$template->register('pageinfo', $pageinfo_thread);
 		$template->register('dateformat', $vbulletin->options['dateformat']);
-		$template->register('timeformat', $vbulletin->options['default_timeformat']);
+		$template->register('timeformat', $vbulletin->options['timeformat']);
 		$template->register('postdateline', $thread['lastpost']);
 		$userinfo = array('userid' => $thread['postuserid'], 'username' => $thread['postusername']);
-		$template->register('avatar', $thread['post_avatar']);
+		$template->register('avatar', $thread['lastpost_avatar']);
 		$template->register('userinfo', $userinfo);
 		$template->register('show', $show);
 		$template->register('thread', $thread);
 
+		if ($show['below_unread'] > 0)
+		{ // flag as shown.
+			$show['below_unread'] = -1;
+		}
 
-
+		($hook = vBulletinHook::fetch_hook('search_results_thread_complete')) ? eval($hook) : false;
 
 		return $template->render();
 	}
@@ -289,7 +305,6 @@ class vBForum_Search_Result_Thread extends vB_Search_Result
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

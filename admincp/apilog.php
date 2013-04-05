@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -245,7 +245,7 @@ if ($_REQUEST['do'] == 'prunelog' AND can_access_logs($vbulletin->config['Specia
 		print_form_header('apilog', 'doprunelog');
 		construct_hidden_code('datecut', $datecut);
 		construct_hidden_code('apiclientid', $vbulletin->GPC['apiclientid']);
-		print_table_header($vbphrase['prune_control_panel_log']);
+		print_table_header($vbphrase['prune_api_log']);
 		print_description_row(construct_phrase($vbphrase['are_you_sure_you_want_to_prune_x_log_entries_from_api_log'], vb_number_format($logs['total'])));
 		print_submit_row($vbphrase['yes'], 0, 0, $vbphrase['no']);
 	}
@@ -409,7 +409,6 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 32878 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: poll.php 37602 2010-06-18 18:37:15Z ksours $
+ * @version $Id: poll.php 61296 2012-04-06 22:06:15Z pmarsden $
  * @access public
  */
 class vBCms_Widget_Poll extends vBCms_Widget
@@ -297,10 +297,10 @@ class vBCms_Widget_Poll extends vBCms_Widget
 					$threads[] = $result->get_thread()->get_field('threadid');
 				}
 				$where = implode(', ', $threads);
-				$sql = "SELECT p.question, p.options,
-				p.votes, t.threadid FROM " . TABLE_PREFIX . "poll p INNER JOIN " . TABLE_PREFIX . "thread t
-	 			ON t.pollid = p.pollid WHERE t.threadid IN ( " . $where . ");";
-
+				$sql = "SELECT p.pollid, p.question, p.options, p.multiple, p.active, p.votes, p.dateline, p.timeout, t.threadid, t.open, t.forumid, t.title
+						FROM " . TABLE_PREFIX . "poll p 
+						INNER JOIN " . TABLE_PREFIX . "thread t ON t.pollid = p.pollid 
+					 	WHERE t.threadid IN ( " . $where . ");";
 
 				if ($rst = vB::$vbulletin->db->query_read($sql))
 				{
@@ -312,6 +312,26 @@ class vBCms_Widget_Poll extends vBCms_Widget
 						$options = explode('|||', $row['options'] );
 						$votes = explode('|||', $row['votes'] );
 						$this_item['totalvotes'] = 0;
+						$canvote = (vB::$vbulletin->userinfo['userid'] == 0 OR !$row['active'] OR !$row['open'] OR 
+									!(vB::$vbulletin->userinfo['forumpermissions'][$row['forumid']] & vB::$vbulletin->bf_ugp_forumpermissions['canvote']) OR 
+									($row['dateline'] + ($row['timeout'] * 86400) < TIMENOW AND $row['timeout'] != 0)) ? 0 : 1;
+						$uservoted = 0;					
+						if ($canvote)
+						{
+							$uservoted = intval(fetch_bbarray_cookie('poll_voted', $row['pollid']));
+							if (!$uservoted)
+							{
+								$pollvotes = vB::$vbulletin->db->query_read_slave("
+									SELECT voteoption
+									FROM " . TABLE_PREFIX . "pollvote
+									WHERE userid = " . vB::$vbulletin->userinfo['userid'] . " AND pollid = $row[pollid]
+								");
+								if (vB::$vbulletin->db->num_rows($pollvotes) > 0)
+								{
+									$uservoted = 1;
+								}
+							}
+						}
 						for($i = 0; $i < count($votes); $i++)
 						{
 							$this_item['totalvotes'] += $votes[$i];
@@ -324,6 +344,7 @@ class vBCms_Widget_Poll extends vBCms_Widget
 							$percent = ($this_item['totalvotes'] != 0) ? $votes[$i] / $this_item['totalvotes'] * 100 : 0;
 
 							$detail[] = array(
+								'number'		=> $i+1,
 								'option'        => $this_option,
 								'votes'         => $votes[$i],
 								'percent'       => vb_number_format($percent, 2),
@@ -334,9 +355,17 @@ class vBCms_Widget_Poll extends vBCms_Widget
 						}
 						$detailview = new vBCms_View_Widget($config['detail_template']);
 						$detailview->resultdetail = $detail;
+						$canvote = ($canvote AND !$uservoted ? 1 : 0);
+						$detailview->canvote	= $canvote;
+						$detailview->multiple	= $row['multiple'];
+						$detailview->pollid 	= $row['pollid'];
 						$this_item['resultdetail'] = $detailview->render();
 						$this_item['threadid'] = $row['threadid'];
+						$this_item['pollid']   = $row['pollid'];
 						$this_item['question'] = $row['question'];
+						$this_item['hashkey']  = $hashkey;
+						$this_item['canvote']  = $canvote;
+						$this_item['title']	   = $row['title'];
 						$data[$row['threadid']] = $this_item;
 					}
 
@@ -394,8 +423,7 @@ class vBCms_Widget_Poll extends vBCms_Widget
 			$optionvalue = $forumid;
 			$optiontitle = "$forum[depthmark] $forum[title_clean]";
 
-			if ($vbulletin->options['fulltextsearch'] AND
-				!($vbulletin->userinfo['forumpermissions'][$forumid] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
+			if (!($vbulletin->userinfo['forumpermissions'][$forumid] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
 			{
 				$optiontitle .= '*';
 				$show['cantsearchposts'] = true;
@@ -409,11 +437,11 @@ class vBCms_Widget_Poll extends vBCms_Widget
 				$haveforum = true;
 			}
 
-			$options .= render_option_template($optiontitle, $forumid, $optionselected,
-				'fjdpth' . min(4, $forum['depth']));
+			require_once DIR . '/includes/adminfunctions.php';
+			$options .= render_option_template(construct_depth_mark($forum['depth'], '--') . ' ' . $optiontitle, $forumid, $optionselected);
 		}
 
-		$select = "<select name=\"" .$name."[]\" multiple=\"multiple\" size=\"4\" $style_string>\n" .
+		$select = "<select name=\"" .$name."[]\" multiple=\"multiple\" size=\"6\" $style_string>\n" .
 					render_option_template(new vB_Phrase('search', 'search_all_open_forums'), '',
 						$haveforum ? '' : 'selected="selected"') .
 					render_option_template(new vB_Phrase('search', 'search_subscribed_forums'), 'subscribed') .
@@ -433,18 +461,15 @@ class vBCms_Widget_Poll extends vBCms_Widget
 	 */
 	protected function getHash($widgetid)
 	{
-		$context = new vB_Context('widget' , array( 'widgetid' =>$widgetid,
+		$context = new vB_Context("widget_$widgetid" , array( 'widgetid' =>$widgetid,
 			'usergroup' => vB::$vbulletin->userinfo['usergroupid'],
 			'membergroupids' => vB::$vbulletin->userinfo['membergroupids']));
 		return strval($context);
-
 	}
-
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 37602 $
+|| # SVN: $Revision: 61296 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 42666 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62562 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('language');
@@ -975,7 +975,7 @@ if ($_POST['do'] == 'kill')
 				AND fieldname = '" . $db->escape_string($getvarname['fieldname']) . "'
 		");
 
-		build_language(-1);
+		build_language();
 
 		if (defined('DEV_AUTOEXPORT') AND DEV_AUTOEXPORT)
 		{
@@ -1168,7 +1168,7 @@ if ($_POST['do'] == 'insert')
 		}
 	}
 
-	build_language(-1);
+	build_language();
 
 	define('CP_REDIRECT', "phrase.php?fieldname=" . $vbulletin->GPC['sourcefieldname'] . "&amp;page=" . $vbulletin->GPC['pagenumber'] . "&amp;pp=" . $vbulletin->GPC['perpage']);
 	print_stop_message('saved_phrase_x_successfully', $vbulletin->GPC['varname']);
@@ -1733,8 +1733,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 42666 $
+|| # CVS: $RCSfile$ - $Revision: 62562 $
 || ####################################################################
 \*======================================================================*/
 ?>

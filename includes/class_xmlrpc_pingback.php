@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -52,6 +52,10 @@ class vB_XMLRPC_Server_Pingback extends vB_XMLRPC_Server
 		);
 
 		require_once(DIR . '/includes/blog_functions_post.php');
+
+		$checkurl = $this->registry->options['bburl'];
+		($hook = vBulletinHook::fetch_hook('xmlrpc_verify_pingback')) ? eval($hook) : false;
+
 		if ($this->build_xmlrpc_array($params, $pinfo))
 		{
 			// XML-RPC is valid if we are here
@@ -62,7 +66,7 @@ class vB_XMLRPC_Server_Pingback extends vB_XMLRPC_Server
 
 			if (!empty($this->xmlrpc_array[0]['string']))
 			{
-				if (preg_match('#^' . preg_quote($this->registry->options['bburl'], '#') . '\/blog(?:_callback)?.php\?b(?:logid)?=(\d+)$#si', trim($this->xmlrpc_array[1]['string']), $matches))
+				if (preg_match('#^' . preg_quote($checkurl, '#') . '\/blog(?:_callback)?.php\?b(?:logid)?=(\d+)$#si', trim($this->xmlrpc_array[1]['string']), $matches))
 				{
 					$blogid = intval($matches[1]);
 					$sourcemd5 = md5(trim($this->xmlrpc_array[0]['string']));
@@ -158,8 +162,7 @@ class vB_XMLRPC_Server_Pingback extends vB_XMLRPC_Server
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 56108 $
 || ####################################################################
 \*======================================================================*/
 ?>

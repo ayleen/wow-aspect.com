@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 41161 $
- * @since $Date: 2010-12-20 12:32:25 -0800 (Mon, 20 Dec 2010) $
+ * @version $Revision: 60418 $
+ * @since $Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Widget_RecentArticle extends vBCms_Widget
@@ -70,7 +70,7 @@ class vBCms_Widget_RecentArticle extends vBCms_Widget
 	{
 		require_once DIR . '/includes/functions_databuild.php';
 		fetch_phrase_group('cpcms');
-		global $vbulletin, $messagearea, $vbphrase;
+		global $messagearea, $vbphrase;
 
 		$this->assertWidget();
 
@@ -307,7 +307,7 @@ class vBCms_Widget_RecentArticle extends vBCms_Widget
 		// First, compose the sql
 		$sql = "SELECT article.pagetext, article.previewimage, article.imagewidth,
 		article.imageheight, article.previewvideo, article.htmlstate, node.url, node.publishdate, node.userid,
-		node.setpublish, node.publicpreview, info.title, user.username, node.showuser,
+		node.setpublish, node.publicpreview, info.title, user.username, node.showuser, info.creationdate AS dateline,
 		node.settingsforboth, node.showpublishdate, node.showtitle,
 		node.nodeid, node.contenttypeid, thread.replycount, user.avatarrevision " .
 		(vB::$vbulletin->options['avatarenabled'] ? ", avatar.avatarpath,
@@ -351,13 +351,14 @@ class vBCms_Widget_RecentArticle extends vBCms_Widget
 		if ($rst = vB::$db->query_read($sql))
 		{
 			$current_record = array('contentid' => -1);
-			$contenttypeid = vb_Types::instance()->getContentTypeId($this->package . '_' . $this->view_class);
+			$contenttypeid = vb_Types::instance()->getContentTypeID($this->package . '_' . $this->view_class);
 			//now build the results array
 			$bbcode_parser = new vBCms_BBCode_HTML(vB::$vbulletin,  vBCms_BBCode_HTML::fetchCmsTags());
 			while($article = vB::$db->fetch_array($rst))
 			{
 				$article['categories'] = array();
 				$article['tags'] = array();
+				$article['pagetext'] = strip_tags($article['pagetext']);
 				$allow_html = vBCMS_Permissions::canUseHtml($article['nodeid'], $contenttypeid, $article['userid']);
 				$pagetext = $bbcode_parser->get_preview(fetch_censored_text($article['pagetext']),
 					vB::$vbulletin->options['default_cms_previewlength'], $allow_html);
@@ -366,7 +367,7 @@ class vBCms_Widget_RecentArticle extends vBCms_Widget
 				//get the avatar
 				if (vB::$vbulletin->options['avatarenabled'])
 				{
-					$article['avatar'] = fetch_avatar_from_record($article);
+					$article['avatar'] = fetch_avatar_from_record($article, true);
 				}
 
 				$articles[$article['nodeid']]  = $article;
@@ -420,20 +421,18 @@ class vBCms_Widget_RecentArticle extends vBCms_Widget
 	 */
 	protected function getHash()
 	{
-		$context = new vB_Context('widget' ,
+		$context = new vB_Context('widget_' . $this->widget->getId() ,
 		array(
 			'widgetid' => $this->widget->getId(),
 			'permissions' => vB::$vbulletin->userinfo['permissions']['cms'])
 		);
 
 		return strval($context);
-
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 41161 $
+|| # SVN: $Revision: 60418 $
 || ####################################################################
 \*======================================================================*/

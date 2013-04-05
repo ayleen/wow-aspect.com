@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -20,8 +20,8 @@ $r->replace();
 * Helper class to facilitate replacing master xml files with information from the DB
 *
 * @package	vBulletin
-* @version	$Revision: 37624 $
-* @date		$Date: 2010-06-21 13:46:58 -0700 (Mon, 21 Jun 2010) $
+* @version	$Revision: 62096 $
+* @date		$Date: 2012-05-01 18:09:20 -0700 (Tue, 01 May 2012) $
 */
 class vB_FilesystemXml_Replace
 {
@@ -35,7 +35,7 @@ class vB_FilesystemXml_Replace
 
 	public function replace($overwrite_file = true)
 	{
-		$result = $this->reader->open($this->source_file, $this->charset);
+		$result = @$this->reader->open($this->source_file, $this->charset);
 		if (!$result) 
 		{
 			return false;	
@@ -382,8 +382,7 @@ class vB_FilesystemXml_Replace_StylevarDfn extends vB_FilesystemXml_Replace
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 37624 $
+|| # CVS: $RCSfile$ - $Revision: 62096 $
 || ####################################################################
 \*======================================================================*/
 ?>

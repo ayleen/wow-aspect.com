@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 44594 $
- * @since $Date: 2011-06-16 13:47:40 -0700 (Thu, 16 Jun 2011) $
+ * @version $Revision: 59389 $
+ * @since $Date: 2012-02-20 17:11:26 -0800 (Mon, 20 Feb 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Widget_RecentPosts extends vBCms_Widget
@@ -205,8 +205,7 @@ class vBCms_Widget_RecentPosts extends vBCms_Widget
 			$optionvalue = $forumid;
 			$optiontitle = "$forum[depthmark] $forum[title_clean]";
 
-			if ($vbulletin->options['fulltextsearch'] AND
-				!($vbulletin->userinfo['forumpermissions'][$forumid] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
+			if (!($vbulletin->userinfo['forumpermissions'][$forumid] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
 			{
 				$optiontitle .= '*';
 				$show['cantsearchposts'] = true;
@@ -220,8 +219,8 @@ class vBCms_Widget_RecentPosts extends vBCms_Widget
 				$haveforum = true;
 			}
 
-			$options .= render_option_template($optiontitle, $forumid, $optionselected,
-				'fjdpth' . min(4, $forum['depth']));
+			require_once DIR . '/includes/adminfunctions.php';
+			$options .= render_option_template(construct_depth_mark($forum['depth'], '--') . ' ' . $optiontitle, $forumid, $optionselected);
 		}
 
 		//"All subscribed" requires special handling.
@@ -235,7 +234,7 @@ class vBCms_Widget_RecentPosts extends vBCms_Widget
 			$subscribed_selected = '';
 		}
 
-		$select = "<select name=\"" .$name."[]\" multiple=\"multiple\" size=\"4\" $style_string>\n" .
+		$select = "<select name=\"" .$name."[]\" multiple=\"multiple\" size=\"6\" $style_string>\n" .
 					render_option_template($vbphrase['search_all_open_forums'], '',
 						$haveforum ? '' : 'selected="selected"') .
 					render_option_template($vbphrase['search_subscribed_forums'], 'subscribed', $subscribed_selected) .
@@ -364,7 +363,7 @@ class vBCms_Widget_RecentPosts extends vBCms_Widget
 				)
 			{
 					//Don't include the comments forum.
-				if (vB::$vbulletin->options['vbcmsforumid'] AND (intval(vB::$vbulletin->options['vbcmsforumid']) == intval($forumid)))
+				if (vB::$vbulletin->options['vbcmsforumid'] > 0 AND (intval(vB::$vbulletin->options['vbcmsforumid']) == intval($forumid)))
 				{
 					continue;
 				}
@@ -383,8 +382,7 @@ class vBCms_Widget_RecentPosts extends vBCms_Widget
 			// quote in $associatedthread. We intend to rewrite this query in the
 			// next release to remove this inconsistency
 			$forumsql = " AND (" . (empty($subscribejoin) ? '' : "subscribeforum.forumid IS NOT NULL OR ") . " thread.forumid IN(" . implode(',', $forumchoice) . ")";
-			$associatedthread = (vB::$vbulletin->options['vbcmsforumid'] ?
-					" AND (thread.forumid <> " . vB::$vbulletin->options['vbcmsforumid'] . ") )" : ')');
+			$associatedthread = (vB::$vbulletin->options['vbcmsforumid'] ? " AND (thread.forumid <> " . vB::$vbulletin->options['vbcmsforumid'] . ") )" : ')');
 		}
 		else if (! empty($subscribejoin))
 		{
@@ -439,17 +437,23 @@ class vBCms_Widget_RecentPosts extends vBCms_Widget
 			$post['title'] = fetch_trimmed_title($post['title'], $this->config['newposts_titlemaxchars']);
 
 			$allow_html = ((vB::$vbulletin->forumcache[$post['forumid']]['options'] & $optionval) AND $this->config['allow_html'] ? 1 : 0);
+			if(!$allow_html)
+			{ 	// Strip html tags completely if html is not allowed.
+				$post['pagetext'] = strip_tags($post['pagetext']);
+			}
 			$post['previewtext'] = fetch_censored_text($parser->get_preview($post['pagetext'], $this->default_previewlen, $allow_html));
 			$post['pagetext'] = fetch_censored_text($parser->do_parse($post['pagetext'], $allow_html));
 
 			$post['url'] = fetch_seo_url('thread', $post, array('p' => $post['postid'])) . '#post' . $post['postid'];
 			$post['newposturl'] = fetch_seo_url('thread', $post, array('goto' => 'newpost'));
+
+			$post['detailedtime'] = (vB::$vbulletin->options['yestoday'] == 2);
 			$post['date'] = vbdate(vB::$vbulletin->options['dateformat'], $post['dateline'], true);
 			$post['time'] = vbdate(vB::$vbulletin->options['timeformat'], $post['dateline']);
 
 			if (vB::$vbulletin->options['avatarenabled'])
 			{
-				$avatar = fetch_avatar_from_record($post);
+				$avatar = fetch_avatar_from_record($post, true);
 			}
 			else
 			{
@@ -474,7 +478,7 @@ class vBCms_Widget_RecentPosts extends vBCms_Widget
 	 */
 	public function getHash()
 	{
-		$context = new vB_Context('widget' ,
+		$context = new vB_Context('widget_' . $this->widget->getId() ,
 		array(
 			'widgetid' => $this->widget->getId(),
 			'permissions' => vB::$vbulletin->userinfo['forumpermissions'],
@@ -484,12 +488,10 @@ class vBCms_Widget_RecentPosts extends vBCms_Widget
 
 		return strval($context);
 	}
-
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 44594 $
+|| # SVN: $Revision: 59389 $
 || ####################################################################
 \*======================================================================*/

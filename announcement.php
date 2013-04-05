@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -46,7 +46,6 @@ $actiontemplates = array(
 		'postbit',
 		'postbit_wrapper',
 		'postbit_onlinestatus',
-		'postbit_reputation',
 		'bbcode_code',
 		'bbcode_html',
 		'bbcode_php',
@@ -116,7 +115,7 @@ if ($_POST['do'] == 'delete')
 		{
 			$vbulletin->url = fetch_seo_url('forum', array('forumid' => $announcementinfo['forumid'], 'title' => $vbulletin->forumcache["$announcementinfo[forumid]"]));
 		}
-		eval(print_standard_redirect('deleted_announcement'));
+		print_standard_redirect(array('deleted_announcement',$announcementinfo['title']));  
 	}
 	else
 	{
@@ -202,7 +201,7 @@ if ($_POST['do'] == 'update')
 	$title = $anncdata->fetch_field('title');
 
 	$vbulletin->url = 'announcement.php?' . $vbulletin->session->vars['sessionurl'] . "a=$announcementid";
-	eval(print_standard_redirect('saved_announcement'));
+	print_standard_redirect(array('saved_announcement',$title));  
 }
 
 // #############################################################################
@@ -317,6 +316,7 @@ if ($_REQUEST['do'] == 'edit')
 
 	// build navbar
 	$navbits = array();
+	$navbits[fetch_seo_url('forumhome', array())] = $vbphrase['forum'];
 
 	if ($announcementinfo['forumid'] == -1)
 	{
@@ -346,6 +346,7 @@ if ($_REQUEST['do'] == 'edit')
 
 	$navbits[''] = ($announcementinfo['announcementid'] ? $vbphrase['edit_announcement'] : $vbphrase['post_new_announcement']);
 	$navbits = construct_navbits($navbits);
+	$show['signaturecheckbox'] = ($permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canusesignature'] AND  $vbulletin->userinfo['signature']);
 
 	$navbar = render_navbar_template($navbits);
 	$templater = vB_Template::create('announcement_edit');
@@ -497,14 +498,16 @@ if ($_REQUEST['do'] == 'view')
 
 	// show add/edit link?
 	$show['post_new_announcement'] = can_moderate($foruminfo['forumid'], 'canannounce');
+	$show['signaturecheckbox'] = ($permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canusesignature'] AND $vbulletin->userinfo['signature']);
 
 	// build navbar
 	$navbits = array();
+	$navbits[fetch_seo_url('forumhome', array())] = $vbphrase['forum'];
 
 	if ($announcementinfo['forumid'] == -1)
 	{
 		$navbits["announcement.php?" . $vbulletin->session->vars['sessionurl'] . "a=$announcementinfo[announcementid]"] = $vbphrase['announcements'];
-		$navbits[fetch_seo_url('forumhome', array())] = $announcementinfo['title'];
+		$navbits[''] = $announcementinfo['title'];
 		$show['global'] = true;
 	}
 	else
@@ -515,7 +518,7 @@ if ($_REQUEST['do'] == 'view')
 			$forumTitle = $vbulletin->forumcache["$forumID"]['title'];
 			$navbits[fetch_seo_url('forum', array('forumid' => $forumID, 'title' => $forumTitle))] = $forumTitle;
 		}
-		$navbits[fetch_seo_url('forumhome', array())] = $vbphrase['announcements'];
+		$navbits[''] = $vbphrase['announcements'];
 	}
 
 	$navbits = construct_navbits($navbits);
@@ -538,8 +541,7 @@ if ($_REQUEST['do'] == 'view')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 43599 $
+|| # CVS: $RCSfile$ - $Revision: 57655 $
 || ####################################################################
 \*======================================================================*/
 ?>

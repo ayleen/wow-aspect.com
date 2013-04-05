@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -22,8 +22,8 @@ require_once(DIR . '/includes/functions_file.php');
 * Abstract class to do data save/delete operations for ATTACHMENTS.
 *
 * @package	vBulletin
-* @version	$Revision: 45684 $
-* @date		$Date: 2011-07-08 12:48:02 -0700 (Fri, 08 Jul 2011) $
+* @version	$Revision: 62619 $
+* @date		$Date: 2012-05-15 16:54:47 -0700 (Tue, 15 May 2012) $
 */
 abstract class vB_DataManager_AttachData extends vB_DataManager
 {
@@ -408,13 +408,16 @@ abstract class vB_DataManager_AttachData extends vB_DataManager
 		{
 			foreach ($this->lists['content'] AS $contenttypeid => $list)
 			{
-				if (!($attach =& vB_Attachment_Dm_Library::fetch_library($this->registry, $contenttypeid)))
+				if ($attach =& vB_Attachment_Dm_Library::fetch_library($this->registry, $contenttypeid))
 				{
-					return false;
+					if (!$attach->pre_delete($list, $checkperms, $this))
+					{
+						return false;
+					}
 				}
-				if (!$attach->pre_delete($list, $checkperms, $this))
+				else
 				{
-					return false;
+					// This means we have an unrecognized contenttypeid, just delete the attachments..
 				}
 				unset($attach);
 			}
@@ -470,9 +473,8 @@ abstract class vB_DataManager_AttachData extends vB_DataManager
 					WHERE fd.filedataid = a.filedataid
 				)
 				WHERE fd.filedataid IN (" . implode(", ", array_keys($this->lists['filedataids'])) . ")
-			");
+			");		
 		}
-		// Hourly cron job will clean out the FS where refcount = 0 and dateline > 1 hour
 
 		// Below here only applies to attachments in pictures/groups but I forsee all attachments gaining the ability to have comments
 		if ($this->info['type'] == 'filedata')
@@ -540,8 +542,8 @@ abstract class vB_DataManager_AttachData extends vB_DataManager
 * Class to do data save/delete operations for just the Attachment table
 *
 * @package	vBulletin
-* @version	$Revision: 45684 $
-* @date		$Date: 2011-07-08 12:48:02 -0700 (Fri, 08 Jul 2011) $
+* @version	$Revision: 62619 $
+* @date		$Date: 2012-05-15 16:54:47 -0700 (Tue, 15 May 2012) $
 */
 
 class vB_DataManager_Attachment extends vB_DataManager_AttachData
@@ -565,6 +567,7 @@ class vB_DataManager_Attachment extends vB_DataManager_AttachData
 		'caption'        => array(TYPE_NOHTMLCOND, REQ_NO),
 		'reportthreadid' => array(TYPE_UINT,       REQ_NO),
 		'displayorder'   => array(TYPE_UINT,       REQ_NO),
+		'settings'       => array(TYPE_STR,        REQ_NO),
 	);
 
 	/**
@@ -604,7 +607,7 @@ class vB_DataManager_Attachment extends vB_DataManager_AttachData
 	* Delete from the attachment table
 	*
 	*/
-	public function delete($doquery = true, $checkperms = true)
+	public function delete($doquery = true, $checkperms = true, $activitysection = '', $activitytype = '')
 	{
 		if (!$this->pre_delete($doquery, $checkperms) OR empty($this->lists['attachmentids']))
 		{
@@ -616,6 +619,13 @@ class vB_DataManager_Attachment extends vB_DataManager_AttachData
 			WHERE attachmentid IN (" . implode(", ", $this->lists['attachmentids']) . ")
 		");
 
+		if ($activitysection AND $activitytype)
+		{
+			$activity = new vB_ActivityStream_Manage($activitysection, $activitytype);
+			$activity->set('contentid', $this->lists['attachmentids']);
+			$activity->delete();
+		}
+		
 		$this->post_delete($doquery);
 
 		return true;
@@ -833,8 +843,8 @@ class vB_DataManager_Attachment extends vB_DataManager_AttachData
 * Class to do data save/delete operations for just the Filedata table
 *
 * @package	vBulletin
-* @version	$Revision: 45684 $
-* @date		$Date: 2011-07-08 12:48:02 -0700 (Fri, 08 Jul 2011) $
+* @version	$Revision: 62619 $
+* @date		$Date: 2012-05-15 16:54:47 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_Filedata extends vB_DataManager_AttachData
 {
@@ -1003,8 +1013,8 @@ class vB_DataManager_Filedata extends vB_DataManager_AttachData
 * Class to do data save/delete operations for Attachment/Filedata table
 *
 * @package	vBulletin
-* @version	$Revision: 45684 $
-* @date		$Date: 2011-07-08 12:48:02 -0700 (Fri, 08 Jul 2011) $
+* @version	$Revision: 62619 $
+* @date		$Date: 2012-05-15 16:54:47 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_AttachmentFiledata extends vB_DataManager_Attachment
 {
@@ -1232,8 +1242,7 @@ class vB_DataManager_AttachmentFiledata extends vB_DataManager_Attachment
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45684 $
+|| # CVS: $RCSfile$ - $Revision: 62619 $
 || ####################################################################
 \*======================================================================*/
 ?>

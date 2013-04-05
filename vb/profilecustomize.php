@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright 2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright 2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -35,6 +35,9 @@ class vB_ProfileCustomize
 	*
 	*
 	***/
+
+	/** Users theme type **/
+	private static $usertheme = array();
 
 	/** The database connection **/
 	private static $db = false;
@@ -206,17 +209,19 @@ class vB_ProfileCustomize
 	/*** This builds the default theme from the stylevars. This gives a look that matches the site's colors
 	 *
 	 ***/
-	public static function getSiteDefaultTheme()
+	public static function getSiteDefaultTheme($use_site_default = true)
 	{
 		//try pulling a site customization
-		$theme_data = vB_dB_Assertor::getInstance()->assertQuery('customprofile',
-				array('type' => 's', 'userid' => -1) );
-		if ($theme_data->valid())
-		{
-			$theme = $theme_data->current();
+		if ($use_site_default) 
+		{ // if $use_site_default is false then we always get the current style information, bypassing any site default.
+			$theme_data = vB_dB_Assertor::getInstance()->assertQuery('customprofile', array('type' => 's', 'userid' => -1));
 			if ($theme_data->valid())
 			{
-				return $theme;
+				$theme = $theme_data->current();
+				if ($theme_data->valid())
+				{
+					return $theme;
+				}
 			}
 		}
 
@@ -252,10 +257,10 @@ class vB_ProfileCustomize
 		'headers_border' => self::$stylevars['postbitlite_header_border']['color'],
 		'content_text_color' => self::$stylevars['postbit_color']['color'],
 		'content_link_color' => self::$stylevars['link_color']['color'],
-		'content_background_color' => self::$stylevars['postbit_background']['color'],
-		'content_background_image' => self::$stylevars['postbit_background']['image'],
-		'content_background_repeat' => self::cleanRepeat(self::$stylevars['postbit_background']['repeat']),
-		'content_border' => self::$stylevars['postbit_background']['color'],
+		'content_background_color' => self::$stylevars['postbit_lite_background']['color'],
+		'content_background_image' => self::$stylevars['postbit_lite_background']['image'],
+		'content_background_repeat' => self::cleanRepeat(self::$stylevars['postbit_lite_background']['repeat']),
+		'content_border' => self::$stylevars['postbit_lite_background']['color'],
 		'button_text_color' => self::$stylevars['control_color']['color'],
 		'button_background_color' => self::$stylevars['control_background']['color'],
 		'button_background_image' => self::$stylevars['control_background']['image'],
@@ -319,7 +324,7 @@ class vB_ProfileCustomize
 			$permissions = vB::$vbulletin->userinfo['permissions']['usercsspermissions'];
 		}
 		//Initially we are commenting out "theme" permissions.
-		if (!isset($vbulletin->bf_ugp_usercsspermissions['canusetheme']))
+		if (!isset(vB::$vbulletin->bf_ugp_usercsspermissions['canusetheme']))
 		{
 				self::$permissions['canusetheme'] = false;
 		}
@@ -338,6 +343,24 @@ class vB_ProfileCustomize
 	}
 
 
+	/*** This funtion returns the cached value from when getUserTheme() was called.
+		if no cached value exists, 0 is returned.
+	*
+	*	@param int	the user id
+	*
+	*	@return int	 theme type
+	*
+	***/
+	public static function getUserThemeType($userid)
+	{
+		if (self::$usertheme[$userid])
+		{
+			return self::$usertheme[$userid];
+		}
+		
+		return 0;
+	}
+
 	/*** This funtion returns a merge of the default css settings merged with the user's theme
 	*
 	*	@param int	the user id
@@ -349,7 +372,6 @@ class vB_ProfileCustomize
 	{
 		//First, if either the user is not logged in or doesn't have permission
 		// to customize his/her theme they don't get a custom theme.
-
 		if (!self::$permissions)
 		{
 			self::setPermissions();
@@ -381,7 +403,6 @@ class vB_ProfileCustomize
 
 		//If we got here, they have customize permission and haven't set a default
 		// theme. Let's see if they have actually customized.
-
 		$theme_data = vB_dB_Assertor::getInstance()->assertQuery('customprofile',
 			array('type' => 's', 'userid' => $userid));
 		if (!$theme_data->valid())
@@ -390,8 +411,17 @@ class vB_ProfileCustomize
 				array('type' => 's', 'userid' => -1));
 			if (!$theme_data->valid())
 			{
+				self::$usertheme[$userid] = 3; // Style default.
 				return self::getSiteDefaultTheme();
 			}
+			else
+			{
+				self::$usertheme[$userid] = 2; // Site default.
+			}
+		}
+		else
+		{
+			self::$usertheme[$userid] = 1; // Own custom theme.
 		}
 
 		$current = $theme_data->current();
@@ -711,7 +741,7 @@ class vB_ProfileCustomize
 		}
 
 		//it might be a color;
-		$result = self::getValidColor($colorval);
+		$result = self::getValidColor($image_url);
 		if ($result)
 		{
 			return $result;
@@ -768,6 +798,7 @@ class vB_ProfileCustomize
 
 	public static function saveUserTheme($usertheme, $userinfo)
 	{
+		//We need the array to pass to the GPC cleaner
 		$vars = array(
 			'font_family' => TYPE_STR,
 			'fontsize' => TYPE_STR,
@@ -805,7 +836,10 @@ class vB_ProfileCustomize
 			'button_background_image' => TYPE_STR,
 			'button_background_repeat' => TYPE_STR,
 			'button_border' => TYPE_STR,
-			'page_link_color' => TYPE_STR);
+			'page_link_color' => TYPE_STR,
+			'themeid' => TYPE_UINT,
+			'deletetheme' => TYPE_UINT,
+			'saveasdefault' => TYPE_UINT);
 
 		//We only do this if we're logged in as a user.
 		if (!intval($userinfo['userid']))
@@ -813,10 +847,6 @@ class vB_ProfileCustomize
 			return 'profile_save_permission_failed_desc';
 		}
 
-		//We need the array to pass to the GPC cleaner
-		$vars = array('themeid' => TYPE_UINT,
-			'deletetheme' => TYPE_UINT,
-			'saveasdefault' => TYPE_UINT);
 		//Since we're here, we need to know which vars are controlled by which permission
 		//might as well do that since we're scanning the array.
 
@@ -824,7 +854,7 @@ class vB_ProfileCustomize
 		foreach(self::$themevars as $varname)
 		{
 			$vars[$varname] = TYPE_STR;
-			if (strpos(varname, 'border') !== false)
+			if (strpos($varname, 'border') !== false)
 			{
 				$border_vars[] = $varname;
 			}
@@ -1023,7 +1053,7 @@ class vB_ProfileCustomize
 				}
 				else
 				{
-					$vars[userid] = $userinfo['userid'];
+					$vars['userid'] = $userinfo['userid'];
 					$vars['type'] =  'i';
 				}
 			}
@@ -1148,7 +1178,7 @@ class vB_ProfileCustomize
 			$attachment['date_string'] = vbdate(vB::$vbulletin->options['dateformat'], $attachment['dateline']);
 			$attachment['time_string'] = vbdate(vB::$vbulletin->options['timeformat'], $attachment['dateline']);
 			$attachment['filesize_formatted'] = vb_number_format($attachment['filesize'], 1, true);
-			$attachment['filename'] = htmlspecialchars_uni($attachment['filename']);
+			$attachment['filename'] = fetch_censored_text(htmlspecialchars_uni($attachment['filename'], false));
 			$results[$attachment['attachmentid']] = $attachment;
 			$attachment = $attachments->next();
 		}
@@ -1260,7 +1290,6 @@ class vB_ProfileCustomize
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN=> $Revision=> 28823 $
 || ####################################################################
 \*======================================================================*/

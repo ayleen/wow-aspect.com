@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -312,8 +312,6 @@ $vbulletin->input->clean_array_gpc('r', array(
 	'cat'          => TYPE_UINT
 ));
 
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 $contenttypeid = vB_Types::instance()->getContentTypeID('vBForum_SocialGroup');
 
 ($hook = vBulletinHook::fetch_hook('group_start_precheck')) ? eval($hook) : false;
@@ -686,12 +684,12 @@ if ($_REQUEST['do'] == 'grouplist' OR $_REQUEST['do'] == 'invitations' OR $_REQU
 		if ($perpage != $vbulletin->options['sg_perpage'])
 		{
 			$pagevars['pp'] = $perpage;
-		}	
+		}
 
 		if ($vbulletin->GPC['dofilter'])
 		{
 			$pagevars['dofilter'] = 1;
-			$filters = array('filtertext', 'memberlimit', 'memberless', 'messagelimit', 'messageless', 
+			$filters = array('filtertext', 'memberlimit', 'memberless', 'messagelimit', 'messageless',
 				'picturelimit', 'pictureless', 'filter_date_gteq', 'filter_date_lteq', 'cat');
 
 			foreach ($filters AS $filter)
@@ -703,7 +701,7 @@ if ($_REQUEST['do'] == 'grouplist' OR $_REQUEST['do'] == 'invitations' OR $_REQU
 			}
 			unset($filters);
 		}
-		
+
 		$pagevars['sort'] = $sortfield;
 		if ($vbulletin->GPC['sortorder'])
 		{
@@ -729,7 +727,7 @@ if ($_REQUEST['do'] == 'grouplist' OR $_REQUEST['do'] == 'invitations' OR $_REQU
 			$orderlinks[$sort] = fetch_seo_url('grouphome', array(), $pagevars);
 		}
 		unset($sorts);
-		
+
 		$templater = vB_Template::create('forumdisplay_sortarrow');
 			$templater->register('oppositesort', $oppositesort);
 		$sortarrow["$sortfield"] = $templater->render();
@@ -777,6 +775,7 @@ if ($_REQUEST['do'] == 'overview')
 
 	$show['messageinfo'] = ($vbulletin->options['socnet_groups_msg_enabled'] ? true : false);
 	$show['pictureinfo'] = ($vbulletin->options['socnet_groups_pictures_enabled']);
+	$show['creategrouplink'] = ($permissions['socialgrouppermissions'] & $vbulletin->bf_ugp_socialgrouppermissions['cancreategroups']);
 
 	// Get categories
 	$categories = fetch_socialgroup_category_cloud();
@@ -1105,9 +1104,9 @@ if ($_POST['do'] == 'dotransfer')
 		$pmdm->set('fromusername', $vbulletin->userinfo['username']);
 		$pmdm->setr('title', construct_phrase($vbphrase['pm_request_to_take_ownership_of_social_group_title'], fetch_word_wrapped_string(fetch_censored_text($group['name']))));
 		$pmdm->set_recipients($targetuserinfo['username'], $vbulletin->userinfo['permissions'], 'cc');
-		$pmdm->setr('message', construct_phrase($vbphrase['pm_request_to_take_ownership_of_social_group_message'], 
-			fetch_seo_url('group|bburl|js|nosession', $group), 
-			fetch_seo_url('group|bburl|js|nosession', $group, array('do' => 'accepttransfer')), 
+		$pmdm->setr('message', construct_phrase($vbphrase['pm_request_to_take_ownership_of_social_group_message'],
+			fetch_seo_url('group|bburl|js|nosession', $group),
+			fetch_seo_url('group|bburl|js|nosession', $group, array('do' => 'accepttransfer')),
 			fetch_word_wrapped_string(fetch_censored_text($group['name']))));
 		$pmdm->set('dateline', TIMENOW);
 		$pmdm->set('allowsmilie', 0);
@@ -1173,6 +1172,18 @@ if ($_POST['do'] == 'doaccepttransfer')
 			WHERE groupid = $group[groupid]
 		");
 
+		$vbulletin->db->query_write("
+			UPDATE " . TABLE_PREFIX . "activitystream
+			SET userid = {$vbulletin->userinfo['userid']}
+			WHERE
+				section = 'socialgroup'
+					AND
+				type = 'group'
+					AND
+				contentid = {$group['groupid']}
+		");
+
+
 		$socialgroupmemberdm = datamanager_init('SocialGroupMember', $vbulletin);
 
 		if (!empty($group['membertype']))
@@ -1197,8 +1208,8 @@ if ($_POST['do'] == 'doaccepttransfer')
 		$pmdm->set('fromusername', $vbulletin->userinfo['username']);
 		$pmdm->setr('title', construct_phrase($vbphrase['pm_request_to_take_ownership_of_social_group_accepted_title'], fetch_word_wrapped_string(fetch_censored_text($group['name']))));
 		$pmdm->set_recipients($group['creatorusername'], $vbulletin->userinfo['permissions'], 'cc');
-		$pmdm->setr('message', construct_phrase($vbphrase['pm_request_to_take_ownership_of_social_group_accepted_message'], 
-			$vbulletin->userinfo['username'], fetch_seo_url('group|bburl|nosession|js', $group), 
+		$pmdm->setr('message', construct_phrase($vbphrase['pm_request_to_take_ownership_of_social_group_accepted_message'],
+			$vbulletin->userinfo['username'], fetch_seo_url('group|bburl|nosession|js', $group),
 			fetch_word_wrapped_string(fetch_censored_text($group['name']))));
 		$pmdm->set('dateline', TIMENOW);
 		$pmdm->set('allowsmilie', 0);
@@ -1221,7 +1232,7 @@ if ($_POST['do'] == 'doaccepttransfer')
 			WHERE groupid = $group[groupid]
 		");
 
-		eval(print_standard_redirect('group_ownership_request_rejected'));
+		print_standard_redirect('group_ownership_request_rejected');
 	}
 }
 
@@ -1252,7 +1263,7 @@ if ($_REQUEST['do'] == 'owngroup')
 	if (!$vbulletin->GPC['ajax'])
 	{
 		$vbulletin->url = fetch_seo_url('grouphome', '');
-		eval(print_standard_redirect());
+		print_standard_redirect();
 	}
 
 	require_once(DIR . '/includes/class_xml.php');
@@ -1357,11 +1368,11 @@ if ($_REQUEST['do'] == 'delete')
 
 	$question_phrase = construct_phrase($vbphrase['confirm_delete_group_x'], $group['name']);
 	$title_phrase = $vbphrase['delete_group_question'];
-	
+
 	$confirmdo = 'dodelete';
 	$confirmaction = vB_Friendly_Url::fetchLibrary($vbulletin, 'group|nosession', $group, array('do' => 'dodelete'));
 	$confirmaction = $confirmaction->get_url(FRIENDLY_URL_OFF);
-	
+
 	$navbits = array(
 		fetch_seo_url('grouphome', array()) => $vbphrase['social_groups'],
 		fetch_seo_url('groupcategory', $group) => $group['categoryname'],
@@ -1427,7 +1438,7 @@ if ($_POST['do'] == 'doleave' OR $_POST['do'] == 'dodelete' OR $_POST['do'] == '
 	// You either clicked no or you're a guest
 	if ($vbulletin->GPC['deny'])
 	{
-		eval(print_standard_redirect('action_cancelled'));
+		print_standard_redirect('action_cancelled');
 	}
 
 	if ($vbulletin->userinfo['userid'] == 0)
@@ -1470,7 +1481,7 @@ if ($_POST['do'] == 'doleave')
 		}
 	}
 
-	eval(print_standard_redirect('successfully_left_group'));
+	print_standard_redirect('successfully_left_group');
 }
 
 // #######################################################################
@@ -1495,7 +1506,7 @@ if ($_POST['do'] == 'dodelete')
 	}
 
 	$vbulletin->url = fetch_seo_url('grouphome', array());
-	eval(print_standard_redirect('successfully_deleted_group'));
+	print_standard_redirect('successfully_deleted_group');
 }
 
 // #######################################################################
@@ -1531,7 +1542,7 @@ if ($_POST['do'] == 'dojoin')
 	$socialgroupmemberdm->save();
 	unset($socialgroupmemberdm);
 
-	eval(print_standard_redirect('successfully_joined_group'));
+	print_standard_redirect('successfully_joined_group');
 }
 
 // ############# Do we need group owner info? ############################
@@ -1673,8 +1684,8 @@ if ($_POST['do'] == 'docreate')
 	}
 	else
 	{
-		$vbulletin->url = fetch_seo_url('group', $group); 
-		eval(print_standard_redirect('successfully_created_group'));
+		$vbulletin->url = fetch_seo_url('group', $group);
+		print_standard_redirect('successfully_created_group');
 	}
 }
 
@@ -1806,8 +1817,9 @@ if ($_REQUEST['do'] == 'create' OR $_REQUEST['do'] == 'edit')
 	}
 
  	$navbits[''] = $phrase;
-
 	$url = $vbulletin->url;
+
+	($hook = vBulletinHook::fetch_hook('group_create_edit')) ? eval($hook) : false;
 
 	$page_templater = vB_Template::create('socialgroups_form');
 	$page_templater->register('action', $action);
@@ -1927,7 +1939,7 @@ if ($_POST['do'] == 'doedit')
 		);
 	}
 
-	eval(print_standard_redirect('successfully_edited_group'));
+	print_standard_redirect('successfully_edited_group');
 }
 
 // #######################################################################
@@ -2029,7 +2041,7 @@ if ($_REQUEST['do'] == 'subscribe')
 			);
 
 			$vbulletin->url = fetch_seo_url('groupdiscussion', $discussion);
-			eval(print_standard_redirect('redirect_subsadd_discussion', true, true));
+			print_standard_redirect('redirect_subsadd_discussion', true, true);
 		}
 		else
 		{
@@ -2051,8 +2063,8 @@ if ($_REQUEST['do'] == 'subscribe')
 				VALUES (" . $vbulletin->userinfo['userid'] . ", " . $group['groupid'] . ", '" . $db->escape_string($emailupdate) . "')
 			");
 
-			$vbulletin->url = fetch_seo_url('group', $group); 
-			eval(print_standard_redirect('redirect_subsadd_group', true, true));
+			$vbulletin->url = fetch_seo_url('group', $group);
+			print_standard_redirect('redirect_subsadd_group', true, true);
 		}
 	}
 }
@@ -2085,7 +2097,7 @@ if ($_REQUEST['do'] == 'unsubscribe')
 			");
 
 			$vbulletin->url = fetch_seo_url('groupdiscussion', $discussion);
-			eval(print_standard_redirect('redirect_subsremove_discussion', true, true));
+			print_standard_redirect('redirect_subsremove_discussion', true, true);
 		}
 	}
 
@@ -2105,7 +2117,7 @@ if ($_REQUEST['do'] == 'unsubscribe')
 		);
 
 		$vbulletin->url = fetch_seo_url('groupdiscussion', $discussion);
-		eval(print_standard_redirect('redirect_subsremove_discussion', true, true));
+		print_standard_redirect('redirect_subsremove_discussion', true, true);
 	}
 	else
 	{
@@ -2116,8 +2128,8 @@ if ($_REQUEST['do'] == 'unsubscribe')
 			AND $table.groupid = " . $group['groupid']
 		);
 
-		$vbulletin->url = fetch_seo_url('group', $group); 
-		eval(print_standard_redirect('redirect_subsremove_group', true, true));
+		$vbulletin->url = fetch_seo_url('group', $group);
+		print_standard_redirect('redirect_subsremove_group', true, true);
 	}
 }
 
@@ -2354,7 +2366,7 @@ if ($_REQUEST['do'] == 'view')
 		$sorts = array('title', 'author', 'replies', 'dateline', 'lastpost');
 		foreach ($sorts as $sort)
 		{
-			//the orginal code did not respect all of the pagenavbits particularly the 
+			//the orginal code did not respect all of the pagenavbits particularly the
 			//perpage (pp) and showignored parameters.  We add them because it makes sense
 			//and is more consistant with practice elsewhere.
 			$pagenavbits['sort'] = $sort;
@@ -2366,7 +2378,7 @@ if ($_REQUEST['do'] == 'view')
 			$orderlinks[$sort] = fetch_seo_url('group', $group, $pagenavbits);
 		}
 		unset ($sorts);
-		
+
 		$templater = vB_Template::create('forumdisplay_sortarrow');
 			$templater->register('oppositesort', $oppositesort);
 		$sortarrow["$sortfield"] = $templater->render();
@@ -2535,8 +2547,8 @@ if ($_REQUEST['do'] == 'discuss')
 	{
 		$pagenavbits['showignored'] = '1';
 	}
-	
-	$pagenav = construct_page_nav($pagenumber, $perpage, $messagetotal, '', '', '', 
+
+	$pagenav = construct_page_nav($pagenumber, $perpage, $messagetotal, '', '', '',
 		'groupdiscussion', $discussion, $pagenavbits);
 
 	// Display inline moderation
@@ -2568,12 +2580,13 @@ if ($_REQUEST['do'] == 'discuss')
 			!(($group['options'] & $vbulletin->bf_misc_socialgroupoptions['join_to_view']) OR !$vbulletin->options['sg_allow_join_to_view'])
 		)
 		{
+			$raw_title = html_entity_decode($discussion['title'], ENT_QUOTES);
 			foreach ($vbulletin->bookmarksitecache AS $bookmarksite)
 			{
 				$bookmarksite['link'] = str_replace(
 					array('{URL}', '{TITLE}'),
-					array(urlencode(fetch_seo_url('groupdiscussion|bburl|js|nosession', $discussion)), 
-						urlencode(($bookmarksite['utf8encode'])?utf8_encode($discussion['title']):$discussion['title'])),
+					array(urlencode(fetch_seo_url('groupdiscussion|bburl|js|nosession', $discussion)),
+					urlencode($bookmarksite['utf8encode'] ? utf8_encode($raw_title) : $raw_title)),
 					$bookmarksite['url']
 				);
 
@@ -2623,7 +2636,7 @@ if ($_REQUEST['do'] == 'viewmembers')
 
 	$perpage = $vbulletin->GPC['perpage'];
 	$pagenumber = $vbulletin->GPC['pagenumber'];
-	$totalmembers = $group['members'];
+	$totalmembers = $group['members_number'];
 
 	sanitize_pageresults($totalmembers, $pagenumber, $perpage);
 
@@ -2682,7 +2695,7 @@ if ($_REQUEST['do'] == 'viewmembers')
 		$pagevars['pp'] = $perpage;
 	}
 
-	$pagenav = construct_page_nav($pagenumber, $perpage, $totalmembers, '', '', '', 
+	$pagenav = construct_page_nav($pagenumber, $perpage, $totalmembers, '', '', '',
 		'group', $group, $pagevars);
 
 	$page_templater = vB_Template::create('socialgroups_memberlist');
@@ -2924,7 +2937,7 @@ if ($_REQUEST['do'] == 'message')
 		else
 		{
 			$gmid = $dataman->save();
-			
+
 			if ($discussion)
 			{
 				if ($messageinfo)
@@ -3053,7 +3066,7 @@ if ($_REQUEST['do'] == 'message')
 
 					($hook = vBulletinHook::fetch_hook('group_message_post_complete')) ? eval($hook) : false;
 					$vbulletin->url = fetch_seo_url('groupmessage', array('gmid' => $gmid)) . "#gmessage$gmid";
-					eval(print_standard_redirect('visitormessagethanks', true, $forceredirect));
+					print_standard_redirect('visitormessagethanks', true, $forceredirect);
 				}
 				else
 				{
@@ -3072,7 +3085,7 @@ if ($_REQUEST['do'] == 'message')
 						exec_send_sg_notification($discussion['discussionid'], $gmid, $postusername=false);
 					}
 
-					eval(print_standard_redirect('visitormessagethanks', true, $forceredirect));
+					print_standard_redirect('visitormessagethanks', true, $forceredirect);
 				}
 			}
 		}
@@ -3113,7 +3126,7 @@ if ($_REQUEST['do'] == 'message')
 		{
 			$message['message'] = '';
 		}
-		
+
 		$navbits[fetch_seo_url('grouphome', array())] = $vbphrase['social_groups'];
 		$navbits[fetch_seo_url('groupcategory', $group)] = $group['categoryname'];
 		$navbits[fetch_seo_url('group', $group)] = $group['name'];
@@ -3269,7 +3282,7 @@ if ($_POST['do'] == 'deletemessage')
 	if ($vbulletin->GPC['deletemessage'] == '')
 	{
 		$vbulletin->url = fetch_seo_url('groupdiscussion', $discussion);
-		eval(print_standard_redirect('redirect_groupmessage_nodelete'));
+		print_standard_redirect('redirect_groupmessage_nodelete');
 	}
 
 	$is_discussion = ($discussion['firstpostid'] == $messageinfo['gmid']);
@@ -3379,11 +3392,11 @@ if ($_POST['do'] == 'deletemessage')
 
 		if ($is_discussion)
 		{
-			eval(print_standard_redirect('redirect_groupdiscussionrestored'));
+			print_standard_redirect('redirect_groupdiscussionrestored');
 		}
 		else
 		{
-			eval(print_standard_redirect('redirect_groupmessagerestored'));
+			print_standard_redirect('redirect_groupmessagerestored');
 		}
 	}
 	else
@@ -3430,7 +3443,7 @@ if ($_POST['do'] == 'deletemessage')
 			if ($is_discussion)
 			{
 				// discussion will be gone, take back to group
-				$vbulletin->url = fetch_seo_url('group', $group); 
+				$vbulletin->url = fetch_seo_url('group', $group);
 			}
 			else
 			{
@@ -3441,11 +3454,11 @@ if ($_POST['do'] == 'deletemessage')
 
 		if ($is_discussion AND ($hard_delete OR !fetch_socialgroup_modperm('canviewdeleted', $group)))
 		{
-			eval(print_standard_redirect('redirect_groupdiscussiondelete'));
+			print_standard_redirect('redirect_groupdiscussiondelete');
 		}
 		else
 		{
-			eval(print_standard_redirect('redirect_groupmessagedelete'));
+			print_standard_redirect('redirect_groupmessagedelete');
 		}
 	}
 }
@@ -3549,7 +3562,7 @@ if ($_REQUEST['do'] == 'report' OR $_POST['do'] == 'sendemail')
 		$reportobj->do_report($vbulletin->GPC['reason'], $messageinfo);
 
 		$url = $vbulletin->url;
-		eval(print_standard_redirect('redirect_reportthanks'));
+		print_standard_redirect('redirect_reportthanks');
 	}
 }
 
@@ -3652,7 +3665,7 @@ if ($_REQUEST['do'] == 'reportpicture' OR $_POST['do'] == 'sendpictureemail')
 		$reportobj->do_report($vbulletin->GPC['reason'], $pictureinfo);
 
 		$url = $vbulletin->url;
-		eval(print_standard_redirect('redirect_reportthanks'));
+		print_standard_redirect('redirect_reportthanks');
 	}
 }
 
@@ -3750,7 +3763,7 @@ if ($_POST['do'] == 'updatepictures')
 			// if we can't delete, then we're not going to do the update either
 			if ($can_delete)
 			{
-				$attachdata->delete();
+				$attachdata->delete(true, true, 'socialgroup', 'photo');
 				$deleted_picture = true;
 			}
 		}
@@ -3767,6 +3780,16 @@ if ($_POST['do'] == 'updatepictures')
 			{
 				$attachdata->set('contentid', $group['groupid']);
 				$attachdata->set('posthash', '');
+			}
+
+			if (!$picture['contentid'])
+			{
+				$activity = new vB_ActivityStream_Manage('socialgroup', 'photo');
+				$activity->set('contentid', $picture['attachmentid']);
+				$activity->set('userid', $picture['userid']);
+				$activity->set('dateline', $picture['dateline']);
+				$activity->set('action', 'create');
+				$activity->save();
 			}
 
 			$attachdata->set('caption', $vbulletin->GPC['pictures']["$picture[attachmentid]"]['caption']);
@@ -3798,14 +3821,14 @@ if ($_POST['do'] == 'updatepictures')
 	if ($vbulletin->GPC['frompicture'] AND sizeof($attachmentids) == 1 AND !$deleted_picture)
 	{
 		$attachmentid = reset($attachmentids);
-		$vbulletin->url = fetch_seo_url('group', $group, array('attachmentid' => $attachmentid)); 
+		$vbulletin->url = fetch_seo_url('group', $group, array('attachmentid' => $attachmentid));
 	}
 	else
 	{
-		$vbulletin->url = fetch_seo_url('group', $group); 
+		$vbulletin->url = fetch_seo_url('group', $group);
 	}
 
-	eval(print_standard_redirect('pictures_updated'));
+	print_standard_redirect('pictures_updated');
 }
 
 // #######################################################################
@@ -3905,8 +3928,8 @@ if ($_REQUEST['do'] == 'editpictures')
 
 
  /*
-	 //pagenav is currently disabled (and this entirely action isn't currently linked to in the app). There is not indication as to 
-	 //why, but it it probably breaks something.  If its ever enabled we'll need to update this to use the seo urls so that it 
+	 //pagenav is currently disabled (and this entirely action isn't currently linked to in the app). There is not indication as to
+	 //why, but it it probably breaks something.  If its ever enabled we'll need to update this to use the seo urls so that it
 	 //works with the forum subdirect option.  This is fairly mechanical (other calls to construct_page_nav provide an example), but I'm
 	 //not clear how the address2 parameter affects the changes I made to the construct_page_nav to handle the jump link for the seo
 	 //url approach.  This is too much work to fix functionality that already doesn't work.
@@ -3975,17 +3998,17 @@ if ($_POST['do'] == 'doremovepicture')
 	// You either clicked no or you're a guest
 	if (!empty($vbulletin->GPC['deny']))
 	{
-		//there doesn't seem to be a way to get here.  The "no" button isn't a submit button and 
-		//the JS it activates points elsewhere.  Without JS it doesn't do anything.  Not sure 
-		//about guests. 
+		//there doesn't seem to be a way to get here.  The "no" button isn't a submit button and
+		//the JS it activates points elsewhere.  Without JS it doesn't do anything.  Not sure
+		//about guests.
 		$vbulletin->url = fetch_seo_url('group', $group, array('do' => 'grouppictures'));
-		eval(print_standard_redirect('action_cancelled'));
+		print_standard_redirect('action_cancelled');
 	}
 
 	$attachdata =& datamanager_init('Attachment', $vbulletin, ERRTYPE_ARRAY, 'attachment');
 	$attachdata->set_existing($pictureinfo);
 	$attachdata->set_info('group', $group);
-	$attachdata->delete();
+	$attachdata->delete(true, true, 'socialgroup', 'photo');
 
 	$groupdm = datamanager_init('SocialGroup', $vbulletin);
 	$groupdm->set_existing($group);
@@ -4008,12 +4031,12 @@ if ($_POST['do'] == 'doremovepicture')
 	}
 	else
 	{
-		$vbulletin->url = fetch_seo_url('group', $group); 
+		$vbulletin->url = fetch_seo_url('group', $group);
 	}
 
 	unset($groupdm);
 
-	eval(print_standard_redirect('picture_removed_from_group'));
+	print_standard_redirect('picture_removed_from_group');
 }
 
 // #######################################################################
@@ -4026,7 +4049,7 @@ if ($_REQUEST['do'] == 'removepicture')
 	$confirmdo = 'doremovepicture';
 	$confirmaction = vB_Friendly_Url::fetchLibrary($vbulletin, 'group|nosession', $group, array('do' => $confirmdo));
 	$confirmaction = $confirmaction->get_url(FRIENDLY_URL_OFF);
-	
+
 	$title_phrase = $vbphrase['remove_picture_from_group'];
 	$question_phrase = construct_phrase($vbphrase['confirm_remove_picture_group_x'], $group['name']);
 
@@ -4133,10 +4156,10 @@ if ($_REQUEST['do'] == 'grouppictures')
 	}
 	$db->free_result($pictures_sql);
 
-	$pagenav = construct_page_nav($pagenumber, $perpage, $group['rawpicturecount'], '', '', '', 
+	$pagenav = construct_page_nav($pagenumber, $perpage, $group['rawpicturecount'], '', '', '',
 		'group', $group,  array('do' => 'grouppictures'));
 
-	$show['add_pictures_link'] = ($group['membertype'] == 'member' AND 
+	$show['add_pictures_link'] = ($group['membertype'] == 'member' AND
 		$vbulletin->userinfo['permissions']['socialgrouppermissions'] & $vbulletin->bf_ugp_socialgrouppermissions['canupload']);
 
 	$navbits = array(
@@ -4375,7 +4398,7 @@ if ($_POST['do'] == 'sendinvite')
 				}
 
 				$vbulletin->url = fetch_seo_url('group', $group, array('do' => 'manage'));
-				eval(print_standard_redirect('successfully_invited_user'));
+				print_standard_redirect('successfully_invited_user');
 			}
 		}
 		else
@@ -4406,7 +4429,7 @@ if ($_POST['do'] == 'sendinvite')
 				}
 
 				$vbulletin->url = fetch_seo_url('group', $group, array('do' => 'manage'));
-				eval(print_standard_redirect('successfully_invited_user'));
+				print_standard_redirect('successfully_invited_user');
 			}
 		}
 	}
@@ -4553,7 +4576,7 @@ if ($_POST['do'] == 'cancelinvites' OR $_POST['do'] == 'kickmembers')
 
 	if (($group['members'] - sizeof($ids) <= 1) AND $_REQUEST['do'] == 'kickmembers')
 	{
-		$vbulletin->url = fetch_seo_url('group', $group); 
+		$vbulletin->url = fetch_seo_url('group', $group);
 	}
 	else
 	{
@@ -4562,18 +4585,18 @@ if ($_POST['do'] == 'cancelinvites' OR $_POST['do'] == 'kickmembers')
 		{
 			$pagevars = array('do' => 'managemembers');
 		}
-		else 
+		else
 		{
 			$pagevars = array('do' => 'manage');
 		}
-		
+
 		$vbulletin->url = fetch_seo_url('group', $group, $pagevars);
 	}
 
 	($hook = vBulletinHook::fetch_hook('group_kickmember_complete')) ? eval($hook) : false;
 
 	$phrase = $_POST['do'] == 'cancelinvites' ? 'successfully_removed_invites' : 'successfully_kicked_members';
-	eval(print_standard_redirect($phrase));
+	print_standard_redirect($phrase);
 }
 
 // #######################################################################
@@ -4622,7 +4645,7 @@ if ($_POST['do'] == 'pendingmembers')
 
 	($hook = vBulletinHook::fetch_hook('group_pending_members_complete')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('successfully_managed_members'));
+	print_standard_redirect('successfully_managed_members');
 }
 
 // #######################################################################
@@ -4726,11 +4749,11 @@ if ($_POST['do'] == 'updateicon')
 
 	if ($vbulletin->GPC['icononly'])
 	{
-		$vbulletin->url = fetch_seo_url('group', $group); 
-		eval(print_standard_redirect('successfully_created_group'));
+		$vbulletin->url = fetch_seo_url('group', $group);
+		print_standard_redirect('successfully_created_group');
 	}
 
-	eval(print_standard_redirect('redirect_updatethanks'));
+	print_standard_redirect(array('redirect_updatethanks',$vbulletin->userinfo['username']));
 }
 
 // #######################################################################
@@ -4752,7 +4775,6 @@ if (!empty($page_templater))
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45363 $
+|| # CVS: $RCSfile$ - $Revision: 62622 $
 || ####################################################################
 \*======================================================================*/

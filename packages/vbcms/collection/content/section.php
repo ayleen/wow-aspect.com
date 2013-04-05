@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ?2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ?2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -244,6 +244,21 @@ class vBCms_Collection_Content_Section extends vBCms_Collection_Content
 				$this->quantity = $this->max_records;
 			}
 
+			$publishfilter = '';
+				
+			if ($this->filter_published)
+			{
+				$sql1 = "node.setpublish = '1' AND node.publishdate <= " . intval(TIMENOW) . " ";
+				if (!$this->filter_userid OR $this->filter_userid == vB::$vbulletin->userinfo['userid'])
+				{
+					$publishfilter .= " AND (($sql1) OR node.userid = " . vB::$vbulletin->userinfo['userid'] . ") ";
+				}
+				else
+				{
+					$publishfilter .= " AND $sql1 ";
+				}
+			}
+
 			$sql = "SELECT " . ($this->count_records ? 'SQL_CALC_FOUND_ROWS': '') .
 					" node.nodeid AS itemid,
 					(node.nodeleft = 1) AS isroot, node.nodeid, node.contenttypeid, node.contentid, node.url, node.parentnode, node.styleid, node.userid,
@@ -279,7 +294,7 @@ class vBCms_Collection_Content_Section extends vBCms_Collection_Content
 				($this->filter_ignorepermissions ? '' : " AND " . $permissionstring) .
 				($this->filter_userid ? "AND node.userid = " . intval($this->filter_userid) . " " : '') .
 				($this->visible_only ? "AND node.hidden = 0 " : '') .
-				($this->filter_published ? "AND node.setpublish = '1' AND node.publishdate <= " . intval(TIMENOW) . " " : '') .
+				$publishfilter .
 				($this->filter_unpublished ? "AND node.setpublish = '0' OR node.publishdate > " . intval(TIMENOW) . " " : '') . " " .
 				$this->getFilterNotContentTypeSql() .
 				 (intval($this->filter_node_exact) ? "AND (node.parentnode = " . $this->filter_node_exact . " OR sectionorder.displayorder > 0 )": '')
@@ -369,7 +384,6 @@ class vBCms_Collection_Content_Section extends vBCms_Collection_Content
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 30602 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
-<?php
+<?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright Â©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -34,6 +34,7 @@ class vB_Ckeditor extends CKEditor
 	protected $contentid;
 	protected $parentcontentid;
 	protected $userid;
+	protected $smiliecategorycount;
 
 	public static function getInstance($editorid, $editor_type = null, $contenttypeid = '', $contentid = 0, $parentcontentid = 0, $userid = 0, $toolbartype = 2)
 	{
@@ -115,7 +116,9 @@ class vB_Ckeditor extends CKEditor
 	protected function setGlobalConfig()
 	{
 		$this->config['customConfig'] = vB::$vbulletin->options['bburl'] . '/clientscript/ckeditor_config.js?v=' . vB::$vbulletin->options['simpleversion'];
-		$this->config['contentsCss'] = vB::$vbulletin->options['bburl'] . '/' . vB_Template::fetch_css_path() . 'editor_contents.css';
+		$css_path = (empty(vB::$vbulletin->options['cssurl']) ? vB::$vbulletin->options['bburl'] . '/' : '') . vB_Template::fetch_css_path();
+		$this->config['contentsCss'] = $css_path . 'editor_contents.css';
+		$this->config['yuiUploadCss'] = str_replace('&amp;', '&', $css_path . 'yuiupload.css');
 		$this->config['vbulletin'] = array(
 			'securitytoken' => vB::$vbulletin->userinfo['securitytoken'],
 			'bburl'         => vB::$vbulletin->options['bburl'],
@@ -163,6 +166,7 @@ class vB_Ckeditor extends CKEditor
 			$this->config['contentsLangDirection'] = 'rtl';
 		}
 
+		$this->config['smiley_categories'] = array();
 		$this->config['smiley_images'] = array();
 		$this->config['smiley_descriptions'] = array();
 		$this->config['indentOffset'] = EDITOR_INDENT;
@@ -251,7 +255,11 @@ class vB_Ckeditor extends CKEditor
 		$justify = (vB::$vbulletin->stylevars['textdirection']['string'] == 'ltr' ? array('JustifyLeft', 'JustifyCenter', 'JustifyRight') : array('JustifyRight', 'JustifyCenter', 'JustifyLeft'));
 		if ($this->editor_type == 'qr')
 		{
-			$toolbar[] = array('RemoveFormat', '-', 'PasteText', '-', 'Bold', 'Italic', 'Underline', '-', 'Font', 'FontSize', '-', 'TextColor', '-', 'Smiley', '-', 'Link', 'Email', 'Unlink', 'Image', 'Video', '-', 'Quote');
+			$toolbar[] = array('RemoveFormat');
+			$toolbar[] = array('PasteText', '-', 'Bold', 'Italic', 'Underline');
+			$toolbar[] = array('Font', 'FontSize', 'TextColor');
+			$toolbar[] = array('Smiley');
+			$toolbar[] = array('Link', 'Email', 'Unlink', 'Image', 'Video', '-', 'Quote');
 			if ($iespell)
 			{
 				$toolbar[] = array('iespell');
@@ -260,7 +268,11 @@ class vB_Ckeditor extends CKEditor
 		}
 		else if ($this->editor_type == 'qr_small')
 		{
-			$toolbar[] = array('RemoveFormat', '-', 'PasteText', '-', 'Bold', 'Italic', 'Underline', '-', 'Font', 'FontSize', '-', 'TextColor', '-', 'Smiley', '-', 'Link', 'Email', 'Unlink', 'Image', 'Video');
+			$toolbar[] = array('RemoveFormat');
+			$toolbar[] = array('PasteText', '-', 'Bold', 'Italic', 'Underline');
+			$toolbar[] = array('Font', 'FontSize', 'TextColor');
+			$toolbar[] = array('Smiley');
+			$toolbar[] = array('Link', 'Email', 'Unlink', 'Image', 'Video');
 			if ($iespell)
 			{
 				$toolbar[] = array('iespell');
@@ -269,7 +281,11 @@ class vB_Ckeditor extends CKEditor
 		}
 		else if ($this->editor_type == 'qe')
 		{
-			$toolbar[] = array('RemoveFormat', '-', 'PasteText', '-', 'Bold', 'Italic', 'Underline', '-', 'Font', 'FontSize', '-', 'TextColor', '-', 'Smiley', '-', 'Link', 'Email', 'Unlink', 'Image', 'Video', '-', 'Quote');
+			$toolbar[] = array('RemoveFormat');
+			$toolbar[] = array('PasteText', '-', 'Bold', 'Italic', 'Underline');
+			$toolbar[] = array('Font', 'FontSize', 'TextColor');
+			$toolbar[] = array('Smiley');
+			$toolbar[] = array('Link', 'Email', 'Unlink', 'Image', 'Video', '-', 'Quote');
 			if ($iespell)
 			{
 				$toolbar[] = array('iespell');
@@ -278,7 +294,11 @@ class vB_Ckeditor extends CKEditor
 		}
 		else if ($this->editor_type == 'cms_article')
 		{
-			$toolbar[] = array('RemoveFormat', '-', 'PasteText', 'PasteFromWord', '-', 'Font', 'FontSize', '-', 'TextColor', '-', 'Smiley', '-', 'Attach', '-', 'Undo', 'Redo');
+			$toolbar[] = array('RemoveFormat');
+			$toolbar[] = array('PasteText', 'PasteFromWord');
+			$toolbar[] = array('Font', 'FontSize', 'TextColor');
+			$toolbar[] = array('Smiley');
+			$toolbar[] = array('Attach', '-', 'Undo', 'Redo');
 			if ($iespell)
 			{
 				$toolbar[] = array('iespell');
@@ -298,7 +318,11 @@ class vB_Ckeditor extends CKEditor
 		}
 		else
 		{
-			$toolbar[] = array('RemoveFormat', '-', 'PasteText', 'PasteFromWord', '-', 'Font', 'FontSize', '-', 'TextColor', '-', 'Smiley', '-', 'Attach', '-', 'Undo', 'Redo');
+			$toolbar[] = array('RemoveFormat');
+			$toolbar[] = array('PasteText', 'PasteFromWord');
+			$toolbar[] = array('Font', 'FontSize', 'TextColor');
+			$toolbar[] = array('Smiley');
+			$toolbar[] = array('Attach', '-', 'Undo', 'Redo');
 			if ($iespell)
 			{
 				$toolbar[] = array('iespell');
@@ -330,6 +354,8 @@ class vB_Ckeditor extends CKEditor
 			default:
 				$editormode = 'fe';
 		}
+
+		($hook = vBulletinHook::fetch_hook('editor_toolbar_set')) ? eval($hook) : false;
 
 		// unserialize the option if we need to
 		if (!is_array( vB::$vbulletin->options['editormodes_array']))
@@ -395,7 +421,7 @@ class vB_Ckeditor extends CKEditor
 	 */
 	public function setEditorParsetype($parsetype)
 	{
-		$this->config['parsetype'] = $parsetype;
+		$this->config['parsetype'] = "$parsetype";
 	}
 
 	/**
@@ -414,9 +440,21 @@ class vB_Ckeditor extends CKEditor
 	 * @param $smilie (array) The smilie row from the database, must contain smiliepath and smilietext
 	 */
 	public function addSmilie($smilie)
-	{
+	{		
+		static $prevcat = '';
+		
 		$this->config['smiley_images'][] = $smilie['smiliepath'];
 		$this->config['smiley_descriptions'][] = htmlspecialchars_uni($smilie['smilietext']);
+		
+		if ($prevcat != $smilie['category'])
+		{
+			$this->smiliecategorycount++;
+			$prevcat = $this->config['smiley_categories'][] = $smilie['category'];
+		}
+		else
+		{
+			$this->config['smiley_categories'][] = '';
+		}
 	}
 
 	/**
@@ -451,6 +489,12 @@ class vB_Ckeditor extends CKEditor
 	public function editor($id, $value = "", $config = array(), $events = array())
 	{
 		$attr = "";
+
+		if ($this->smiliecategorycount < 2)
+		{
+			$this->config['smiley_categories'] = '';
+		}
+
 		foreach ($this->textareaAttributes as $key => $val)
 		{
 			$attr .= " " . $key . '="' . str_replace('"', '&quot;', $val) . '"';
@@ -458,7 +502,9 @@ class vB_Ckeditor extends CKEditor
 
 		$out = $_POST['ajax'] ? '' : self::getJsIncludes();
 
-		$out .= "<textarea id=\"{$id}_editor\" name=\"message\"" . $attr . " tabindex=\"1\">" . htmlspecialchars($value) . "</textarea>\n";
+		$out .= "
+			<textarea id=\"{$id}_editor_backup\" name=\"message_backup\" class=\"hidden\" rows='' cols=''></textarea>
+			<textarea id=\"{$id}_editor\" name=\"message\"" . $attr . " tabindex=\"1\">" . htmlspecialchars($value) . "</textarea>\n";
 		if (!$this->initialized)
 		{
 			//$out .= $this->init();
@@ -525,6 +571,9 @@ class vB_Ckeditor extends CKEditor
 				if (!$this->show['img_bbcode'])
 				{
 					$this->config['vbulletin']['no_img_bbcode'] = true;
+				}
+				if (!$this->show['video_bbcode'])
+				{
 					$row = array_diff($row, array('Video'));
 				}
 				if ((!$this->config['vbulletin']['attachinfo'] OR !$this->config['vbulletin']['attachinfo']['contenttypeid']) AND !$this->show['img_bbcode'])
@@ -577,6 +626,18 @@ class vB_Ckeditor extends CKEditor
 					$row = array_diff($row, array('PasteText', 'PasteFromWord', 'RemoveFormat', 'EnhancedSource'));
 				}
 
+				$flatrow = implode('|', array_values($row));
+				$pattern = array(
+					'/(\|\-)+/s',	// remove duplicate "-" in middle
+					'/(^(\-\|)+)|((\|\-)+$)/s',	// remove all "-" from beginning and end
+					'/^-$/s'
+				);
+				$replace = array(
+					'|-',
+					''
+				);
+				$flatrow = preg_replace($pattern, $replace, $flatrow);
+				$row = explode('|', $flatrow);
 				$toolbar[$i] = array_values($row);
 			}
 		}

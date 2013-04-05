@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,7 +15,7 @@ error_reporting(E_ALL & ~E_NOTICE);
 @set_time_limit(0);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 45261 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62098 $');
 @ini_set('display_errors', 'On');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
@@ -28,9 +28,6 @@ require_once(DIR . '/includes/adminfunctions_attachment.php');
 require_once(DIR . '/includes/functions_file.php');
 require_once(DIR . '/packages/vbattach/attach.php');
 
-// Bootstrap to the vB Framework
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 vB_Router::setRelativePath('../');
 
 // ######################## CHECK ADMIN PERMISSIONS #######################
@@ -797,7 +794,7 @@ if ($_REQUEST['do'] == 'search')
 	{
 		$cell = array();
 		$cell[] = "<input type=\"checkbox\" name=\"a_delete[]\" value=\"$attachment[attachmentid]\" tabindex=\"1\" />";
-		$cell[] = "<p align=\"" . vB_Template_Runtime::fetchStyleVar('left') . "\"><a href=\"../attachment.php?" . $vbulletin->session->vars['sessionurl'] . "attachmentid=$attachment[attachmentid]&amp;d=$attachment[dateline]\">" . htmlspecialchars_uni($attachment['filename']) . '</a></p>';
+		$cell[] = "<p align=\"" . vB_Template_Runtime::fetchStyleVar('left') . "\"><a href=\"../attachment.php?" . $vbulletin->session->vars['sessionurl'] . "attachmentid=$attachment[attachmentid]&amp;d=$attachment[dateline]\">" . fetch_censored_text(htmlspecialchars_uni($attachment['filename'], false)) . '</a></p>';
 		$cell[] = iif($attachment['userid'], "<a href=\"user.php?" . $vbulletin->session->vars['sessionurl'] . "do=edit&amp;u=$attachment[userid]\">$attachment[username]</a>", $attachment['username']);
 		$cell[] = vbdate($vbulletin->options['dateformat'], $attachment['dateline']) . construct_link_code($vbphrase['view_content'], $attachmultiple->fetch_content_url($attachment, '../'), true);
 		$cell[] = vb_number_format($attachment['filesize'], 1, true);
@@ -853,7 +850,7 @@ if ($_REQUEST['do'] == 'edit')
 	print_form_header('attachment', 'doedit', true);
 	construct_hidden_code('attachmentid', $vbulletin->GPC['attachmentid']);
 	print_table_header($vbphrase['edit_attachment']);
-	print_input_row($vbphrase['filename'], 'a_filename', $attachment['filename']);
+	print_input_row($vbphrase['filename'], 'a_filename', htmlspecialchars_uni($attachment['filename'], false), false);
 	print_input_row($vbphrase['views'], 'a_counter', $attachment['counter']);
 	print_yes_no_row($vbphrase['visible'], 'a_visible', $attachment['state'] == 'visible' ? 1 : 0);
 	print_submit_row($vbphrase['save']);
@@ -971,7 +968,7 @@ if ($_REQUEST['do'] == 'delete')
 	print_form_header('attachment', 'dodelete');
 	construct_hidden_code('attachmentid', $vbulletin->GPC['attachmentid']);
 	print_table_header($vbphrase['confirm_deletion']);
-	print_description_row(construct_phrase($vbphrase['are_you_sure_you_want_to_delete_the_attachment_x'], $attachment['filename'], $vbulletin->GPC['attachmentid']));
+	print_description_row(construct_phrase($vbphrase['are_you_sure_you_want_to_delete_the_attachment_x'], htmlspecialchars_uni($attachment['filename'], false), $vbulletin->GPC['attachmentid']));
 	print_submit_row($vbphrase['yes'], '', 2, $vbphrase['no']);
 }
 
@@ -1082,7 +1079,7 @@ if ($_REQUEST['do'] == 'stats')
 		$position++;
 		$cell = array();
 		$cell[] = $position . '.';
-		$cell[] = "<a href=\"../attachment.php?" . $vbulletin->session->vars['sessionurl'] . "attachmentid=$attachment[attachmentid]&amp;d=$attachment[dateline]\">$attachment[filename]</a>";
+		$cell[] = "<a href=\"../attachment.php?" . $vbulletin->session->vars['sessionurl'] . "attachmentid=$attachment[attachmentid]&amp;d=$attachment[dateline]\">" . htmlspecialchars_uni($attachment['filename'], false) . "</a>";
 		$cell[] = iif($attachment['userid'], "<a href=\"user.php?" . $vbulletin->session->vars['sessionurl'] . "do=edit&amp;u=$attachment[userid]\">$attachment[username]</a>", $attachment['username']);
 		$cell[] = vb_number_format($attachment['counter']);
 		$cell[] = '<span class="smallfont">' .
@@ -1117,7 +1114,7 @@ if ($_REQUEST['do'] == 'stats')
 		$position++;
 		$cell = array();
 		$cell[] = $position . '.';
-		$cell[] = "<a href=\"../attachment.php?" . $vbulletin->session->vars['sessionurl'] . "attachmentid=$attachment[attachmentid]&amp;d=$attachment[dateline]\">$attachment[filename]</a>";
+		$cell[] = "<a href=\"../attachment.php?" . $vbulletin->session->vars['sessionurl'] . "attachmentid=$attachment[attachmentid]&amp;d=$attachment[dateline]\">" . htmlspecialchars_uni($attachment['filename'], false) . "</a>";
 		$cell[] = iif($attachment['userid'], "<a href=\"user.php?" . $vbulletin->session->vars['sessionurl'] . "do=edit&amp;u=$attachment[userid]\">$attachment[username]</a>", $attachment['username']);
 		$cell[] = vb_number_format($attachment['filesize'], 1, true);
 		$cell[] = '<span class="smallfont">' .
@@ -1363,8 +1360,6 @@ if ($_REQUEST['do'] == 'updatetype')
 		$vbphrase['enabled'],
 	), 1, 'tcat');
 
-	require_once(DIR . "/includes/class_bootstrap_framework.php");
-	vB_Bootstrap_Framework::init();
 	$indexed_types = array();
 	$collection = new vB_Collection_ContentType();
 	$collection->filterAttachable(true);
@@ -1524,8 +1519,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45261 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

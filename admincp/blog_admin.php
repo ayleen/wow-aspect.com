@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 43512 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62098 $');
 define('NOZIP', 1);
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
@@ -214,10 +214,6 @@ if ($_REQUEST['do'] == 'updateattachments')
 			$thumbnail =& $attachment['thumbnail'];
 			$filedata =& $attachment['filedata'];
 		}
-
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 
 		$dataman =& datamanager_init('AttachmentFiledata', $vbulletin, ERRTYPE_STANDARD, 'attachment');
 		$dataman->set('contenttypeid', vB_Types::instance()->getContentTypeID('vBBlog_BlogEntry'));
@@ -2142,7 +2138,6 @@ if ($_REQUEST['do'] == 'editcp')
 	{
 		$category = $db->query_first("SELECT text AS title FROM " . TABLE_PREFIX . "phrase WHERE varname = CONCAT(CONCAT('category', '" . $vbulletin->GPC['blogcategoryid'] . "'), '_title') AND fieldname = 'vbblogcat' AND languageid = 0");
 		$usergroup = $db->query_first("SELECT title FROM " . TABLE_PREFIX . "usergroup WHERE usergroupid = " . $vbulletin->GPC['usergroupid']);
-		$permsgetter_ = 'usergroup permissions';
 
 		$getperms = $db->query_first("
 			SELECT usergroup.title as grouptitle, vbblog_general_permissions AS categorypermissions
@@ -2986,8 +2981,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 43512 $
+|| # SVN: $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ?2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ?2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -22,8 +22,8 @@
  * rendered as part of a html page; and to make overlay views easier to work with.
  *
  * @author vBulletin Development Team
- * @version $Revision: 43512 $
- * @since $Date: 2011-05-13 12:53:13 -0700 (Fri, 13 May 2011) $
+ * @version $Revision: 58987 $
+ * @since $Date: 2012-02-13 10:40:49 -0800 (Mon, 13 Feb 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Controller_List extends vBCms_Controller
@@ -356,6 +356,7 @@ class vBCms_Controller_List extends vBCms_Controller
 		// Get content controller
 		$collection = new vBCms_Collection_Content();
 
+		$collection->filterPublished(!$this->content->canPublish());
 		$collection->setContentQueryWhere($this->query_filter . " AND node.contenttypeid <> "
 			. vB_Types::instance()->getContentTypeID("vBCms_Section")	);
 		$collection->setContentQueryJoins($this->joins);
@@ -388,7 +389,7 @@ class vBCms_Controller_List extends vBCms_Controller
 			//make sure we've loaded all the information we need
 			$content->requireInfo(vBCms_Item_Content::INFO_NODE | vBCms_Item_Content::INFO_CONTENT | vBCms_Item_Content::INFO_PARENTS);
 			// get the content controller
-			$controller = vB_Types::instance()->getContentTypeController($content->getContentTypeId(), $content);
+			$controller = vB_Types::instance()->getContentTypeController($content->getContentTypeID(), $content);
 
 			// set preview length
 			$controller->setPreviewLength(400);
@@ -563,17 +564,6 @@ class vBCms_Controller_List extends vBCms_Controller
 		// Create the standard vB templater
 		$templater = new vB_Templater_vB();
 
-		if (empty($this->styleid))
-		{
-			if (isset(vB::$vbulletin->session->vars['styleid']))
-			{
-				$this->styleid = vB::$vbulletin->session->vars['styleid'];
-			}
-			else
-			{
-				$this->styleid = intval(vB::$vbulletin->options['styleid']);
-			}
-		}
 		global $bootstrap;
 		$bootstrap->force_styleid($this->styleid);
 		$bootstrap->load_style();
@@ -605,7 +595,6 @@ class vBCms_Controller_List extends vBCms_Controller
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 43512 $
+|| # SVN: $Revision: 58987 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -280,18 +280,21 @@ class vB_Cache_Db extends vB_Cache
 
 			if ($only_expired)
 			{
-				$conditions[] = "expires BETWEEN 1 AND " . TIMENOW;
+				$orderby = 'expires ASC ';
+				$conditions[] = 'expires BETWEEN 1 AND ' . TIMENOW;
 			}
 
 			if ($created_before)
 			{
-				$conditions[] = "created < " . intval($created_before);
+				$orderby = 'created ASC ';
+				$conditions[] = 'created < ' . intval($created_before);
 			}
 
 			$result = vB::$db->query_read_slave("
 				SELECT cacheid
 				FROM " . TABLE_PREFIX . "cache
-				WHERE " . implode(" AND ", $conditions)
+				WHERE " . implode(" AND ", $conditions) . "
+				ORDER BY $orderby LIMIT 2000"
 			);
 
 			while ($entry = vB::$db->fetch_array($result))
@@ -335,7 +338,6 @@ class vB_Cache_Db extends vB_Cache
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 29401 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -44,6 +44,13 @@ class vB_StyleVarMap_vB3tovB4
 	 */
 	protected $styleid = 0;
 
+	/**
+	 * Master Style ID for the style to be converted
+	 *
+	 * @var int
+	 */
+	protected $masterstyleid = -1;	
+	
 	/**
 	 * Array of all vB3 stylevars and data to be read. Accessed by get_vb3_stylevar()
 	 *
@@ -165,6 +172,14 @@ class vB_StyleVarMap_vB3tovB4
 						'stylevar' => 'body_background',
 						'apply_to' => array('color'),
 					),
+					array(
+						'stylevar' => 'vbblog_body_background',
+						'apply_to' => array('color'),
+					),
+					array(
+						'stylevar' => 'vbcms_body_background',
+						'apply_to' => array('color'),
+					),
 				),
 			),
 			'page_fgcolor' => array(
@@ -272,7 +287,7 @@ class vB_StyleVarMap_vB3tovB4
 						'apply_to' => array('color'),
 					),
 					array(
-						'stylevar' => 'calendarwidget_weekdays_border',
+						'stylevar' => 'vbcms_calendarwidget_weekdays_border',
 						'apply_to' => array('color'),
 					),
 					array(
@@ -316,7 +331,7 @@ class vB_StyleVarMap_vB3tovB4
 						'apply_to' => array('color'),
 					),
 					array(
-						'stylevar' => 'postbit_boxed_border',
+						'stylevar' => 'attachment_box_border',
 						'apply_to' => array('color'),
 					),
 					array(
@@ -392,11 +407,19 @@ class vB_StyleVarMap_vB3tovB4
 						'apply_to' => array('color'),
 					),
 					array(
-						'stylevar' => 'vbcms_wysiwyg_table_borderColor',
+						'stylevar' => 'bbcode_table_border',
 						'apply_to' => array('color'),
 					),
 					array(
-						'stylevar' => 'lightweightbox_border',
+						'stylevar' => 'picture_border',
+						'apply_to' => array('color'),
+					),
+					array(
+						'stylevar' => 'assetmanager_border',
+						'apply_to' => array('color'),
+					),
+					array(
+						'stylevar' => 'assetmanager_attachment_border',
 						'apply_to' => array('color'),
 					),
 				),
@@ -439,6 +462,10 @@ class vB_StyleVarMap_vB3tovB4
 						'stylevar' => 'usercp_forum_icon_legend_background',
 						'apply_to' => array('color'),
 					),
+					array(
+						'stylevar' => 'assetmanager_panel_header_background',
+						'apply_to' => array('color'),
+					),
 				),
 			),
 			'tcat_fgcolor' => array(
@@ -450,6 +477,7 @@ class vB_StyleVarMap_vB3tovB4
 					'threadlisthead_color',
 					'toolsmenu_color',
 					'control_content_hover_color',
+					'assetmanager_panel_header_color',
 				),
 			),
 			'tcat_link_n_fgcolor' => array(
@@ -506,6 +534,10 @@ class vB_StyleVarMap_vB3tovB4
 						'stylevar' => 'control_content_background',
 						'apply_to' => array('color'),
 					),
+					array(
+						'stylevar' => 'toplinks_hilite_background',
+						'apply_to' => array('color'),
+					),
 				),
 			),
 			'thead_fgcolor' => array(
@@ -521,6 +553,7 @@ class vB_StyleVarMap_vB3tovB4
 					'navbar_linkhover_color',
 					'postbithead_color',
 					'control_content_color',
+					'toplinks_color',
 				),
 			),
 			'thead_link_n_fgcolor' => array(
@@ -552,11 +585,18 @@ class vB_StyleVarMap_vB3tovB4
 						'stylevar' => 'footer_border',
 						'apply_to' => array('color'),
 					),
+					array(
+						'stylevar' => 'assetmanager_panel_footer_background',
+						'apply_to' => array('color'),
+					),
 				),
 			),
 			'tfoot_fgcolor' => array(
 				'source_datatype'  => 'color',
-				'target_stylevars' => array('footer_color'),
+				'target_stylevars' => array(
+					'footer_color',
+					'assetmanager_panel_footer_color',
+				),
 			),
 			'tfoot_link_n_fgcolor' => array( // n = normal
 				'source_datatype'  => 'color',
@@ -614,7 +654,15 @@ class vB_StyleVarMap_vB3tovB4
 						'apply_to' => array('color'),
 					),
 					array(
-						'stylevar' => 'lightweightbox_background',
+						'stylevar' => 'picture_background',
+						'apply_to' => array('color'),
+					),
+					array(
+						'stylevar' => 'assetmanager_panel_background',
+						'apply_to' => array('color'),
+					),
+					array(
+						'stylevar' => 'assetmanager_upload_background',
 						'apply_to' => array('color'),
 					),
 				),
@@ -624,6 +672,8 @@ class vB_StyleVarMap_vB3tovB4
 				'target_stylevars' => array(
 					'blockrow_color',
 					'sidebar_content_color',
+					'assetmanager_panel_color',
+					'assetmanager_upload_color',
 				),
 			),
 			'alt1_link_n_fgcolor' => array( // normal
@@ -631,7 +681,7 @@ class vB_StyleVarMap_vB3tovB4
 				'target_stylevars' => array(
 					'block_link_color',
 					'blockrow_link_color',
-					'forum_sidebar_link_color',
+					'sidebar_content_link_color',
 				),
 			),
 			'alt1_link_v_fgcolor' => array(), // visited (not used in vB4)
@@ -640,7 +690,7 @@ class vB_StyleVarMap_vB3tovB4
 				'target_stylevars' => array(
 					'block_linkhover_color',
 					'blockrow_linkhover_color',
-					'forum_sidebar_linkhover_color',
+					'sidebar_content_link_hover_color',
 				),
 			),
 
@@ -693,6 +743,10 @@ class vB_StyleVarMap_vB3tovB4
 						'stylevar' => 'sidebar_background',
 						'apply_to' => array('color'),
 					),
+					array(
+						'stylevar' => 'assetmanager_attachment_background',
+						'apply_to' => array('color'),
+					),
 				),
 			),
 			'alt2_fgcolor' => array(
@@ -701,6 +755,7 @@ class vB_StyleVarMap_vB3tovB4
 					'secondarycontent_color',
 					'postbit_control_color',
 					'sidebar_header_color',
+					'assetmanager_attachment_color',
 				),
 			),
 			'alt2_link_n_fgcolor' => array( // normal
@@ -821,20 +876,58 @@ class vB_StyleVarMap_vB3tovB4
 				'target_stylevars' => array(),
 			),
 			'vbmenu_option_bgcolor' => array(
-				'source_datatype'  => '',
-				'target_stylevars' => array(),
+				'source_datatype'  => 'color',
+				'target_stylevars' => array(
+					array(
+						'stylevar' => 'popupmenu_link_background',
+						'apply_to' => array('color'),
+					),
+					array(
+						'stylevar' => 'navbar_popupmenu_link_background',
+						'apply_to' => array('color'),
+					),
+					array(
+						'stylevar' => 'vbcms_navwidget_menuitem_background',
+						'apply_to' => array('color'),
+					),
+				),
 			),
 			'vbmenu_option_fgcolor' => array(
-				'source_datatype'  => '',
-				'target_stylevars' => array(),
+				'source_datatype'  => 'color',
+				'target_stylevars' => array(
+					'popupmenu_link_color',
+					'navbar_popupmenu_link_color',
+					'vbcms_navwidget_menuitem_color',
+				),
 			),
 			'vbmenu_hilite_bgcolor' => array(
-				'source_datatype'  => '',
-				'target_stylevars' => array(),
+				'source_datatype'  => 'color',
+				'target_stylevars' => array(
+					array(
+						'stylevar' => 'general_hilite_color',
+						'apply_to' => array('color'),
+					),
+					array(
+						'stylevar' => 'popupmenu_link_hover_background',
+						'apply_to' => array('color'),
+					),
+					array(
+						'stylevar' => 'navbar_popupmenu_link_hover_background',
+						'apply_to' => array('color'),
+					),
+					array(
+						'stylevar' => 'vbcms_navwidget_menuitem_hover_background',
+						'apply_to' => array('color'),
+					),
+				),
 			),
 			'vbmenu_hilite_fgcolor' => array(
-				'source_datatype'  => '',
-				'target_stylevars' => array(),
+				'source_datatype'  => 'color',
+				'target_stylevars' => array(
+					'popupmenu_link_hover_color',
+					'navbar_popupmenu_link_hover_color',
+					'vbcms_navwidget_menuitem_hover_color',
+				),
 			),
 			'vbmenu_control_link_n_fgcolor' => array(
 				'source_datatype'  => '',
@@ -1153,13 +1246,14 @@ class vB_StyleVarMap_vB3tovB4
 	/**
 	 * Converts vBulletin 3 style information to vBulletin 4 Stylevars for the given style.
 	 *
-	 * @param	int	The styleid to convert
+	 * @param	array	Style Information
 	 */
-	public function convert($styleid)
+	public function convert($style)
 	{
 		global $vbphrase;
 
-		$this->styleid = intval($styleid);
+		$this->styleid = intval($style['styleid']);
+		$this->masterstyleid = ($style['type'] == 'mobile') ? -2 : -1;
 
 		if ($this->styleid < 1)
 		{
@@ -1581,7 +1675,7 @@ class vB_StyleVarMap_vB3tovB4
 				SELECT title, templatetype, template
 				FROM " . TABLE_PREFIX . "template
 				WHERE
-					styleid = -1
+					styleid = {$this->masterstyleid}
 						AND
 					templatetype IN('stylevar', 'css')
 			");
@@ -1644,7 +1738,7 @@ class vB_StyleVarMap_vB3tovB4
 			FROM " . TABLE_PREFIX . "stylevar
 			WHERE
 				stylevarid IN ('" . implode("', '", $stylevar_ids) . "')
-				AND
+					AND
 				styleid = " . intval($styleid) . "
 		");
 
@@ -1720,7 +1814,10 @@ class vB_StyleVarMap_vB3tovB4
 		$dfns_result = $this->db->query_read("
 			SELECT *
 			FROM " . TABLE_PREFIX . "stylevardfn
-			WHERE stylevarid IN ('" . implode("', '", $stylevar_ids) . "')
+			WHERE
+				stylevarid IN ('" . implode("', '", $stylevar_ids) . "')
+					AND
+				styleid = {$this->masterstyleid}
 		");
 
 		$dfns = array();
@@ -1743,7 +1840,7 @@ class vB_StyleVarMap_vB3tovB4
 		if ($this->vb4_default_stylevar_cache === null)
 		{
 			$target_stylevar_ids = $this->get_target_stylevar_ids();
-			$default = $this->get_stylevars(-1, $target_stylevar_ids);
+			$default = $this->get_stylevars($this->masterstyleid, $target_stylevar_ids);
 
 			// overwrite defaults with any existing stylevars
 			$this->cache_vb4_existing_stylevars();
@@ -1811,7 +1908,7 @@ class vB_StyleVarMap_vB3tovB4
 		}
 
 		$style = $this->db->query_first("
-			SELECT styleid, parentid, parentlist, title
+			SELECT styleid, parentid, parentlist, title, type
 			FROM " . TABLE_PREFIX . "style
 			WHERE styleid = " . intval($this->styleid)
 		);
@@ -1824,7 +1921,7 @@ class vB_StyleVarMap_vB3tovB4
 
 		if (!$style['parentlist'])
 		{
-			$style['parentlist'] = '-1';
+			$style['parentlist'] = ($style['type'] == 'standard') ? '-1' : '-2';
 		}
 
 		$templates = $this->db->query_read("
@@ -1876,9 +1973,9 @@ class vB_StyleVarMap_vB3tovB4
 		$this->db->query_write("
 			INSERT INTO " . TABLE_PREFIX . "style
 			(title, parentid, parentlist, templatelist, csscolors, css, stylevars, newstylevars,
-			 replacements, editorstyles, userselect, displayorder, dateline)
+			 replacements, editorstyles, userselect, displayorder, dateline, type)
 				SELECT CONCAT(title, '" . $this->db->escape_string($vbphrase['copy_parens']) . "'), parentid, parentlist, templatelist, csscolors, css, stylevars, newstylevars,
-				       replacements, editorstyles, 0, displayorder, UNIX_TIMESTAMP()
+				       replacements, editorstyles, 0, displayorder, UNIX_TIMESTAMP(), type
 				FROM " . TABLE_PREFIX . "style
 				WHERE styleid = " . intval($styleid) . "
 		");
@@ -1911,7 +2008,6 @@ class vB_StyleVarMap_vB3tovB4
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision$
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -13,7 +13,7 @@
 /**
  * Social Group Message item class.
  * @author Kevin Sours, vBulletin Development Team
- * @version 4.1.5 Patch Level 1
+ * @version 4.2.0 Patch Level 3
  * @since 1st Dec, 2008
  * @copyright vBulletin Solutions Inc.
  */
@@ -261,7 +261,6 @@ class vBForum_Item_SocialGroupMessage extends vB_Item
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

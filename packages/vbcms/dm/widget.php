@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -36,7 +36,8 @@ class vBCms_DM_Widget extends vB_DM
 		'widgettypeid' => 	array(vB_Input::TYPE_UINT,		self::REQ_YES,	self::VM_CALLBACK,	array('$this', 'validateWidgetTypeID')),
 		'title' => 			array(vB_Input::TYPE_NOHTMLCOND,self::REQ_YES,	self::VM_CALLBACK,	array('vB_Validate', 'stringLength', 1, 256)),
 		'description' => 	array(vB_Input::TYPE_STR,		self::REQ_NO,	self::VM_TYPE),
-		'config' => 		array(vB_Input::TYPE_NOCLEAN,	self::REQ_NO)
+		'config' => 		array(vB_Input::TYPE_NOCLEAN,	self::REQ_NO),
+		'product' => 		array(vB_Input::TYPE_STR,		self::REQ_NO),
 	);
 
 	/**
@@ -46,7 +47,7 @@ class vBCms_DM_Widget extends vB_DM
 	 * @var array (tablename => array(fieldnames))
 	 */
 	protected $table_fields = array(
-		'cms_widget' =>			array('widgetid', 'widgettypeid', 'title', 'description')
+		'cms_widget' =>			array('widgetid', 'widgettypeid', 'title', 'description', 'product')
 	);
 
 	/**
@@ -241,7 +242,6 @@ class vBCms_DM_Widget extends vB_DM
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 28749 $
 || ####################################################################
 \*======================================================================*/

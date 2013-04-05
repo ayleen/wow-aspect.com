@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -28,7 +28,7 @@ require_once (DIR."/includes/functions_socialgroup.php");
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: searchtools.php 42666 2011-04-05 22:17:42Z michael.lavaveshkul $
+ * @version $Id: searchtools.php 60418 2012-03-16 15:52:01Z pmarsden $
  * @access public
  */
 class vB_Search_Searchtools
@@ -127,7 +127,7 @@ class vB_Search_Searchtools
  */
 	private static function makeSearchableSelectOptions($prefs, $currentval = null)
 	{
-		global $vbulletin, $vbphrase;
+		global $vbphrase;
 
 		$types = self::get_type_options();
 
@@ -237,8 +237,7 @@ class vB_Search_Searchtools
 		}
 
 		return "<select name=\"$name" . '[]'."\" class=\"bginput\" size=\"$rows\" multiple=\"multiple\">" .
-			 self::getPrefixOptions($prefixchoice);
-			"</select>";
+			 self::getPrefixOptions($prefixchoice) . "</select>";
 	}
 
 
@@ -729,7 +728,7 @@ class vB_Search_Searchtools
 
 			if (count($names) > 0)
 			{
-				return $table_display . ': ' . implode(', ', $names);
+				return self::generateDisplayString($table_display, $names, $comparator, $is_date);
 			}
 		}
 		else
@@ -738,13 +737,45 @@ class vB_Search_Searchtools
 			if ($row = $vbulletin->db->query_first("SELECT $table.$fieldname from " . TABLE_PREFIX . "$table AS
 				$table WHERE $key = $id"))
 			{
-				return  $table_display . ' ' . self::getCompareString($comparator, $is_date)
-					. ' ' . $row[0];
+				return self::generateDisplayString($table_display, $row[0], $comparator, $is_date);
 			}
 		}
 		return "";
 	}
 
+	/**
+	 * vB_Search_Searchtools::generateDisplayString()
+	 * There are a lot of places where we need to get a display string
+	 *  for the search results tab. It's straightforward but takes a dozen lines or
+	 *  so. Might as well just do it once.
+	 *
+	 * @param string $table_display : the display name
+	 * @param string $name : this can be an array of names or a single value. It should be the title(s) of the entry.
+	 * @param int $comparator : either a vB_Search_Core:: enum value, or 0 or 1
+	 *		(0 means "at most", and one means "at least"), or "before" and "after"
+	 * @param bool $is_date : Whether this is a text field. In English and most
+	 * languages that makes a difference in the display string
+	 * @return string;
+	 */
+	public static function generateDisplayString($table_display, $name, $comparator, $is_date)
+	{
+		if(empty($name))
+		{
+			return $table_display;
+		}
+		
+		if(is_array($name))
+		{
+			if(count($name) > 1)
+			{
+				return $table_display . ': ' . implode(', ', $name);
+			}
+			$name = array_pop($name);
+		}
+		
+		return  $table_display . ' ' . self::getCompareString($comparator, $is_date) . ' ' . $name;
+	}
+	
 	/**
 	 * vB_Search_Searchtools::get_summary()
 	 * Given a string which may be long and may have some combination of
@@ -822,7 +853,6 @@ class vB_Search_Searchtools
 }
 /*======================================================================*\
    || ####################################################################
-   || # 
-   || # SVN: $Revision: 42666 $
+   || # SVN: $Revision: 60418 $
    || ####################################################################
    \*======================================================================*/

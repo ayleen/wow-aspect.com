@@ -1,23 +1,26 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
 || #################################################################### ||
 \*======================================================================*/
 
+/* Tell forum.php to redirect 
+to the default url as defined 
+in the navigation manager */
+define('VB_REDIRECT', true);
+
 /**
- * If you want to move this file to the root of your website, change this
- * line to your vBulletin directory and uncomment it (delete the //).
+ * If you want to move this file to the root of your website, change the 
+ * line below to your vBulletin directory and uncomment it (delete the //).
  *
  * For example, if vBulletin is installed in '/forum' the line should
- * state:
- *
- *	define('VB_RELATIVE_PATH', 'forum');
+ * state: define('VB_RELATIVE_PATH', 'forums');
  *
  * Note: You may need to change the cookie path of your vBulletin
  * installation to enable your users to log in at the root of your website.
@@ -31,41 +34,17 @@
 
 //define('VB_RELATIVE_PATH', 'forums');
 
-
-// Do not edit.
+// Do not edit anything below //
 if (defined('VB_RELATIVE_PATH'))
 {
 	chdir('./' . VB_RELATIVE_PATH);
 }
 
-
-/**
- * You can choose the default script here.  Uncomment the appropriate line
- * to set the default script.  Note: Only uncomment one of these, you must
- * add // to comment out the script(s) that you DO NOT want to use as your
- * default script.
- *
- * You can choose the default script even if you do not plan to move this
- * file to the root of your website.
- */
-
-/**
- * Use the CMS as the default script:
- */
-
-require('content.php');
-
-
-/**
- * Use the forum as the default script:
- */
-
-// require('forum.php');
+require('forum.php');
 
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 31201 $
+|| # CVS: $RCSfile$ - $Revision: 60724 $
 || ####################################################################
 \*======================================================================*/

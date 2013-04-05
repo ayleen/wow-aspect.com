@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -81,6 +81,8 @@ if ($_REQUEST['do'] == 'logout')
 		$vbulletin->url = fetch_seo_url('forumhome', array());
 	}
 	$show['member'] = false;
+	$show['registerbutton'] = (!$show['search_engine'] AND $vbulletin->options['allowregistration']);
+	$show['pmmainlink'] = false;
 
 	eval(standard_error(fetch_error('cookieclear', create_full_url($vbulletin->url),  fetch_seo_url('forumhome', array())), '', false));
 }
@@ -158,8 +160,10 @@ if ($_POST['do'] == 'login')
 
 	exec_unstrike_user($vbulletin->GPC['vb_login_username']);
 
+	$_postvars = @unserialize(verify_client_string($vbulletin->GPC['postvars']));
+
 	// create new session
-	process_new_login($vbulletin->GPC['logintype'], $vbulletin->GPC['cookieuser'], $vbulletin->GPC['cssprefs']);
+	process_new_login(($_postvars['logintype'] ? $_postvars['logintype'] : $vbulletin->GPC['logintype']), $vbulletin->GPC['cookieuser'], $vbulletin->GPC['cssprefs']);
 
 	// do redirect
 	do_login_redirect();
@@ -177,15 +181,8 @@ if ($_REQUEST['do'] == 'lostpw')
 	$vbulletin->input->clean_gpc('r', 'email', TYPE_NOHTML);
 	$email = $vbulletin->GPC['email'];
 
-	if ($permissions['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview'])
-	{
-		$navbits = construct_navbits(array('' => $vbphrase['lost_password_recovery_form']));
-		$navbar = render_navbar_template($navbits);
-	}
-	else
-	{
-		$navbar = '';
-	}
+	$navbits = construct_navbits(array('' => $vbphrase['lost_password_recovery_form']));
+	$navbar = render_navbar_template($navbits);
 
 	// human verification
 	if (fetch_require_hvcheck('lostpw'))
@@ -258,7 +255,7 @@ if ($_POST['do'] == 'emailpassword')
 		}
 
 		$vbulletin->url = str_replace('"', '', $vbulletin->url);
-		eval(print_standard_redirect('redirect_lostpw', true, true));
+		print_standard_redirect('redirect_lostpw', true, true);  
 	}
 	else
 	{
@@ -332,10 +329,10 @@ if ($vbulletin->GPC['a'] == 'pwd' OR $_REQUEST['do'] == 'resetpassword')
 
 }
 
+exec_header_redirect(fetch_seo_url('forumhome|nosession', array()));
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40911 $
+|| # CVS: $RCSfile$ - $Revision: 58940 $
 || ####################################################################
 \*======================================================================*/
 ?>

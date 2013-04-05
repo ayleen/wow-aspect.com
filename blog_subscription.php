@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -55,7 +55,6 @@ $globaltemplates = array(
 	'blog_sidebar_user_block_tagcloud',
 	'blog_sidebar_user_block_visitors',
 	'blog_sidebar_user_block_custom',
-	'memberinfo_visitorbit',
 	'ad_blogsidebar_start',
 	'ad_blogsidebar_middle',
 	'ad_blogsidebar_end',
@@ -155,7 +154,7 @@ if ($_POST['do'] == 'dostuff')
 				);
 			}
 			$vbulletin->url = fetch_seo_url('blogsub', array(), array('do' => $list));
-			eval(print_standard_redirect('redirect_subupdate'));
+			print_standard_redirect('redirect_subupdate');  
 			break;
 
 		// *************************
@@ -176,7 +175,7 @@ if ($_POST['do'] == 'dostuff')
 			}
 
 			$vbulletin->url = fetch_seo_url('blogsub', array(), array('do' => $list));
-			eval(print_standard_redirect('redirect_subupdate'));
+			print_standard_redirect('redirect_subupdate');  
 			break;
 
 		// *****************************
@@ -236,7 +235,7 @@ if ($_POST['do'] == 'dosubscribe')
 		{
 			$vbulletin->url = fetch_seo_url('entry', $bloginfo);
 		}
-		eval(print_standard_redirect('redirect_subsadd_entry', true, true));
+		print_standard_redirect('redirect_subsadd_entry', true, true);  
 	}
 	else
 	{
@@ -249,7 +248,7 @@ if ($_POST['do'] == 'dosubscribe')
 		{
 			$vbulletin->url = fetch_seo_url('blog', $userinfo);
 		}
-		eval(print_standard_redirect('redirect_subsadd_blog', true, true));
+		print_standard_redirect('redirect_subsadd_blog', true, true);  
 	}
 }
 
@@ -330,7 +329,7 @@ if ($_REQUEST['do'] == 'unsubscribe')
 		");
 		if ($db->affected_rows())
 		{
-			eval(print_standard_redirect('redirect_blogsubremove_blogsubscribeentryid'));
+			print_standard_redirect('redirect_blogsubremove_blogsubscribeentryid');  
 		}
 		else
 		{
@@ -346,7 +345,7 @@ if ($_REQUEST['do'] == 'unsubscribe')
 		");
 		#if ($db->affected_rows())
 		#{
-			eval(print_standard_redirect('redirect_blogsubremove_blogsubscribeuserid'));
+			print_standard_redirect('redirect_blogsubremove_blogsubscribeuserid');  
 		#}
 		#else
 		#{
@@ -376,7 +375,7 @@ if ($_REQUEST['do'] == 'unsubscribe')
 	");
 	if ($db->affected_rows())
 	{
-		eval(print_standard_redirect('redirect_blogsubremove_' . $idfield));
+		print_standard_redirect('redirect_blogsubremove_' . $idfield);  
 	}
 	else
 	{
@@ -936,8 +935,7 @@ print_output($templater->render());
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 40911 $
+|| # SVN: $Revision: 53471 $
 || ####################################################################
 \*======================================================================*/
 ?>

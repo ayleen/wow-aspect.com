@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -233,6 +233,32 @@ function verify_facebook_authentication()
 	return $return_value;
 }
 
+// duplicates verify_facebook_authentication(), but we use the facebook app app id and secret, not fbconnect
+function verify_facebook_app_authentication()
+{
+	global $vbulletin;
+	
+	// get the userinfo associated with current logged in facebook user
+	// return false if not logged in to fb, or there is no associated user record
+	if (!$fb_userid = vB_Facebook::login_facebook_instance()->getLoggedInFbUserId())
+	{
+		return false;
+	}	
+	if (!$vbulletin->userinfo = $vbulletin->db->query_first("
+		SELECT userid, usergroupid, membergroupids, infractiongroupids, username, password, salt 
+		FROM " . TABLE_PREFIX . "user 
+		WHERE fbuserid = '$fb_userid'
+	"))
+	{
+		return false;
+	}
+	
+	// facebook login successful, fetch hook and return true
+	$return_value = true;
+	($hook = vBulletinHook::fetch_hook('login_verify_success')) ? eval($hook) : false;
+	return $return_value;
+}
+
 // ###################### Start process new login #######################
 // creates new session once $vbulletin->userinfo has been set to the newly logged in user
 // processes logins into CP
@@ -407,20 +433,23 @@ function do_login_redirect()
 			if ($vbulletin->GPC['postvars'])
 			{
 				$postvars = @unserialize(verify_client_string($vbulletin->GPC['postvars']));
-				if ($postvars['securitytoken'] = 'guest')
+				$postvars['login_redirect'] = true;
+
+				if ($postvars['securitytoken'] == 'guest')
 				{
 					$vbulletin->userinfo['securitytoken_raw'] = sha1($vbulletin->userinfo['userid'] . sha1($vbulletin->userinfo['salt']) . sha1(COOKIE_SALT));
 					$vbulletin->userinfo['securitytoken'] = TIMENOW . '-' . sha1(TIMENOW . $vbulletin->userinfo['securitytoken_raw']);
 					$postvars['securitytoken'] = $vbulletin->userinfo['securitytoken'];
-					$vbulletin->GPC['postvars'] = sign_client_string(serialize($postvars));
 				}
+
+				$vbulletin->GPC['postvars'] = sign_client_string(serialize($postvars));
 			}
 
 			vB_Template_Runtime::addStyleVar('languagecode', $globalgroup['languagecode']);
 		}
 	}
 
-	eval(print_standard_redirect('redirect_login', true, true, $vbulletin->userinfo['languageid']));
+	print_standard_redirect(array('redirect_login',$vbulletin->userinfo['username']), true, true, $vbulletin->userinfo['languageid']);  
 }
 
 // ###################### Start process logout #######################
@@ -487,8 +516,7 @@ function process_logout()
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40911 $
+|| # CVS: $RCSfile$ - $Revision: 58940 $
 || ####################################################################
 \*======================================================================*/
 ?>

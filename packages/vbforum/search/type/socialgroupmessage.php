@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -87,7 +87,11 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
 			}
 		}
 
-		return array('list' => $list, 'groups_rejected' => $rejected_groups);
+		$retval = array('list' => $list, 'groups_rejected' => $rejected_groups);
+
+		($hook = vBulletinHook::fetch_hook('search_validated_list')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	public function is_enabled()
@@ -115,6 +119,8 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
 				$this->mod_rights[$key] = ($this->mod_rights[$key] OR (bool) $priv);
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_prepare_render')) ? eval($hook) : false;
 	}
 
 	public function additional_header_text()
@@ -215,12 +221,9 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
 	 * 	grouping option(s).
 	 * @return $html: complete html for the search elements
 	 */
-	public function listUi($prefs = null, $contenttypeid = null, $registers = null,
-		$template_name = null)
+	public function listUi($prefs = null, $contenttypeid = null, $registers = null,	$template_name = null)
 	{
-		global $vbulletin, $vbphrase;
-		global $show;
-
+		global $vbulletin, $vbphrase, $show;
 
 		if (! isset($template_name))
 		{
@@ -264,10 +267,13 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
 				$template->register($key, htmlspecialchars_uni($value));
 			}
 		}
-		return $template->render();
+
+		($hook = vBulletinHook::fetch_hook('search_listui_complete')) ? eval($hook) : false;
 
 		//clean up any changes to the show variable.
 		unset($show['search_messagegroupid']);
+
+		return $template->render();
 	}
 
 	// ###################### Start showGroupSelect ######################
@@ -311,7 +317,7 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
 			$rst = $vbulletin->db->query_read("
 				SELECT socialgroup.groupid, socialgroup.name
 				FROM " . TABLE_PREFIX."socialgroup AS socialgroup
-				WHERE socialgroup.groupid IN (" . implode(', ', $extraids) .")"
+				WHERE socialgroup.groupid IN (" . implode(', ', array_map('intval', $extraids)) .")"
 			);
 
 			while ($row = $vbulletin->db->fetch_array($rst))
@@ -348,7 +354,7 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
 
 	private function showCategoryOptions($selected)
 	{
-		global $vbulletin, $vbphrase;
+		global $vbphrase;
 		require_once DIR . '/includes/functions_databuild.php';
 		fetch_phrase_group('search');
 
@@ -436,6 +442,8 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
 				$criteria->add_filter('sgcategoryid', vB_Search_Core::OP_EQ, $value);
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_advanced_filters')) ? eval($hook) : false;
 	}
 
 	public function get_db_query_info($fieldname)
@@ -446,7 +454,7 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
 
 		$result['groupjoin']['discussion'] = "INNER JOIN " . TABLE_PREFIX . "discussion AS discussion ON (
 			searchgroup.contenttypeid = " . $this->get_groupcontenttypeid() . " AND
-			searchcore.groupid = discussion.discussionid)";
+			searchgroup.groupid = discussion.discussionid)";
 
 		if ($fieldname == 'messagegroupid')
 		{
@@ -472,8 +480,10 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
 
 		else
 		{
-			return false;
+			$result = false;
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_dbquery_info')) ? eval($hook) : false;
 
 		return $result;
 	}
@@ -488,26 +498,30 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
  */
 	public function additional_pref_defaults()
 	{
-		return array (
-
-//			'messagedateline'    => -1,
-			'searchdate'					=> 0,
-			'beforeafter'					=> 'after',
-			'starteronly'					=> 1,
-			'searchuser'					=> '',
-			'query'								=> '',
-			'exactname'						=> 0,
-			'nocache'							=> 0,
-			'messagegroupid'      => 0,
+		$retval = array (
+			'searchdate'		=> 0,
+			'beforeafter'		=> 'after',
+			'starteronly'		=> 1,
+			'searchuser'		=> '',
+			'query'				=> '',
+			'exactname'			=> 0,
+			'nocache'			=> 0,
+			'messagegroupid'    => 0,
 			'sortby'			=> 'dateline'
 		);
+
+		($hook = vBulletinHook::fetch_hook('search_pref_defaults')) ? eval($hook) : false;
+
+		return $retval;
 	}
+
 	private $messagegroupid;
 
 	protected $package = "vBForum";
 	protected $class = "SocialGroupMessage";
 	protected $group_package = "vBForum";
 	protected $group_class = "SocialGroupDiscussion";
+
 	protected $type_globals = array (
 		'nocache'            => TYPE_UINT,
 		'messagegroupid'     => TYPE_ARRAY_UINT,
@@ -517,7 +531,6 @@ class vBForum_Search_Type_SocialGroupMessage extends vB_Search_Type
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 30698 $
 || ####################################################################
 \*======================================================================*/

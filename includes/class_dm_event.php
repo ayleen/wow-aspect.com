@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -20,8 +20,8 @@ if (!class_exists('vB_DataManager', false))
 *
 *
 * @package	vBulletin
-* @version	$Revision: 35376 $
-* @date		$Date: 2010-02-09 12:29:22 -0800 (Tue, 09 Feb 2010) $
+* @version	$Revision: 62620 $
+* @date		$Date: 2012-05-15 16:55:47 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_Event extends vB_DataManager
 {
@@ -273,7 +273,7 @@ class vB_DataManager_Event extends vB_DataManager
 			{
 				// extract the relevant info from from_time and to_time
 
-				$time_re = '#^(0?[1-9]|1[012])\s*[:.]\s*([0-5]\d)(\s*[AP]M)?|([01]\d|2[0-3])\s*[:.]\s*([0-5]\d)$#i';
+				$time_re = '#^(0?[0-9]|1[012])\s*[:.]\s*([0-5]\d)(\s*[AP]M)?|([01]\d|2[0-3])\s*[:.]\s*([0-5]\d)$#i';
 
 				// match text in field for a valid time
 				if (preg_match($time_re, $this->info['fromtime'], $matches))
@@ -524,6 +524,15 @@ class vB_DataManager_Event extends vB_DataManager
 	*/
 	function post_save_each($doquery = true)
 	{
+		if (!$this->condition)
+		{
+			$activity = new vB_ActivityStream_Manage('calendar', 'event');
+			$activity->set('contentid', intval($this->fetch_field('eventid')));
+			$activity->set('userid', intval($this->fetch_field('userid')));
+			$activity->set('dateline', intval($this->fetch_field('dateline')));
+			$activity->set('action', 'create');
+			$activity->save();
+		}
 
 		if ($this->condition AND ($this->fetch_field('dateline_from') - $this->existing['dateline_from']) >= 82800)
 		{
@@ -561,6 +570,9 @@ class vB_DataManager_Event extends vB_DataManager
 	*/
 	function post_delete($doquery = true)
 	{
+		$activity = new vB_ActivityStream_Manage('calendar', 'event');
+		$activity->set('contentid', intval($this->fetch_field('eventid')));
+		$activity->delete();
 
 		$this->dbobject->query_write("DELETE FROM " . TABLE_PREFIX . "subscribeevent WHERE eventid = " . intval($this->fetch_field('eventid')));
 
@@ -575,8 +587,7 @@ class vB_DataManager_Event extends vB_DataManager
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 35376 $
+|| # CVS: $RCSfile$ - $Revision: 62620 $
 || ####################################################################
 \*======================================================================*/
 ?>

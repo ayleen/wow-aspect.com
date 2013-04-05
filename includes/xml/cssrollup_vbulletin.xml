@@ -24,12 +24,10 @@
 	<rollup name="forumhome-rollup.css">
 		<template>forumbits.css</template>
 		<template>forumhome.css</template>
-		<template>widgets.css</template>
-		<template>sidebar.css</template>
 		<template>options.css</template>
-		<template>tagcloud.css</template>
 	</rollup>
 	<rollup name="memberinfo-rollup.css">
+		<template>activitystream.css</template>
 		<template>sidebar.css</template>
 		<template>forumbits.css</template>
 		<template>postbit.css</template>

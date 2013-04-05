@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,8 +19,8 @@ require_once(DIR . '/vb/search/indexcontroller/queue.php');
 * Class to do data save/delete operations for Social Groups
 *
 * @package	vBulletin
-* @version	$Revision: 45121 $
-* @date		$Date: 2011-06-27 09:55:51 -0700 (Mon, 27 Jun 2011) $
+* @version	$Revision: 62619 $
+* @date		$Date: 2012-05-15 16:54:47 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_SocialGroup extends vB_DataManager
 {
@@ -141,7 +141,7 @@ class vB_DataManager_SocialGroup extends vB_DataManager
 	 */
 	function verify_description(&$description)
 	{
-		if (($currentlength = vbstrlen($description, true)) > $this->registry->options['sg_maxdescriptionchars'])
+		if ($this->registry->options['sg_maxdescriptionchars'] AND ($currentlength = vbstrlen($description, true)) > $this->registry->options['sg_maxdescriptionchars'])
 		{
 			$this->error('description_toolong_max_x', $currentlength, $this->registry->options['sg_maxdescriptionchars']);
 			return false;
@@ -224,6 +224,13 @@ class vB_DataManager_SocialGroup extends vB_DataManager
 			unset($socialgroupmemberdm);
 
 			exec_sg_mark_as_read('group', $this->fetch_field('groupid'));
+			
+			$activity = new vB_ActivityStream_Manage('socialgroup', 'group');
+			$activity->set('contentid', $this->fetch_field('groupid'));
+			$activity->set('userid', $this->fetch_field('creatoruserid'));
+			$activity->set('dateline', $this->fetch_field('dateline'));
+			$activity->set('action', 'create');
+			$activity->save();	
 		}
 		($hook = vBulletinHook::fetch_hook('socgroupdata_postsave')) ? eval($hook) : false;
 
@@ -299,8 +306,8 @@ class vB_DataManager_SocialGroup extends vB_DataManager
 
 		$this->registry->db->query_write("DELETE FROM " . TABLE_PREFIX . "socialgroupmember WHERE groupid = " . $this->fetch_field('groupid'));
 
-		$this->registry->db->query_write(
-			"UPDATE " . TABLE_PREFIX . "user AS user,". TABLE_PREFIX . "$aggtable AS aggregate
+		$this->registry->db->query_write("
+			UPDATE " . TABLE_PREFIX . "user AS user,". TABLE_PREFIX . "$aggtable AS aggregate
 			SET socgroupinvitecount = IF(socgroupinvitecount > 0, socgroupinvitecount - 1, 0)
 			WHERE user.userid = aggregate.userid
 		");
@@ -315,16 +322,31 @@ class vB_DataManager_SocialGroup extends vB_DataManager
 
 		$this->registry->db->query_write("DROP TABLE IF EXISTS " . TABLE_PREFIX . $aggtable);
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
-
 		// delete picture references
 		$contenttypeid = vB_Types::instance()->getContentTypeID('vBForum_SocialGroup');
-		$this->registry->db->query_write("
-			DELETE FROM " . TABLE_PREFIX . "attachment
+		
+		$attachids = array();
+		$ids = $this->registry->db->query_read("
+			SELECT attachmentid
+			FROM " . TABLE_PREFIX . "attachment
 			WHERE contentid = " . intval($this->fetch_field('groupid')) . " AND
-				contenttypeid = $contenttypeid
+				contenttypeid = $contenttypeid	
 		");
+		while ($id = $this->registry->db->fetch_array($ids))
+		{
+			$attachids[] = $id['attachmentid'];
+		}
+		
+		if ($attachids)
+		{
+			$this->registry->db->query_write("
+				DELETE FROM " . TABLE_PREFIX . "attachment
+				WHERE attachmentid IN (" . implode(",", $attachids) . ")
+			");
+			$activity = new vB_ActivityStream_Manage('socialgroup', 'photo');
+			$activity->set('contentid', $attachids);
+			$activity->delete();				
+		}
 
 		vb_Search_Indexcontroller_Queue::indexQueue('vBForum', 'SocialGroup', 'delete',
 			$this->fetch_field('groupid'));
@@ -360,19 +382,23 @@ class vB_DataManager_SocialGroup extends vB_DataManager
 					AND primaryid IN (" . implode(', ', $gms_to_delete) . ")
 			");
 
-			$this->registry->db->query_write("DELETE " . TABLE_PREFIX . "groupmessage
-											FROM " . TABLE_PREFIX . "groupmessage
-											LEFT JOIN " . TABLE_PREFIX . "discussion
-											 ON (" . TABLE_PREFIX . "discussion.discussionid = " . TABLE_PREFIX . "groupmessage.discussionid)
-											WHERE " . TABLE_PREFIX . "discussion.groupid = " . $this->fetch_field('groupid'));
+			$this->registry->db->query_write("
+				DELETE " . TABLE_PREFIX . "groupmessage
+				FROM " . TABLE_PREFIX . "groupmessage
+				LEFT JOIN " . TABLE_PREFIX . "discussion ON (" . TABLE_PREFIX . "discussion.discussionid = " . TABLE_PREFIX . "groupmessage.discussionid)
+				WHERE " . TABLE_PREFIX . "discussion.groupid = " . $this->fetch_field('groupid')
+			);
+			
+			$activity = new vB_ActivityStream_Manage('socialgroup', 'groupmessage');
+			$activity->set('contentid', $gms_to_delete);
+			$activity->delete();				
 		}
 
 		// delete subscribed discussions
 		$this->registry->db->query_write("
 			DELETE " . TABLE_PREFIX. "subscribediscussion
 			FROM " . TABLE_PREFIX . "subscribediscussion
-			INNER JOIN " . TABLE_PREFIX . "discussion
-			 ON (" . TABLE_PREFIX . "discussion.discussionid = " . TABLE_PREFIX . "subscribediscussion.discussionid)
+			INNER JOIN " . TABLE_PREFIX . "discussion ON (" . TABLE_PREFIX . "discussion.discussionid = " . TABLE_PREFIX . "subscribediscussion.discussionid)
 			 AND " . TABLE_PREFIX . "discussion.groupid = " . intval($this->fetch_field('groupid')) . "
 		");
 
@@ -385,10 +411,28 @@ class vB_DataManager_SocialGroup extends vB_DataManager
 			 AND " . TABLE_PREFIX . "discussion.groupid = " . intval($this->fetch_field('groupid')) . "
 		");
 
+		$idlist = array();
+		$ids = $this->registry->db->query_read("
+			SELECT discussionid
+			FROM " . TABLE_PREFIX . "discussion
+			WHERE groupid = " . intval($this->fetch_field('groupid'))
+		);
+		while ($id = $this->registry->db->fetch_array($ids))
+		{
+			$idlist[] = $id['discussionid'];
+		}
+		if ($idlist)
+		{
+			$activity = new vB_ActivityStream_Manage('socialgroup', 'discussion');
+			$activity->set('contentid', $idlist);
+			$activity->delete();				
+		}
+		
 		// delete discussions
 		$this->registry->db->query_write("
 			DELETE FROM " . TABLE_PREFIX . "discussion
-			WHERE groupid = " . intval($this->fetch_field('groupid')));
+			WHERE groupid = " . intval($this->fetch_field('groupid'))
+		);
 
 		// delete group subscriptions
 		$this->registry->db->query_write("
@@ -417,6 +461,10 @@ class vB_DataManager_SocialGroup extends vB_DataManager
 		// update newest groups
 		fetch_socialgroup_newest_groups(true, false, !$this->registry->options['sg_enablesocialgroupicons']);
 
+		$activity = new vB_ActivityStream_Manage('socialgroup', 'group');
+		$activity->set('contentid', $this->fetch_field('groupid'));
+		$activity->delete();			
+		
  		($hook = vBulletinHook::fetch_hook('socgroupdata_delete')) ? eval($hook) : false;
 	}
 
@@ -428,9 +476,6 @@ class vB_DataManager_SocialGroup extends vB_DataManager
 	{
 		if ($this->fetch_field('groupid'))
 		{
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 		$types = vB_Types::instance();
 		$contenttypeid = intval($types->getContentTypeID('vBForum_SocialGroup'));
 
@@ -498,8 +543,7 @@ class vB_DataManager_SocialGroup extends vB_DataManager
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45121 $
+|| # CVS: $RCSfile$ - $Revision: 62619 $
 || ####################################################################
 \*======================================================================*/
 ?>

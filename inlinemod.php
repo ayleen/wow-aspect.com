@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -48,10 +48,10 @@ $actiontemplates = array(
 	'domergeposts' => array('threadadmin_mergeposts'),
 	'deleteposts'  => array('threadadmin_deleteposts'),
 	// spam management
-	'spampost'     => array('threadadmin_easyspam', 'threadadmin_easyspam_userbit', 'threadadmin_easyspam_ipbit', 'threadadmin_easyspam_headinclude'),
-	'spamthread'   => array('threadadmin_easyspam', 'threadadmin_easyspam_userbit', 'threadadmin_easyspam_ipbit', 'threadadmin_easyspam_headinclude'),
+	'spampost'     => array('threadadmin_easyspam', 'threadadmin_easyspam_headinclude'),
+	'spamthread'   => array('threadadmin_easyspam', 'threadadmin_easyspam_headinclude'),
 	'spamconfirm'  => array('threadadmin_easyspam_confirm', 'threadadmin_easyspam_ban', 'threadadmin_easyspam_user_option', 'threadadmin_easyspam_headinclude'),
-	'dodeletespam' => array('threadadmin_easyspam_headinclude', 'threadadmin_easyspam_userbit', 'threadadmin_easyspam_skipped_prune'),
+	'dodeletespam' => array('threadadmin_easyspam_headinclude', 'threadadmin_easyspam_skipped_prune'),
 );
 $actiontemplates['mergethreadcompat'] =& $actiontemplates['mergethread'];
 
@@ -63,8 +63,6 @@ require_once(DIR . '/includes/functions_databuild.php');
 require_once(DIR . '/includes/functions_log_error.php');
 require_once(DIR . '/includes/modfunctions.php');
 require_once(DIR . '/vb/search/indexcontroller/queue.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -142,7 +140,7 @@ switch ($_POST['do'])
 
 if ($inline_mod_authenticate AND !inlinemod_authenticated() AND !VB_API)
 {
-	show_inline_mod_login();
+	show_inline_mod_login(false, true);
 }
 
 switch ($_POST['do'])
@@ -390,7 +388,7 @@ if ($_POST['do'] == 'viewthread')
 	$results = vB_Search_Results::create_from_array(new vB_Legacy_CurrentUser(), $result_array);
 	$vbulletin->url = 'search.php?' . $vbulletin->session->vars['sessionurl'] .
 		"searchid=" . $results->get_searchid();
-	eval(print_standard_redirect('search'));
+	print_standard_redirect('search');
 }
 
 ################################## Feed selected posts to search.php #################
@@ -410,7 +408,7 @@ if ($_POST['do'] == 'viewpost')
 	$results = vB_Search_Results::create_from_array(new vB_Legacy_CurrentUser(), $result_array);
 	$vbulletin->url = 'search.php?' . $vbulletin->session->vars['sessionurl'] .
 		"searchid=" . $results->get_searchid();
-	eval(print_standard_redirect('search'));
+	print_standard_redirect('search');
 }
 
 // ############################### Empty Thread Cookie ###############################
@@ -420,7 +418,7 @@ if ($_POST['do'] == 'clearthread')
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_clearthread')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_threadlist_cleared', true, $forceredirect));
+	print_standard_redirect('redirect_inline_threadlist_cleared', true, $forceredirect);
 }
 
 // ############################### Empty Post Cookie ###############################
@@ -430,7 +428,7 @@ if ($_POST['do'] == 'clearpost')
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_clearpost')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_postlist_cleared', true, $forceredirect));
+	print_standard_redirect('redirect_inline_postlist_cleared', true, $forceredirect);
 }
 
 // ############################### start do open / close thread ###############################
@@ -504,11 +502,11 @@ if ($_POST['do'] == 'open' OR $_POST['do'] == 'close')
 
 	if ($_POST['do'] == 'open')
 	{
-		eval(print_standard_redirect('redirect_inline_opened', true, $forceredirect));
+		print_standard_redirect('redirect_inline_opened', true, $forceredirect);
 	}
 	else
 	{
-		eval(print_standard_redirect('redirect_inline_closed', true, $forceredirect));
+		print_standard_redirect('redirect_inline_closed', true, $forceredirect);
 	}
 }
 
@@ -590,11 +588,11 @@ if ($_POST['do'] == 'stick' OR $_POST['do'] == 'unstick')
 
 	if ($_POST['do'] == 'stick')
 	{
-		eval(print_standard_redirect('redirect_inline_stuck', true, $forceredirect));
+		print_standard_redirect('redirect_inline_stuck', true, $forceredirect);
 	}
 	else
 	{
-		eval(print_standard_redirect('redirect_inline_unstuck', true, $forceredirect));
+		print_standard_redirect('redirect_inline_unstuck', true, $forceredirect);
 	}
 }
 
@@ -693,13 +691,15 @@ if ($_POST['do'] == 'deletethread' OR $_POST['do'] == 'spamthread')
 
 		$threadarray["$thread[threadid]"] = $thread;
 		$forumlist["$thread[forumid]"] = true;
-		
-		//expire the cache for the CMS comments if applicable.
-		if (isset($vbulletin->options['vbcmsforumid']) AND $thread['forumid'] == $vbulletin->options['vbcmsforumid'])
+
+		if ($node = get_nodeFromThreadid($thread['threadid']))
 		{
-			$expire_cache = array('cms_comments_change', 'cms_comments_thread_' . intval($thread['threadid']),
-				'cms_comments_change_' . $thread['threadid']);
-			vB_Cache::instance()->event($expire_cache);
+			// Expire any CMS comments cache entries.
+			$expire_cache = array('cms_comments_change');
+			$expire_cache[] = 'cms_comments_add_' . $node;
+			$expire_cache[] = 'cms_comments_change_' . $thread['threadid'];
+
+			vB_Cache::instance()->eventPurge($expire_cache);
 			vB_Cache::instance()->cleanNow();
 		}
 	}
@@ -738,17 +738,23 @@ if ($_POST['do'] == 'deletethread' OR $_POST['do'] == 'spamthread')
 			}
 			$db->free_result($users_result);
 
-			$users = '';
-			$usercount = count($user_cache);
+			$usercount = 0;
+			$users = array();
 			foreach ($user_cache AS $user)
 			{
-				$templater = vB_Template::create('threadadmin_easyspam_userbit');
-					$templater->register('user', $user);
-				$users .= $templater->render();
+				$usercount++;
+				$user['comma'] = $vbphrase['comma_space'];
+				$users[$usercount] = $user;
 			}
 
-			// IP addresses can be blank, double check this
-			$ips = '';
+			// Last element
+			if ($usercount)
+			{
+				$users[$usercount]['comma'] = '';
+			}
+
+			$clc = 0;
+			$ips = array();
 			if ($vbulletin->options['logip'])	// already checked forum permission above
 			{
 				ksort($ip_cache);
@@ -758,16 +764,24 @@ if ($_POST['do'] == 'deletethread' OR $_POST['do'] == 'spamthread')
 					{
 						continue;
 					}
-					$ip2long = ip2long($ip);
-					$templater = vB_Template::create('threadadmin_easyspam_ipbit');
-						$templater->register('ip', $ip);
-						$templater->register('ip2long', $ip2long);
-					$ips .= $templater->render();
+
+					$clc++;
+					$row['ip'] = $ip;
+					$row['ip2long'] = ip2long($ip);
+					$row['comma'] = $vbphrase['comma_space'];
+					$row['forumurl'] = $vboptions['vbforum_url'] ? $vboptions['vbforum_url'].'/' : '' ;
+					$ips[$clc] = $row;
+				}
+
+				// Last element
+				if ($clc)
+				{
+					$ips[$clc]['comma'] = '';
 				}
 			}
 
-			$show['ips'] = !empty($ips);
-			$show['users'] = ($usercount !== 0);
+			$show['ips'] = ($clc > 0);
+			$show['users'] = ($usercount > 0);
 
 			// make a list of usergroups into which to move this user
 			$havebanned = false;
@@ -834,7 +848,7 @@ if ($_POST['do'] == 'deletethread' OR $_POST['do'] == 'spamthread')
 
 				($hook = vBulletinHook::fetch_hook('inlinemod_dodeletethread')) ? eval($hook) : false;
 
-				eval(print_standard_redirect('redirect_inline_deleted', true, $forceredirect));
+				print_standard_redirect('redirect_inline_deleted', true, $forceredirect);
 			}
 			else
 			{
@@ -1544,14 +1558,22 @@ if ($_POST['do'] == 'dodeletespam')
 	// Following users had more than 50 posts, so we couldn't do a mass remove.
 	if (!empty($skipped_user_prune))
 	{
-		$users = '';
+		$usercount = 0;
+		$users = array();
 		foreach ($skipped_user_prune AS $userid)
 		{
+			$usercount++;
 			$user = $user_cache[$userid];
-			$templater = vB_Template::create('threadadmin_easyspam_userbit');
-				$templater->register('user', $user);
-			$users .= $templater->render();
+			$user['comma'] = $vbphrase['comma_space'];
+			$users[$usercount] = $user;
 		}
+
+		// Last element
+		if ($usercount)
+		{
+			$list[$usercount]['comma'] = '';
+		}
+
 		$headinclude .= vB_Template::create('threadadmin_easyspam_headinclude')->render();
 		$navbits[''] = $vbphrase['spam_management'];
 
@@ -1560,7 +1582,7 @@ if ($_POST['do'] == 'dodeletespam')
 	}
 	else
 	{
-		eval(print_standard_redirect(!empty($postids) ? 'redirect_inline_deletedposts' : 'redirect_inline_deleted', true, $forceredirect));
+		print_standard_redirect(!empty($postids) ? 'redirect_inline_deletedposts' : 'redirect_inline_deleted', true, $forceredirect);
 	}
 }
 
@@ -1674,7 +1696,7 @@ if ($_POST['do'] == 'dodeletethreads')
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_dodeletethread')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_deleted', true, $forceredirect));
+	print_standard_redirect('redirect_inline_deleted', true, $forceredirect);
 }
 
 // ############################### start do undelete thread ###############################
@@ -1735,7 +1757,7 @@ if ($_POST['do'] == 'undeletethread')
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_undeletethread')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_undeleted', true, $forceredirect));
+	print_standard_redirect('redirect_inline_undeleted', true, $forceredirect);
 }
 
 // ############################### start do approve thread ###############################
@@ -1882,7 +1904,7 @@ if ($_POST['do'] == 'approvethread')
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_approvethread')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_approvedthreads', true, $forceredirect));
+	print_standard_redirect('redirect_inline_approvedthreads', true, $forceredirect);
 }
 
 // ############################### start do unapprove thread ###############################
@@ -2042,7 +2064,7 @@ if ($_POST['do'] == 'unapprovethread')
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_unapprovethread')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_unapprovedthreads', true, $forceredirect));
+	print_standard_redirect('redirect_inline_unapprovedthreads', true, $forceredirect);
 }
 
 // ############################### start do move thread ###############################
@@ -2474,7 +2496,7 @@ if ($_POST['do'] == 'domovethreads')
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_domovethread')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_moved', true, $forceredirect));
+	print_standard_redirect('redirect_inline_moved', true, $forceredirect);
 }
 
 // ############################### start do merge thread ###############################
@@ -2934,14 +2956,6 @@ if ($_POST['do'] == 'domergethreads')
 		");
 	}
 
-	// Update first post in each thread as title information in relation to the sames words being in the first post may have changed now.
-	foreach ($firstpostids AS $firstpostid)
-	{
-		delete_post_index($firstpostid);
-		build_post_index($firstpostid, $destforuminfo);
-	}
-
-
 	// Update post threadids
 	$db->query_write("
 		UPDATE " . TABLE_PREFIX . "post
@@ -3129,11 +3143,12 @@ if ($_POST['do'] == 'domergethreads')
 		setcookie('vbulletin_inlinethread', '', TIMENOW - 3600, '/');
 	}
 
+	vB_ActivityStream_Populate_Forum_Thread::rebuild_thread($threadids);
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_domergethread')) ? eval($hook) : false;
 
 	$vbulletin->url = fetch_seo_url('thread', $destthread);
-	eval(print_standard_redirect('redirect_inline_mergedthreads', true, $forceredirect));
+	print_standard_redirect('redirect_inline_mergedthreads', true, $forceredirect);
 }
 
 // ############################### start delete posts ###############################
@@ -3270,16 +3285,23 @@ if ($_REQUEST['do'] == 'deleteposts' OR $_REQUEST['do'] == 'spampost')
 		}
 		$db->free_result($users_result);
 
-		$users = '';
-		$usercount = count($user_cache);
+		$usercount = 0;
+		$users = array();
 		foreach ($user_cache AS $user)
 		{
-			$templater = vB_Template::create('threadadmin_easyspam_userbit');
-				$templater->register('user', $user);
-			$users .= $templater->render();
+			$usercount++;
+			$user['comma'] = $vbphrase['comma_space'];
+			$users[$usercount] = $user;
 		}
 
-		$ips = '';
+		// Last element
+		if ($usercount)
+		{
+			$users[$usercount]['comma'] = '';
+		}
+
+		$clc = 0;
+		$ips = array();
 		if ($vbulletin->options['logip'])	// already checked forum permission above
 		{
 			ksort($ip_cache);
@@ -3289,11 +3311,19 @@ if ($_REQUEST['do'] == 'deleteposts' OR $_REQUEST['do'] == 'spampost')
 				{
 					continue;
 				}
-				$ip2long = ip2long($ip);
-				$templater = vB_Template::create('threadadmin_easyspam_ipbit');
-					$templater->register('ip', $ip);
-					$templater->register('ip2long', $ip2long);
-				$ips .= $templater->render();
+
+				$clc++;
+				$row['ip'] = $ip;
+				$row['ip2long'] = ip2long($ip);
+				$row['comma'] = $vbphrase['comma_space'];
+				$row['forumurl'] = $vboptions['vbforum_url'] ? $vboptions['vbforum_url'].'/' : '' ;
+				$ips[$clc] = $row;
+			}
+
+			// Last element
+			if ($clc)
+			{
+				$ips[$clc]['comma'] = '';
 			}
 		}
 
@@ -3308,8 +3338,8 @@ if ($_REQUEST['do'] == 'deleteposts' OR $_REQUEST['do'] == 'spampost')
 			}
 		}
 
-		$show['ips'] = !empty($ips);
-		$show['users'] = ($usercount !== 0);
+		$show['ips'] = ($clc > 0);
+		$show['users'] = ($usercount > 0);
 		$show['punitive_action'] = ($havebangroup AND (($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']) OR can_moderate(0, 'canbanusers'))) ? true : false;
 		$show['akismet_option'] = !empty($vbulletin->options['vb_antispam_key']);
 		$show['delete_others_option'] = can_moderate(-1, 'canmassprune');
@@ -3445,15 +3475,17 @@ if ($_POST['do'] == 'dodeleteposts')
 		{
 			$postarray["$post[postid]"]['skippostcount'] = true;
 		}
-		
-		if (isset($vbulletin->options['vbcmsforumid']) AND $post['forumid'] == $vbulletin->options['vbcmsforumid'])
+
+		if ($node = get_nodeFromThreadid($post['threadid']))
 		{
-			$expire_cache = array('cms_comments_change', 'cms_comments_thread_' . intval($post['threadid']),
-				'cms_comments_change_' . $post['threadid']);
-			vB_Cache::instance()->event($expire_cache);
+			// Expire any CMS comments cache entries.
+			$expire_cache = array('cms_comments_change');
+			$expire_cache[] = 'cms_comments_add_' . $node;
+			$expire_cache[] = 'cms_comments_change_' . $post['threadid'];
+
+			vB_Cache::instance()->eventPurge($expire_cache);
 			vB_Cache::instance()->cleanNow();
 		}
-		
 	}
 
 	if (empty($postarray))
@@ -3521,7 +3553,7 @@ if ($_POST['do'] == 'dodeleteposts')
 		// this really shouldn't happen...
 		$vbulletin->url = fetch_seo_url('forumhome', array());
 	}
-	eval(print_standard_redirect('redirect_inline_deletedposts', true, $forceredirect));
+	print_standard_redirect('redirect_inline_deletedposts', true, $forceredirect);
 }
 
 // ############################### start do delete posts ###############################
@@ -3606,7 +3638,7 @@ if ($_POST['do'] == 'undeleteposts')
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_undeleteposts')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_undeleteposts', true, $forceredirect));
+	print_standard_redirect('redirect_inline_undeleteposts', true, $forceredirect);
 }
 
 // ############################### start do approve attachments ###############################
@@ -3659,7 +3691,6 @@ if ($_POST['do'] == 'approveattachments' OR $_POST['do'] == 'unapproveattachment
 		eval(standard_error(fetch_error('no_applicable_posts_selected')));
 	}
 
-	require_once(DIR . '/vb/types.php');
 	$types = vB_Types::instance();
 	$contenttypeid = $types->getContentTypeID('vBForum_Post');
 
@@ -3678,12 +3709,12 @@ if ($_POST['do'] == 'approveattachments' OR $_POST['do'] == 'unapproveattachment
 	if ($_POST['do'] == 'approveattachments')
 	{
 		($hook = vBulletinHook::fetch_hook('inlinemod_approveattachments')) ? eval($hook) : false;
-		eval(print_standard_redirect('redirect_inline_approvedattachments', true, $forceredirect));
+		print_standard_redirect('redirect_inline_approvedattachments', true, $forceredirect);
 	}
 	else
 	{
 		($hook = vBulletinHook::fetch_hook('inlinemod_unapproveattachments')) ? eval($hook) : false;
-		eval(print_standard_redirect('redirect_inline_unapprovedattachments', true, $forceredirect));
+		print_standard_redirect('redirect_inline_unapprovedattachments', true, $forceredirect);
 	}
 }
 
@@ -3774,7 +3805,7 @@ if ($_POST['do'] == 'approveposts')
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_approveposts')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_approvedposts', true, $forceredirect));
+	print_standard_redirect('redirect_inline_approvedposts', true, $forceredirect);
 }
 
 // ############################### start do unapprove posts ###############################
@@ -3865,7 +3896,7 @@ if ($_POST['do'] == 'unapproveposts')
 
 	($hook = vBulletinHook::fetch_hook('inlinemod_unapproveposts')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_unapprovedposts', true, $forceredirect));
+	print_standard_redirect('redirect_inline_unapprovedposts', true, $forceredirect);
 }
 
 // ############################### start do merge posts ###############################
@@ -4102,7 +4133,6 @@ if ($_POST['do'] == 'domergeposts')
 		// Update Attachments to point to new owner
 		if ($attachtotal)
 		{
-			require_once(DIR . '/vb/types.php');
 			$types = vB_Types::instance();
 			$contenttypeid = $types->getContentTypeID('vBForum_Post');
 
@@ -4170,7 +4200,7 @@ if ($_POST['do'] == 'domergeposts')
 					FROM " . TABLE_PREFIX . "post
 					WHERE threadid = $post[threadid]
 						AND postid NOT IN (" . implode(',', array_keys($postarray)) . ")
-					ORDER BY dateline, postid
+					ORDER BY dateline
 					LIMIT 1
 				"))
 				{
@@ -4288,13 +4318,15 @@ if ($_POST['do'] == 'domergeposts')
 			build_forum_counters($forumid);
 		}
 
+		vB_ActivityStream_Populate_Forum_Thread::rebuild_thread(array_keys($threadlist));
+
 		// empty cookie
 		setcookie('vbulletin_inlinepost', '', TIMENOW - 3600, '/');
 
 		($hook = vBulletinHook::fetch_hook('inlinemod_domergeposts_complete')) ? eval($hook) : false;
 
 		$vbulletin->url = fetch_seo_url('thread', $destpost, array('p' => $destpost['postid']), null, 'threadid', 'threadtitle') . "#post$destpost[postid]";
-		eval(print_standard_redirect('redirect_inline_mergedposts', true, $forceredirect));
+		print_standard_redirect('redirect_inline_mergedposts', true, $forceredirect);
 	}
 }
 
@@ -4916,7 +4948,7 @@ if ($_POST['do'] == 'domoveposts')
 				SELECT postid, visible, threadid, title, pagetext
 				FROM " . TABLE_PREFIX . "post
 				WHERE threadid = $post[threadid]
-				ORDER BY dateline, postid
+				ORDER BY dateline
 				LIMIT 1
 			"))
 			{
@@ -4957,10 +4989,6 @@ if ($_POST['do'] == 'domoveposts')
 						unset($userman);
 					}
 				}
-
-				// Update first post in each thread as title information in relation to the sames words being in the first post may have changed now.
-				delete_post_index($firstleftpost['postid'], $firstleftpost['title'], $firstleftpost['pagetext']);
-				build_post_index($firstleftpost['postid'] , $foruminfo);
 			}
 			else	// we moved all of the thread :eek: delete the empty thread!
 			{
@@ -5121,7 +5149,7 @@ if ($_POST['do'] == 'domoveposts')
 		SELECT *
 		FROM " . TABLE_PREFIX . "post
 		WHERE threadid = $destthreadinfo[threadid]
-		ORDER BY dateline, postid
+		ORDER BY dateline
 		LIMIT 1
 	");
 
@@ -5131,9 +5159,6 @@ if ($_POST['do'] == 'domoveposts')
 	$postdata->set('title', $destthreadinfo['title'], true, false); // don't clean it -- already been cleaned
 	$postdata->set('iconid', $destthreadinfo['iconid'], true, false);
 	$postdata->save();
-
-	delete_post_index($getfirstpost['postid'], $getfirstpost['title'], $getfirstpost['pagetext']);
-	build_post_index($getfirstpost['postid'] , $destforuminfo);
 
 	foreach (array_keys($threadlist) AS $threadid)
 	{
@@ -5155,6 +5180,9 @@ if ($_POST['do'] == 'domoveposts')
 		build_forum_counters($destforuminfo['forumid']);
 	}
 
+	$threadlist[$destthreadinfo['threadid']] = 1;
+	vB_ActivityStream_Populate_Forum_Thread::rebuild_thread(array_keys($threadlist));
+
 	log_moderator_action($threadinfo, 'thread_split_to_x', $destthreadinfo['threadid']);
 
 	// empty cookie
@@ -5163,7 +5191,7 @@ if ($_POST['do'] == 'domoveposts')
 	($hook = vBulletinHook::fetch_hook('inlinemod_domoveposts')) ? eval($hook) : false;
 
 	$vbulletin->url = fetch_seo_url('thread', $destthreadinfo);
-	eval(print_standard_redirect('redirect_inline_movedposts', true, $forceredirect));
+	print_standard_redirect('redirect_inline_movedposts', true, $forceredirect);
 }
 
 // ############################### start do move posts ###############################
@@ -5310,6 +5338,7 @@ if ($_POST['do'] == 'docopyposts')
 		$threadman->setr('open', $destthreadinfo['open'], true, false);
 		$threadman->setr('views', $destthreadinfo['views']);
 		$threadman->setr('visible', $destthreadinfo['visible'], true, false);
+		$threadman->setr('postuserid', $destthreadinfo['postuserid']);
 		// Rest of thread field will be populated by the build_thread_counters() call
 		$destthreadinfo['threadid'] = $threadman->save();
 		$destthreadinfo['title'] = $threadman->fetch_field('title');
@@ -5329,7 +5358,7 @@ if ($_POST['do'] == 'docopyposts')
 		LEFT JOIN " . TABLE_PREFIX . "deletionlog AS deletionlog ON (deletionlog.primaryid = post.postid AND deletionlog.type = 'post')
 		LEFT JOIN " . TABLE_PREFIX . "moderation AS moderation ON (moderation.primaryid = post.postid AND moderation.type = 'post')
 		WHERE post.postid IN (" . implode(', ', $postarray) . ")
-		ORDER BY dateline, postid
+		ORDER BY dateline
 	");
 
 
@@ -5431,11 +5460,7 @@ if ($_POST['do'] == 'docopyposts')
 
 		if ($destforuminfo['indexposts'])
 		{
-			if ($update_post_title)
-			{
-				build_post_index($post['postid'], $destforuminfo, $newfirstpost, $post);
-			}
-			else
+			if (!$update_post_title)
 			{
 				$dupeposts["$oldpostid"] = $post['postid'];
 			}
@@ -5443,7 +5468,6 @@ if ($_POST['do'] == 'docopyposts')
 	}
 
 	// need to read filedata in chunks and update in chunks!
-	require_once(DIR . '/vb/types.php');
 	$types = vB_Types::instance();
 	$contenttypeid = $types->getContentTypeID('vBForum_Post');
 
@@ -5561,6 +5585,7 @@ if ($_POST['do'] == 'docopyposts')
 	build_thread_counters($destthreadinfo['threadid']);
 	build_forum_counters($destforuminfo['forumid']);
 
+	vB_ActivityStream_Populate_Forum_Thread::rebuild_thread(array($destthreadinfo['threadid']));
 	log_moderator_action($destthreadinfo, 'posts_copied_to_x', $destthreadinfo['threadid']);
 
 	// empty cookie
@@ -5569,7 +5594,7 @@ if ($_POST['do'] == 'docopyposts')
 	($hook = vBulletinHook::fetch_hook('inlinemod_docopyposts')) ? eval($hook) : false;
 
 	$vbulletin->url = fetch_seo_url('thread', $destthreadinfo);
-	eval(print_standard_redirect('redirect_inline_copiedposts', true, $forceredirect));
+	print_standard_redirect('redirect_inline_copiedposts', true, $forceredirect);
 }
 
 ($hook = vBulletinHook::fetch_hook('inlinemod_complete')) ? eval($hook) : false;
@@ -5594,7 +5619,6 @@ if (!empty($page_templater))
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 43599 $
+|| # CVS: $RCSfile$ - $Revision: 62622 $
 || ####################################################################
 \*======================================================================*/

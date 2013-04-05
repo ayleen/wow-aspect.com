@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 45512 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 57655 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('calendar', 'cppermission', 'holiday');
@@ -232,6 +232,7 @@ if ($_REQUEST['do'] == 'add' or $_REQUEST['do'] == 'edit')
 			'active'        => 1,
 			'allowbbcode'   => 1,
 			'allowimgcode'  => 1,
+			'allowvideocode'=> 1,
 			'allowsmilies'  => 1,
 			'startofweek'   => 1,
 			'showholidays'  => 1,
@@ -324,6 +325,7 @@ if ($_REQUEST['do'] == 'add' or $_REQUEST['do'] == 'edit')
 	print_yes_no_row($vbphrase['allow_html'], 'options[allowhtml]', $calendar['allowhtml']);
 	print_yes_no_row($vbphrase['allow_bbcode'], 'options[allowbbcode]', $calendar['allowbbcode']);
 	print_yes_no_row($vbphrase['allow_img_code'], 'options[allowimgcode]', $calendar['allowimgcode']);
+	print_yes_no_row($vbphrase['allow_video_code'], 'options[allowvideocode]', $calendar['allowvideocode']);	
 	print_yes_no_row($vbphrase['allow_smilies'], 'options[allowsmilies]', $calendar['allowsmilies']);
 
 	print_submit_row($vbphrase['save']);
@@ -801,12 +803,23 @@ if ($_REQUEST['do'] == 'updateholiday')
 	$vbulletin->input->clean_array_gpc('r', array('holidayid' => TYPE_UINT));
 
 	print_form_header('admincalendar', 'saveholiday');
+	$recuroption1 = array('1', '1');
+	$recuroption2 = array('1', '1', '1');
+	
 	if ($vbulletin->GPC['holidayid']) // Existing Holiday
 	{
 		$holidayinfo = $db->query_first("SELECT * FROM " . TABLE_PREFIX . "holiday WHERE holidayid = " . $vbulletin->GPC['holidayid']);
 		construct_hidden_code('holidayid', $vbulletin->GPC['holidayid']);
 		$options = explode('|', $holidayinfo['recuroption']);
 		$checked = array($holidayinfo['recurring'] => 'checked="checked"');
+		if ($checked[6])
+		{
+			$recuroption1 = $options;
+		}
+		else
+		{
+			$recuroption2 = $options;
+		}
 
 		$title = 'holiday' . $holidayinfo['holidayid'] . '_title';
 		$desc = 'holiday' . $holidayinfo['holidayid'] . '_desc';
@@ -857,9 +870,11 @@ if ($_REQUEST['do'] == 'updateholiday')
 
 	print_label_row($vbphrase['recurring_option'],
 		'<input type="radio" name="holidayinfo[recurring]" value="6" tabindex="1" ' . $checked[6] . '/>' .
-		construct_phrase($vbphrase['every_x_y'], construct_month_select_html($options[0], 'month1'),  construct_day_select_html($options[1], 'day1')) . '
-		<br /><input type="radio" name="holidayinfo[recurring]" value="7" tabindex="1" ' . $checked[7] . '/>' .
-		construct_phrase($vbphrase['the_x_y_of_z'], '<select name="period" tabindex="1" class="bginput">' . construct_select_options($periodarray, $options[0]) . '</select>', '<select name="day2" tabindex="1" class="bginput">' . construct_select_options($daysarray, $options[1]) . '</select>', construct_month_select_html($options[2], 'month2')),
+		
+		construct_phrase($vbphrase['every_x_y'], construct_month_select_html($recuroption1[0], 'month1'),  construct_day_select_html($recuroption1[1], 'day1')) . '
+		<br />
+		<input type="radio" name="holidayinfo[recurring]" value="7" tabindex="1" ' . $checked[7] . '/>' .
+		construct_phrase($vbphrase['the_x_y_of_z'], '<select name="period" tabindex="1" class="bginput">' . construct_select_options($periodarray, $recuroption2[0]) . '</select>', '<select name="day2" tabindex="1" class="bginput">' . construct_select_options($daysarray, $recuroption2[1]) . '</select>', construct_month_select_html($recuroption2[2], 'month2')),
 		'', 'top', 'recurring'
 	);
 	print_yes_no_row($vbphrase['allow_smilies'], 'holidayinfo[allowsmilies]', $holidayinfo['allowsmilies']);
@@ -1006,8 +1021,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45512 $
+|| # CVS: $RCSfile$ - $Revision: 57655 $
 || ####################################################################
 \*======================================================================*/
 ?>

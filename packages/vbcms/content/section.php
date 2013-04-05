@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ?2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ?2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -356,7 +356,7 @@ class vBCms_Content_Section extends vBCms_Content
 						$route = vB_Route::create('vBCms_Route_Content');
 						$route->node = $this->content->getUrlSegment();
 						$pageurl = $route->getCurrentURL();
-						$view->pagenav = construct_page_nav($this->current_page, intval($this->config['items_perhomepage']), $page_info['total'], $pageurl);
+						$view->pagenav = construct_page_nav($this->current_page, intval($this->config['items_perhomepage']), $page_info['total'], '','','','vbcms');
 					}
 				}
 			}
@@ -388,10 +388,8 @@ class vBCms_Content_Section extends vBCms_Content
 		}
 
 		$this->config = $this->content->getConfig();
-
-
 		// Only filter to published if section is published and user can't edit
-		$filter_published = ($this->content->isPublished() AND (!$this->content->canEdit() AND !$this->content->canCreate()));
+		$filter_published = (!$this->content->canPublish() OR ($this->content->isPublished() AND !$this->content->canEdit() AND !$this->content->canCreate()));
 		$aggregate = new vBCms_Collection_Content_Section();
 		$aggregate->requireInfo(vB_Model::QUERY_BASIC);
 
@@ -493,7 +491,7 @@ class vBCms_Content_Section extends vBCms_Content
 			foreach ($aggregate AS $id => $content)
 			{
 				// get the content controller
-				$controller = vB_Types::instance()->getContentTypeController($content->getContentTypeId(), $content);
+				$controller = vB_Types::instance()->getContentTypeController($content->getContentTypeID(), $content);
 
 				// set preview length
 				$controller->setPreviewLength(400);
@@ -532,7 +530,7 @@ class vBCms_Content_Section extends vBCms_Content
 				$results[$id] = true;
 
 				// get a controller for the specific type
-				$controllers[$id] = vB_Types::instance()->getContentTypeController($content->getContentTypeId(), $content);
+				$controllers[$id] = vB_Types::instance()->getContentTypeController($content->getContentTypeID(), $content);
 
 				// get required info flags for a preview
 				$info_flags = $controllers[$id]->getViewInfoFlags(self::VIEW_PREVIEW);
@@ -789,11 +787,11 @@ class vBCms_Content_Section extends vBCms_Content
 		$this->editing = true;
 
 		//confirm that the user has edit rights
-
 		if (!$this->content->canPublish())
 		{
 			return new vB_Phrase('cpcms', 'no_edit_permissions');
 		}
+
 		$this->content->requireInfo(vBCms_Item_Content::INFO_BASIC  &
 			vBCms_Item_Content::INFO_CONFIG & vBCms_Item_Content::INFO_NODE &
 			vBCms_Item_Content::INFO_NAVIGATION & vBCms_Item_Content::INFO_PARENTS);
@@ -1194,7 +1192,6 @@ class vBCms_Content_Section extends vBCms_Content
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28694 $
 || ####################################################################
 \*======================================================================*/

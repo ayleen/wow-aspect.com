@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -113,8 +113,8 @@ function build_language_datastore()
 * 			when we we build the master language.  Otherwise if we attempt to call this function
 * 			twice in the same pageload we don't actually manage to update any changes after the first
 * 			call.
-* 			The better approach would be to use an internal function and a master function t
-* 			hat generates the cached values once and passes them in.
+* 			The better approach would be to use an internal function and a master function
+* 			that generates the cached values once and passes them in.
 * 			However that means unwinding this function which works but is... odd.
 */
 function build_language($languageid = -1, $phrasearray = 0, $reset_static=true)
@@ -147,7 +147,6 @@ function build_language($languageid = -1, $phrasearray = 0, $reset_static=true)
 		unset($safephrases, $xmlobj);
 	}
 
-
 	// update all languages if this is the master language
 	if ($languageid == -1)
 	{
@@ -156,6 +155,7 @@ function build_language($languageid = -1, $phrasearray = 0, $reset_static=true)
 		{
 			build_language($language['languageid'], 0, false);
 		}
+
 		return;
 	}
 
@@ -179,7 +179,7 @@ function build_language($languageid = -1, $phrasearray = 0, $reset_static=true)
 		$masterlang = array();
 
 		$phrases = $vbulletin->db->query_read("
-			SELECT fieldname, varname, text
+			SELECT fieldname, varname, text, languageid
 			FROM " . TABLE_PREFIX . "phrase
 			WHERE languageid IN(-1,0) AND
 				fieldname IN (" . implode(',', $gettypes) . ")
@@ -201,7 +201,10 @@ function build_language($languageid = -1, $phrasearray = 0, $reset_static=true)
 				$phrase['text']
 			);
 
-			$masterlang["{$phrase['fieldname']}"]["$phrase[varname]"] = $phrase['text'];
+			if (!isset($masterlang["{$phrase['fieldname']}"]["$phrase[varname]"]) OR !$phrase['languageid'])
+			{
+				$masterlang["{$phrase['fieldname']}"]["$phrase[varname]"] = $phrase['text'];
+			}
 		}
 	}
 
@@ -397,13 +400,7 @@ function fetch_standard_phrases($languageid, $fieldname = '', $offset = 0)
 /*
  *	This function requries that the new vb framework is initialized.
  */
-function get_language_export_xml
-(
-	$languageid,
-	$product,
-	$custom,
-	$just_phrases
-)
+function get_language_export_xml($languageid, $product, $custom, $just_phrases, $charset = 'ISO-8859-1')
 {
 	global $vbulletin;
 
@@ -414,7 +411,6 @@ function get_language_export_xml
 
 	if ($languageid == -1)
 	{
-
 		//		$language['title'] = $vbphrase['master_language'];
 		$language['title'] = new vB_Phrase('language', 'master_language');
 	}
@@ -462,7 +458,7 @@ function get_language_export_xml
 	}
 
 	require_once(DIR . '/includes/class_xml.php');
-	$xml = new vB_XML_Builder($vbulletin);
+	$xml = new vB_XML_Builder($vbulletin, null, $charset);
 
 	$xml->add_group('language',
 		array
@@ -532,7 +528,7 @@ function get_language_export_xml
 	$xml->close_group();
 
 
-	$doc = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\r\n\r\n";
+	$doc = "<?xml version=\"1.0\" encoding=\"{$charset}\"?>\r\n\r\n";
 	$doc .= $xml->output();
 	$xml = null;
 
@@ -548,8 +544,9 @@ function get_language_export_xml
 * @param	boolean	Allow import of language from mismatched vBulletin version
 * @param	boolean	Allow user-select of imported language
 * @param	boolean	Echo output..
+* @param	boolean	Read charset from XML header
 */
-function xml_import_language($xml = false, $languageid = -1, $title = '', $anyversion = false, $userselect = true, $output = true)
+function xml_import_language($xml = false, $languageid = -1, $title = '', $anyversion = false, $userselect = true, $output = true, $readcharset = false)
 {
 	global $vbulletin, $vbphrase;
 
@@ -558,7 +555,7 @@ function xml_import_language($xml = false, $languageid = -1, $title = '', $anyve
 	require_once(DIR . '/includes/class_xml.php');
 	require_once(DIR . '/includes/functions_misc.php');
 
-	$xmlobj = new vB_XML_Parser($xml, $GLOBALS['path']);
+	$xmlobj = new vB_XML_Parser($xml, $GLOBALS['path'], $readcharset);
 	if ($xmlobj->error_no == 1)
 	{
 			print_dots_stop();
@@ -1172,7 +1169,6 @@ function add_phrase_type($phrasegroup_name, $phrasegroup_title, $productid = 'vb
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 42044 $
+|| # CVS: $RCSfile$ - $Revision: 62562 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -286,8 +286,21 @@ if ($_REQUEST['do'] == 'message')
 			$dataman->set('filedataid', $pictureinfo['filedataid']);
 			$dataman->set('userid', $pictureinfo['userid']);
 			$dataman->set('postuserid', $vbulletin->userinfo['userid']);
+
+			if ($vbulletin->GPC['albumid'])
+			{
+				$dataman->set('sourcecontentid', $vbulletin->GPC['albumid']);
+				$dataman->set('sourcecontenttypeid', vB_Types::instance()->getContentTypeID('vBForum_Album'));
+			}
+			else
+			{
+				$dataman->set('sourcecontentid', $vbulletin->GPC['groupid']);
+				$dataman->set('sourcecontenttypeid', vB_Types::instance()->getContentTypeID('vBForum_SocialGroup'));
+			}
+			$dataman->set('sourceattachmentid', $vbulletin->GPC['attachmentid']);
 		}
 
+		$dataman->set_info('pictureinfo', $pictureinfo);
 		$dataman->set_info('preview', $vbulletin->GPC['preview']);
 		$dataman->setr('pagetext', $message['message']);
 		$dataman->set('allowsmilie', !$message['disablesmilies']);
@@ -484,11 +497,11 @@ if ($_REQUEST['do'] == 'message')
 				}
 				else
 				{
-					$vbulletin->url = 'album.php?' . $vbulletin->session->vars['sessionurl'] . 
+					$vbulletin->url = 'album.php?' . $vbulletin->session->vars['sessionurl'] .
 						"albumid=$pictureinfo[albumid]&amp;attachmentid=$pictureinfo[attachmentid]&amp;commentid=$url_commentid#picturecomment_$url_commentid";
 				}
-				
-				eval(print_standard_redirect($redirect_phrase, true, true));
+
+				print_standard_redirect($redirect_phrase, true, true);
 			}
 		}
 	}
@@ -627,6 +640,8 @@ if ($_POST['do'] == 'deletemessage')
 		{
 			$dataman->set_info('pictureuser', $pictureuser);
 		}
+
+		$dataman->set_info('pictureinfo', $pictureinfo);
 		$dataman->set_info('hard_delete', $hard_delete);
 		$dataman->set_info('reason', $vbulletin->GPC['reason']);
 
@@ -644,11 +659,11 @@ if ($_POST['do'] == 'deletemessage')
 			);
 		}
 
-		eval(print_standard_redirect('picturecomment_deleted'));
+		print_standard_redirect('picturecomment_deleted');
 	}
 	else
 	{
-		eval(print_standard_redirect('picturecomment_nodelete'));
+		print_standard_redirect('picturecomment_nodelete');
 	}
 }
 
@@ -758,7 +773,7 @@ if ($_REQUEST['do'] == 'report' OR $_POST['do'] == 'sendemail')
 		$reportobj->do_report($vbulletin->GPC['reason'], $commentinfo);
 
 		$url =& $vbulletin->url;
-		eval(print_standard_redirect('redirect_reportthanks'));
+		print_standard_redirect('redirect_reportthanks');
 	}
 
 }
@@ -815,8 +830,7 @@ if ($_POST['do'] == 'quickedit')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44223 $
+|| # CVS: $RCSfile$ - $Revision: 62690 $
 || ####################################################################
 \*======================================================================*/
 ?>

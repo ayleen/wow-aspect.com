@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -25,8 +25,8 @@ $specialtemplates = array();
 require_once('./global.php');
 require_once(DIR . '/includes/adminfunctions_cms.php');
 require_once(DIR . '/includes/functions_cms_layout.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init('../');
+
+vB_Router::setRelativePath('../'); // Needed ?
 
 if (! isset($vbulletin->userinfo['permissions']['cms']))
 {
@@ -127,15 +127,12 @@ function initSuggest()
            {
 				  triesleft = 0
               tag_add_comp = new vB_AJAX_TagSuggest('tag_add_comp', 'srch_tag_text', 'tag_search');
-              tag_add_comp.setrooturl('../');
               tag_add_comp.allow_multiple = false;
 
               user_add_comp = new vB_AJAX_NameSuggest('user_add_comp', 'username', 'user_search');
-              user_add_comp.setrooturl('../');
               user_add_comp.allow_multiple = false;
 
               group_add_comp = new vB_AJAX_SocialGroupSuggest('group_add_comp', 'group_text', 'group_search');
-              group_add_comp.setrooturl('../');
               group_add_comp.allow_multiple = false;
 
 
@@ -851,6 +848,7 @@ if ($_POST['do'] == 'grid_update')
 
 	require_once(DIR . '/includes/adminfunctions_template.php');
 	print_rebuild_style(-1, '', 0, 0, 0, 0);
+	print_rebuild_style(-2, '', 0, 0, 0, 0);
 
 	define('CP_REDIRECT', 'cms_admin.php?do=grid');
 	print_stop_message('saved_grid_successfully');
@@ -983,6 +981,7 @@ if ($_POST['do'] == 'grid_doedit')
 			)
 	");
 	print_rebuild_style(-1, '', 0, 0, 0, 0);
+	print_rebuild_style(-2, '', 0, 0, 0, 0);
 
 	define('CP_REDIRECT', 'cms_admin.php?do=grid');
 	print_stop_message('saved_grid_successfully');
@@ -1022,6 +1021,7 @@ if ($_POST['do'] == 'grid_dodelete')
 
 	require_once(DIR . '/includes/adminfunctions_template.php');
 	print_rebuild_style(-1, '', 0, 0, 0, 0);
+	print_rebuild_style(-2, '', 0, 0, 0, 0);
 
 	define('CP_REDIRECT', 'cms_admin.php?do=grid');
 	print_stop_message('deleted_grid_successfully');
@@ -1269,6 +1269,7 @@ if ($_REQUEST['do'] == 'grid_dounflatten')
 			)
 	");
 	print_rebuild_style(-1, '', 0, 0, 0, 0);
+	print_rebuild_style(-2, '', 0, 0, 0, 0);
 
 	define('CP_REDIRECT', 'cms_admin.php?do=grid');
 	print_stop_message('saved_grid_successfully');
@@ -1391,7 +1392,7 @@ if ($_REQUEST['do'] == 'modifylayout')
 	");
 	while ($widget = $db->fetch_array($widgets))
 	{
-		$widgetbits .= "<option value=\"$widget[widgetid]\">" . htmlspecialchars_uni($widget['title']) . "</option>";
+		$widgetbits .= "<option value=\"$widget[widgetid]\">" . $widget['title'] . "</option>";
 	}
 	$widgetboxheight = $db->num_rows($widgets) > 10 ? 10 : $db->num_rows($widgets);
 
@@ -1812,8 +1813,8 @@ if ($_REQUEST['do'] == 'editwidget')
 	construct_hidden_code('widgetid', $widget->getId());
 	print_table_header($vbphrase['edit_widget']);
 	print_label_row($vbphrase['widget_type'], "<b>{$widget->getTypeTitle()}</b>");
-	print_input_row($vbphrase['title'], 'title', $widget->getTitle());
-	print_textarea_row($vbphrase['description'], 'description', $widget->getDescription(), 15, 80);
+	print_input_row($vbphrase['title'], 'title', $widget->getTitle(), false);
+	print_textarea_row($vbphrase['description'], 'description', $widget->getDescription(), 15, 80, false);
 	print_submit_row($vbphrase['save'], '');
 }
 
@@ -1859,7 +1860,6 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 27874 $
 || ####################################################################
 \*======================================================================*/

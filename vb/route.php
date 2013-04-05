@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright Â©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -1012,7 +1012,7 @@ abstract class vB_Route
 			// add any query vars
 			$vars = $_GET;
 			unset($vars[vB::$vbulletin->options['route_requestvar']]);
-
+			unset($vars['pagenumber']); // Remove duplicate created by shortvar code
 
 			if (!empty($vars))
 			{
@@ -1024,7 +1024,12 @@ abstract class vB_Route
 			//friendly url logic doesn't correctly detect the rewrite URL version of the
 			//incoming link and will attempt to redirect because they don't match.
 			$url = create_full_url($url);
-			if ($url != VB_URL_CLEAN)
+
+			$cleaned_url = vB::$vbulletin->input->xss_clean(vB::$vbulletin->input->strip_sessionhash($url));
+			$cleaned_url = $this->domain_to_lower($cleaned_url);
+
+			//if ($url != VB_URL_CLEAN)
+			if (urldecode($cleaned_url) != urldecode($this->domain_to_lower(VB_URL_CLEAN)))
 			{
 				// redirect to the canonical url
 				exec_header_redirect($url, 301);
@@ -1032,6 +1037,17 @@ abstract class vB_Route
 		}
 	}
 
+	/**
+	 * Converts the url domain to lowercase if needed. 
+	 */
+	protected function domain_to_lower($url)
+	{
+		if(!preg_match('#^(https?://[0-9a-z_.:\-]+)(.+)$#i', $url, $matches))
+		{
+			return $url;
+		}
+		return strtolower($matches[1]) . $matches[2];
+	}
 
 
 	/*Accessors=====================================================================*/
@@ -1204,7 +1220,6 @@ abstract class vB_Route
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 29650 $
 || ####################################################################
 \*======================================================================*/

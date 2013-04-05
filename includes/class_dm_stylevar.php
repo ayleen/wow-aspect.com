@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,8 +19,8 @@ if (!class_exists('vB_DataManager'))
 * Class to do data save/delete operations for StyleVarDefinitions.
 *
 * @package	vBulletin
-* @version	$Revision: 34206 $
-* @date		$Date: 2009-12-08 18:12:21 -0800 (Tue, 08 Dec 2009) $
+* @version	$Revision: 58539 $
+* @date		$Date: 2012-02-02 09:27:31 -0800 (Thu, 02 Feb 2012) $
 */
 
 class vB_DataManager_StyleVarDefn extends vB_DataManager
@@ -32,7 +32,7 @@ class vB_DataManager_StyleVarDefn extends vB_DataManager
 	*/
 	var $validfields = array(
 		'stylevarid'    => array(TYPE_STR,      REQ_YES),
-		'styleid'       => array(TYPE_INT,      REQ_NO,   'if ($data < -1) { $data = 0; } return true;'),
+		'styleid'       => array(TYPE_INT,      REQ_NO,   'if ($data < -2) { $data = 0; } return true;'),
 		'parentid'      => array(TYPE_INT,      REQ_YES,  VF_METHOD),
 		// 'parentlist'    => array(TYPE_STR,      REQ_AUTO, 'return preg_match(\'#^(\d+,)*-1$#\', $data);'),
 		'parentlist'    => array(TYPE_STR,      REQ_NO),
@@ -65,7 +65,7 @@ class vB_DataManager_StyleVarDefn extends vB_DataManager
 	*
 	* @var	array
 	*/
-	var $condition_construct = array('stylevarid = "%1$s"', 'stylevarid');
+	var $condition_construct = array('stylevarid = "%1$s" AND styleid = %2$d', 'stylevarid', 'styleid');
 
 	/**
 	* Constructor - checks that the registry object has been passed correctly.
@@ -96,7 +96,10 @@ class vB_DataManager_StyleVarDefn extends vB_DataManager
 		}
 		else if ($parentid <= 0)
 		{
-			$parentid = -1;
+			if ($parentid != -2)
+			{
+				$parentid = -1;
+			}
 			return true;
 		}
 		else if (!isset($this->registry->stylecache["$parentid"]))
@@ -133,7 +136,7 @@ class vB_DataManager_StyleVarDefn extends vB_DataManager
 			{
 				return true;
 			}
-			if ($curstyle['parentid'] == -1)
+			if ($curstyle['parentid'] == -1 OR $curstyle['parentid'] == -2)
 			{
 				break;
 			}
@@ -197,12 +200,12 @@ class vB_DataManager_StyleVarDefn extends vB_DataManager
 	/**
 	* Deletes a stylevardfn and its associated data from the database
 	*/
-	public function delete()
+	public function delete($masterstyleid)
 	{
 		// fetch list of stylevars to delete
 		$stylevardfnlist = '';
 
-		$stylevardfns = $this->dbobject->query_read_slave("SELECT stylevarid FROM " . TABLE_PREFIX . "stylevardfn WHERE " . $this->condition);
+		$stylevardfns = $this->dbobject->query_read_slave("SELECT stylevarid FROM " . TABLE_PREFIX . "stylevardfn WHERE styleid = {$masterstyleid} AND " . $this->condition);
 		while($thisdfn = $this->dbobject->fetch_array($stylevardfns))
 		{
 			$stylevardfnlist .= ',' . $thisdfn['stylevarid'];
@@ -218,7 +221,7 @@ class vB_DataManager_StyleVarDefn extends vB_DataManager
 		}
 		else
 		{
-			$condition = "stylevarid IN ($stylevardfnlist)";
+			$condition = "styleid = {$masterstyleid} AND stylevarid IN ($stylevardfnlist)";
 
 			// delete from data tables
 			$this->db_delete(TABLE_PREFIX, 'stylevar', $condition);
@@ -233,8 +236,8 @@ class vB_DataManager_StyleVarDefn extends vB_DataManager
 * Abstract class to do data save/delete operations for StyleVar.
 *
 * @package	vBulletin
-* @version	$Revision: 34206 $
-* @date		$Date: 2009-12-08 18:12:21 -0800 (Tue, 08 Dec 2009) $
+* @version	$Revision: 58539 $
+* @date		$Date: 2012-02-02 09:27:31 -0800 (Thu, 02 Feb 2012) $
 */
 class vB_DataManager_StyleVar extends vB_DataManager
 {
@@ -268,7 +271,7 @@ class vB_DataManager_StyleVar extends vB_DataManager
 	*/
 	var $validfields = array(
 		'stylevarid'		=> array(TYPE_STR,			REQ_YES,	VF_METHOD, 'verify_stylevar'),
-		'styleid'			=> array(TYPE_INT,			REQ_YES,	'if ($data < -1) { $data = 0; } return true;'),
+		'styleid'			=> array(TYPE_INT,			REQ_YES,	'if ($data < -2) { $data = 0; } return true;'),
 		'dateline'			=> array(TYPE_UNIXTIME,		REQ_AUTO),
 		'username'			=> array(TYPE_STR,			REQ_NO),
 		'value'				=> array(TYPE_ARRAY_STR,	REQ_NO,   	VF_METHOD, 'verify_serialized'),
@@ -325,7 +328,7 @@ class vB_DataManager_StyleVar extends vB_DataManager
 	*
 	* @return	boolean	True on success; false on failure
 	*/
-	function save($doquery = true, $call_save_once = true)
+	function save($doquery = true, $call_save_once = true, $replace = false)
 	{
 		if ($this->has_errors())
 		{
@@ -339,7 +342,7 @@ class vB_DataManager_StyleVar extends vB_DataManager
 
 		if ($this->condition === null)
 		{
-			$return = $this->db_insert(TABLE_PREFIX, $this->table, $doquery);
+			$return = $this->db_insert(TABLE_PREFIX, $this->table, $doquery, $replace);
 		}
 		else
 		{
@@ -560,6 +563,29 @@ class vB_DataManager_StyleVar extends vB_DataManager
 		return true;
 	}
 
+	public function verify_font_size($size)
+	{
+		$valid_size= array(
+			'xx-small',
+			'x-small',
+			'small',
+			'medium',
+			'large',
+			'x-large',
+			'xx-large',
+			'smaller',
+			'larger',
+			'inherit'
+		);
+
+		if ($size !== '')
+		{
+			return (in_array($size, $valid_size) OR is_numeric($size));
+		}
+
+		return true;
+	}
+
 	public function verify_width($width)
 	{
 		return true;
@@ -715,12 +741,12 @@ class vB_DataManager_StyleVarColor extends vB_DataManager_StyleVar
 class vB_DataManager_StyleVarBackground extends vB_DataManager_StyleVar
 {
 	var $childfields = array(
-		'image'				=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_image'),
-		'color'				=> array(TYPE_STR,			REQ_NO,		VF_METHOD),
-		'repeat'			=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_repeat'),
-		'units'				=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_units'),
-		'x'						=> array(TYPE_STR,			REQ_NO),
-		'y'						=> array(TYPE_STR,			REQ_NO),
+		'image'		=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_image'),
+		'color'		=> array(TYPE_STR,			REQ_NO,		VF_METHOD),
+		'repeat'	=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_repeat'),
+		'units'		=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_units'),
+		'x'			=> array(TYPE_STR,			REQ_NO),
+		'y'			=> array(TYPE_STR,			REQ_NO),
 	);
 
 	/**
@@ -741,7 +767,7 @@ class vB_DataManager_StyleVarFont extends vB_DataManager_StyleVar
 	var $childfields = array(
 		'family'			=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_fontfamily'),
 		'units'				=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_units'),
-		'size'				=> array(TYPE_NUM,			REQ_NO,		VF_METHOD),
+		'size'				=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_font_size'),
 		'weight'			=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_fontweight'),
 		'style'				=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_fontstyle'),
 		'variant'			=> array(TYPE_STR,			REQ_NO,		VF_METHOD,	'verify_fontvariant'),
@@ -967,7 +993,6 @@ class vB_DataManager_StyleVarCustom extends vB_DataManager_StyleVar
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 34206 $
+|| # CVS: $RCSfile$ - $Revision: 58539 $
 || ####################################################################
 \*======================================================================*/

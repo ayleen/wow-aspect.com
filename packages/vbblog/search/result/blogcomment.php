@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -93,7 +93,17 @@ class vBBlog_Search_Result_BlogComment extends vB_Search_Result
 			$items[$record['blogtextid']] = $item;
 		}
 
-		return $items;
+		$ordered_items = array();
+		foreach($ids AS $item_key)
+		{
+			if(isset($items[$item_key]))
+			{
+				$ordered_items[$item_key] = $items[$item_key];
+				unset($items[$item_key]);
+			}
+		}
+
+		return $ordered_items;
 	}
 
 	protected function __construct() {}
@@ -200,11 +210,11 @@ class vBBlog_Search_Result_BlogComment extends vB_Search_Result
 		$templater->register('commentinfo', $comment);
 		$templater->register('dateline', $this->message['dateline']);
 		$templater->register('dateformat', $vbulletin->options['dateformat']);
-		$templater->register('timeformat', $vbulletin->options['default_timeformat']);
+		$templater->register('timeformat', $vbulletin->options['timeformat']);
 
 		if ($vbulletin->options['avatarenabled'] AND (intval($comment['comment_userid'])))
 		{
-			$avatar = fetch_avatar_url($comment['comment_userid']);
+			$avatar = fetch_avatar_url($comment['comment_userid'], true);
 		}
 
 		if (!isset($avatar))
@@ -261,7 +271,6 @@ class vBBlog_Search_Result_BlogComment extends vB_Search_Result
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

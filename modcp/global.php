@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,10 +19,6 @@ define('VB_AREA', 'ModCP');
 //proving to be more trouble than it is  worth
 define('VB_ENTRY', 'ModCP');
 define('IN_CONTROL_PANEL', true);
-if (!defined('VB_API'))
-{
-	define('VB_API', false);
-}
 
 if (!isset($phrasegroups) OR !is_array($phrasegroups))
 {
@@ -103,8 +99,7 @@ if ((!can_moderate() AND !can_moderate_calendar()) OR ($vbulletin->options['time
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40651 $
+|| # CVS: $RCSfile$ - $Revision: 62099 $
 || ####################################################################
 \*======================================================================*/
 ?>

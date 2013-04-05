@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -39,7 +39,6 @@ $actiontemplates = array(
 		'memberlist',
 		'memberlist_letter',
 		'memberlist_results_header',
-		'memberlist_resultsbit',
 		'memberlist_resultsbit_field',
 
 		'im_aim',
@@ -49,7 +48,6 @@ $actiontemplates = array(
 		'im_skype',
 
 		'forumdisplay_sortarrow',
-		'postbit_reputation',
 	),
 	'search' => array(
 		'memberlist_search',
@@ -538,7 +536,6 @@ if ($_REQUEST['do'] == 'getall')
 		$templater->register('oppositesort', $oppositesort);
 	$sortarrow["$sortfield"] = $templater->render();
 
-	$memberlistbit = '';
 	$limitlower = ($pagenumber - 1) * $perpage + 1;
 	$limitupper = ($pagenumber) * $perpage;
 	$counter = 0;
@@ -627,7 +624,7 @@ if ($_REQUEST['do'] == 'getall')
 	");
 
 	$counter = 0;
-	$memberlistbits = '';
+	$memberlistbits = array();
 	$today_year = vbdate('Y', TIMENOW, false, false);
 	$today_month = vbdate('n', TIMENOW, false, false);
 	$today_day = vbdate('j', TIMENOW, false, false);
@@ -638,6 +635,7 @@ if ($_REQUEST['do'] == 'getall')
 
 	while ($userinfo = $db->fetch_array($users) AND $counter++ < $perpage)
 	{
+		$memberlist = array();
 		$userinfo = array_merge($userinfo , convert_bits_to_array($userinfo['options'] , $vbulletin->bf_misc_useroptions));
 		$userinfo = array_merge($userinfo , convert_bits_to_array($userinfo['adminoptions'] , $vbulletin->bf_misc_adminoptions));
 		cache_permissions($userinfo, false);
@@ -654,41 +652,41 @@ if ($_REQUEST['do'] == 'getall')
 
 		if ($userinfo['lastpost'])
 		{
-			$show['searchlink'] = true;
+			$memberlist['searchlink'] = true;
 		}
 		else
 		{
-			$show['searchlink'] = false;
+			$memberlist['searchlink'] = false;
 		}
 		if ($userinfo['showemail'] AND $vbulletin->options['displayemails'] AND (!$vbulletin->options['secureemail'] OR ($vbulletin->options['secureemail'] AND $vbulletin->options['enableemail'])) AND $vbulletin->userinfo['permissions']['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canemailmember'] AND $vbulletin->userinfo['userid'])
 		{
-			$show['emaillink'] = true;
+			$memberlist['emaillink'] = true;
 		}
 		else
 		{
-			$show['emaillink'] = false;
+			$memberlist['emaillink'] = false;
 		}
 
 		construct_im_icons($userinfo, true);
 
 		if ($userinfo['homepage'] != '' AND $userinfo['homepage'] != 'http://')
 		{
-			$show['homepagelink'] = true;
+			$memberlist['homepagelink'] = true;
 		}
 		else
 		{
-			$show['homepagelink'] = false;
+			$memberlist['homepagelink'] = false;
 		}
 		if ($vbulletin->options['enablepms'] AND $vbulletin->userinfo['permissions']['pmquota'] AND ($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']
 	 					OR ($userinfo['receivepm'] AND $userinfo['permissions']['pmquota']
 	 						AND (!$userinfo['receivepmbuddies'] OR can_moderate() OR strpos(" $userinfo[buddylist] ", ' ' . $vbulletin->userinfo['userid'] . ' ') !== false))
 	 				))
 	 	{
-			$show['pmlink'] = true;
+			$memberlist['pmlink'] = true;
 		}
 		else
 		{
-			$show['pmlink'] = false;
+			$memberlist['pmlink'] = false;
 		}
 		if ($show['birthdaycol'] OR $show['agecol'])
 		{
@@ -796,11 +794,11 @@ if ($_REQUEST['do'] == 'getall')
 
 		if ($show['avatarcol'])
 		{
-			$avwidth = '';
-			$avheight = '';
+			$memberlist['avwidth'] = '';
+			$memberlist['avheight'] = '';
 			if ($userinfo['avatarid'])
 			{
-				$avatarurl = $userinfo['avatarpath'];
+				$memberlist['avatarurl'] = $userinfo['avatarpath'];
 			}
 			else
 			{
@@ -808,36 +806,34 @@ if ($_REQUEST['do'] == 'getall')
 				{
 					if ($vbulletin->options['usefileavatar'])
 					{
-						$avatarurl = $vbulletin->options['avatarurl'] . "/avatar$userinfo[userid]_$userinfo[avatarrevision].gif";
+						$memberlist['avatarurl'] = $vbulletin->options['avatarurl'] . "/thumbs/avatar$userinfo[userid]_$userinfo[avatarrevision].gif";
 					}
 					else
 					{
-						$avatarurl = 'image.php?' . $vbulletin->session->vars['sessionurl'] . "u=$userinfo[userid]&amp;dateline=$userinfo[avatardateline]";
+						$memberlist['avatarurl'] = 'image.php?' . $vbulletin->session->vars['sessionurl'] . "u=$userinfo[userid]&amp;dateline=$userinfo[avatardateline]" . '&amp;type=thumb';
 					}
 					if ($userinfo['avheight'] AND $userinfo['avwidth'])
 					{
-						$avheight = "height=\"$userinfo[avheight]\"";
-						$avwidth = "width=\"$userinfo[avwidth]\"";
+						$memberlist['avheight'] = "height=\"$userinfo[avheight]\"";
+						$memberlist['avwidth'] = "width=\"$userinfo[avwidth]\"";
 					}
 				}
 				else
 				{
-					$avatarurl = '';
+					$memberlist['avatarurl'] = '';
 				}
 			}
-			if ($avatarurl == '')
+			if ($memberlist['avatarurl'] == '')
 			{
-				$show['avatar'] = false;
+				$memberlist['avatar'] = false;
 			}
 			else
 			{
-				$show['avatar'] = true;
+				$memberlist['avatar'] = true;
 			}
 		}
 
-		$bgclass = iif(($totalcols % 2) == 1, 'alt2', 'alt1');
-
-		$customfields = '';
+		$memberlist['customfields'] = '';
 
 		if ($show['customfields'] AND !empty($profileinfo))
 		{
@@ -866,30 +862,21 @@ if ($_REQUEST['do'] == 'getall')
 					$customfield = '&nbsp;';
 				}
 
-				exec_switch_bg();
 				$templater = vB_Template::create('memberlist_resultsbit_field');
-					$templater->register('bgclass', $bgclass);
 					$templater->register('customfield', $customfield);
-				$customfields .= $templater->render();
+				$memberlist['customfields'] .= $templater->render();
 			}
 		}
 
-		$show['hideleader'] = iif ($userinfo['isleader'] OR $userinfo['usergroupid'] == $usergroupid, true, false);
+		$memberlist['hideleader'] = iif ($userinfo['isleader'] OR $userinfo['usergroupid'] == $usergroupid, true, false);
 
-		$bgclass = 'alt1';
 		$itemcount++;
+		$memberlist += $userinfo;
 
 		($hook = vBulletinHook::fetch_hook('memberlist_bit')) ? eval($hook) : false;
-
-		$templater = vB_Template::create('memberlist_resultsbit');
-			$templater->register('avatarurl', $avatarurl);
-			$templater->register('avheight', $avheight);
-			$templater->register('avwidth', $avwidth);
-			$templater->register('bgclass', $bgclass);
-			$templater->register('customfields', $customfields);
-			$templater->register('userinfo', $userinfo);
-		$memberlistbits .= $templater->render();
-	}  // end while
+		
+		$memberlistbits[] = $memberlist;
+	}
 
 	$last = $itemcount;
 
@@ -1119,8 +1106,7 @@ if (!empty($page_templater))
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 42666 $
+|| # CVS: $RCSfile$ - $Revision: 61069 $
 || ####################################################################
 \*======================================================================*/
 ?>

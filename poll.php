@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -40,7 +40,6 @@ $globaltemplates = array(
 	'pollresult',
 	'pollresults',
 	'pollresults_table',
-	'forumdisplay_loggedinuser',
 );
 
 // pre-cache templates used by specific actions
@@ -187,7 +186,7 @@ if ($_POST['do'] == 'postpoll')
 	{ // 0..Pollnum-1 we want, as arrays start with 0
 		if ($vbulletin->options['maxpolllength'] AND vbstrlen($vbulletin->GPC['options']["$counter"]) > $vbulletin->options['maxpolllength'])
 		{
-			$badoption .= iif($badoption, ', ') . $counter;
+			$badoption .= ($badoption) ? $vbphrase['comma_space'] . $counter : $counter;
 		}
 		if (!empty($vbulletin->GPC['options']["$counter"]))
 		{
@@ -247,7 +246,7 @@ if ($_POST['do'] == 'postpoll')
 		}
 
 		// check max images
-		if ($vbulletin->options['maximages'])
+		if ($vbulletin->options['maximages'] OR $vbulletin->options['maxvideos'])
 		{
 			$counter = 0;
 			while ($counter++ < $polloptions)
@@ -259,10 +258,22 @@ if ($_POST['do'] == 'postpoll')
 			$parsedmessage = $img_parser->parse($maximgtest . $question, $foruminfo['forumid'], $foruminfo['allowsmilies'], true);
 
 			require_once(DIR . '/includes/functions_misc.php');
-			$imagecount = fetch_character_count($parsedmessage, '<img');
-			if ($imagecount > $vbulletin->options['maximages'])
+
+			if ($vbulletin->options['maximages'])
 			{
-				eval(standard_error(fetch_error('toomanyimages', $imagecount, $vbulletin->options['maximages'])));
+				$imagecount = fetch_character_count($parsedmessage, '<img');
+				if ($imagecount > $vbulletin->options['maximages'])
+				{
+					eval(standard_error(fetch_error('toomanyimages', $imagecount, $vbulletin->options['maximages'])));
+				}
+			}
+			if ($vbulletin->options['maxvideos'])
+			{
+				$videocount = fetch_character_count($parsedmessage, '<video />');
+				if ($videocount > $vbulletin->options['maxvideos'])
+				{
+					eval(standard_error(fetch_error('toomanyvideos', $videocount, $vbulletin->options['maxvideos'])));
+				}
 			}
 		}
 
@@ -329,13 +340,12 @@ if ($_POST['do'] == 'postpoll')
 
 		if (!($forumperms & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
 		{
-			eval(print_standard_redirect('redirect_postthanks_nopermission'));
+			print_standard_redirect('redirect_postthanks_nopermission');  
 		}
 		else
 		{
-			eval(print_standard_redirect('redirect_postthanks'));
+			print_standard_redirect('redirect_postthanks');  
 		}
-
 	}
 }
 
@@ -393,12 +403,6 @@ if ($_REQUEST['do'] == 'newpoll')
 	$navbits = construct_poll_nav($foruminfo, $threadinfo);
 	$navbar = render_navbar_template($navbits);
 
-	if (!isset($checked['parseurl']))
-	{
-		$checked['parseurl'] = 'checked="checked"';
-		$parseurlchecked = 'checked="checked"';
-	}
-
 	require_once(DIR . '/includes/functions_bigthree.php');
 	construct_forum_rules($foruminfo, $forumperms);
 
@@ -414,6 +418,11 @@ if ($_REQUEST['do'] == 'newpoll')
 		$templater = vB_Template::create('pollnewbit');
 			$templater->register('option', $option);
 		$pollnewbits .= $templater->render();
+	}
+
+	if (!isset($checked['parseurl']))
+	{
+		$checked['parseurl'] = 'checked="checked"';
 	}
 
 	$show['parseurl'] = $foruminfo['allowbbcode'];
@@ -519,12 +528,19 @@ if ($_REQUEST['do'] == 'polledit')
 		$show['additional_option2'] = true;
 	}
 
+	if (!isset($checked['parseurl']))
+	{
+		$checked['parseurl'] = 'checked="checked"';
+	}
+
+	$show['parseurl'] = $foruminfo['allowbbcode'];
 	$usernamecode = vB_Template::create('newpost_usernamecode')->render();
 
 	($hook = vBulletinHook::fetch_hook('poll_editform_complete')) ? eval($hook) : false;
 
 	$templater = vB_Template::create('editpoll');
 		$templater->register_page_templates();
+		$templater->register('checked', $checked);
 		$templater->register('forumrules', $forumrules);
 		$templater->register('navbar', $navbar);
 		$templater->register('pollbits', $pollbits);
@@ -558,18 +574,42 @@ if ($_POST['do'] == 'updatepoll')
 		'pollvotes'    => TYPE_ARRAY_UINT,
 		'timeout'      => TYPE_UINT,
 		'public'       => TYPE_BOOL,
+		'parseurl'       => TYPE_BOOL,
 	));
 
 	$poll =& datamanager_init('Poll', $vbulletin, ERRTYPE_STANDARD);
 	$poll->set_existing($pollinfo);
+	$maximgtest = '';
 
-	//check if there are 2 options or more after edit
+	// check max chars in option | prepare if needed $maximgtest for max img|video check
+	$badoption = '';
+	foreach ($vbulletin->GPC['options'] AS $counter => $optionvalue)
+	{
+		if ($vbulletin->options['maxpolllength'] AND vbstrlen($vbulletin->GPC['options']["$counter"]) > $vbulletin->options['maxpolllength'])
+		{
+			$badoption .= ($badoption) ? $vbphrase['comma_space'] . $counter : $counter;
+		}
+		if ($vbulletin->options['maximages'] OR $vbulletin->options['maxvideos']) 
+		{
+			$maximgtest .= $vbulletin->GPC['options']["$counter"];
+		}
+	}
+
+	if ($badoption)
+	{
+		eval(standard_error(fetch_error('polloptionlength', $vbulletin->options['maxpolllength'], $badoption)));
+	}
+
 	$optioncount = 0;
-
+	require_once(DIR . '/includes/functions_newpost.php');
 	foreach ($vbulletin->GPC['options'] AS $counter => $optionvalue)
 	{
 		if ($optionvalue != '')
 		{
+			if ($vbulletin->GPC['parseurl'] AND $foruminfo['allowbbcode'])
+			{
+				$optionvalue = convert_url_to_bbcode($optionvalue);
+			}
 			$poll->set_option($optionvalue, $counter - 1, intval($vbulletin->GPC['pollvotes']["$counter"]));
 			$optioncount++;
 		}
@@ -577,7 +617,6 @@ if ($_POST['do'] == 'updatepoll')
 		{
 			$poll->set_option('', $counter - 1);
 		}
-
 	}
 
 	if ($vbulletin->GPC['pollquestion'] == '' OR $optioncount < 2)
@@ -588,6 +627,32 @@ if ($_POST['do'] == 'updatepoll')
 	if (TIMENOW + ($vbulletin->GPC['timeout'] * 86400) >= 2147483647)
 	{ // maximuim size of a 32 bit integer
 		eval(standard_error(fetch_error('maxpolltimeout')));
+	}
+
+	// check max images|videos
+	if ($vbulletin->options['maximages'] OR $vbulletin->options['maxvideos'])
+	{
+		$img_parser = new vB_BbCodeParser_ImgCheck($vbulletin, fetch_tag_list());
+		$parsedmessage = $img_parser->parse($maximgtest . $vbulletin->GPC['pollquestion'], $foruminfo['forumid'], $foruminfo['allowsmilies'], true);
+
+		require_once(DIR . '/includes/functions_misc.php');
+
+		if ($vbulletin->options['maximages'])
+		{
+			$imagecount = fetch_character_count($parsedmessage, '<img');
+			if ($imagecount > $vbulletin->options['maximages'])
+			{
+				eval(standard_error(fetch_error('toomanyimages', $imagecount, $vbulletin->options['maximages'])));
+			}
+		}
+		if ($vbulletin->options['maxvideos'])
+		{
+			$videocount = fetch_character_count($parsedmessage, '<video />');
+			if ($videocount > $vbulletin->options['maxvideos'])
+			{
+				eval(standard_error(fetch_error('toomanyvideos', $videocount, $vbulletin->options['maxvideos'])));
+			}
+		}
 	}
 
 	$poll->set('question', $vbulletin->GPC['pollquestion']);
@@ -611,7 +676,7 @@ if ($_POST['do'] == 'updatepoll')
 	($hook = vBulletinHook::fetch_hook('poll_update_complete')) ? eval($hook) : false;
 
 	$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-	eval(print_standard_redirect('redirect_editthanks'));
+	print_standard_redirect('redirect_editthanks');  
 }
 
 // ############################### start show results without vote ###############################
@@ -662,19 +727,29 @@ if ($_REQUEST['do'] == 'showresults')
 			WHERE pollid = $pollinfo[pollid]
 			ORDER BY username ASC
 		");
+
+		$clc = 0;
+		$last = array();
 		$allnames = array();
 		while ($name = $db->fetch_array($public))
 		{
+			$clc++;
 			fetch_musername($name);
-			$templater = vB_Template::create('forumdisplay_loggedinuser');
-				$templater->register('loggedin', $name);
-			$allnames["$name[voteoption]"][] .= $templater->render();
+			$last[$name['voteoption']] = $clc;
+			$name['comma'] = $vbphrase['comma_space'];
+			$allnames[$name['voteoption']][$clc] = $name;
 		}
+		
+		// Last elements
+		foreach ($last AS $voteoption => $value)
+		{
+			$allnames[$voteoption][$value]['comma'] = '';
+		}		
 	}
 
 	foreach ($splitvotes AS $index => $value)
 	{
-		$option['uservote'] = iif($uservote[$index + 1], '*');
+		$option['uservote'] = ($uservote[$index + 1]) ? '*' : '';
 		$option['question'] = $bbcode_parser->parse($splitoptions["$index"], $foruminfo['forumid'], true);
 		$option['votes'] = $value;  //get the vote count for the option
 
@@ -709,7 +784,6 @@ if ($_REQUEST['do'] == 'showresults')
 			unset($allnames[($index+1)]);
 			if (!empty($names))
 			{
-				$names = implode("\r\n", $names);
 				$show['pollvoters'] = true;
 			}
 		}
@@ -792,6 +866,10 @@ if ($_POST['do'] == 'pollvote')
 	{
 		eval(standard_error(fetch_error('invalidid', $vbphrase['poll'], $vbulletin->options['contactuslink'])));
 	}
+
+	$vbulletin->input->clean_array_gpc('p', array(
+		'hkey' => TYPE_STR,
+	));
 
 	if ($pollinfo['multiple'])
 	{
@@ -876,7 +954,7 @@ if ($_POST['do'] == 'pollvote')
 					if (!$pollvote->save(true, false, false, false, true))
 					{
 						$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-						eval(print_standard_redirect('redirect_pollvoteduplicate'));
+						print_standard_redirect('redirect_pollvoteduplicate');  
 					}
 
 					$skip_voters = true;
@@ -901,7 +979,7 @@ if ($_POST['do'] == 'pollvote')
 				if (!$pollvote->save(true, false, false, false, true))
 				{
 					$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-					eval(print_standard_redirect('redirect_pollvoteduplicate'));
+					print_standard_redirect('redirect_pollvoteduplicate');  
 				}
 		}
 
@@ -917,9 +995,16 @@ if ($_POST['do'] == 'pollvote')
 
 		($hook = vBulletinHook::fetch_hook('poll_vote_complete')) ? eval($hook) : false;
 
+		if ($vbulletin->GPC['hkey'])
+		{
+			vB_Cache::instance()->expire($vbulletin->GPC['hkey']);
+		}
+		else
+		{
+			$vbulletin->url = fetch_seo_url('thread', $threadinfo);
+		}
 		// redirect
-		$vbulletin->url = fetch_seo_url('thread', $threadinfo);
-		eval(print_standard_redirect('redirect_pollvotethanks'));
+		print_standard_redirect('redirect_pollvotethanks');  
 	}
 	else
 	{
@@ -931,8 +1016,7 @@ if ($_POST['do'] == 'pollvote')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45790 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

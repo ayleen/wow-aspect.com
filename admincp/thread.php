@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 40911 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 49279 $');
 define('NOZIP', 1);
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
@@ -509,7 +509,7 @@ if ($_REQUEST['do'] == 'move')
 	print_form_header('thread', 'dothreads');
 	construct_hidden_code('type', 'move');
 	print_table_header($vbphrase['move_threads']);
-	print_forum_chooser($vbphrase['destination_forum'], 'destforumid', -1);
+	print_forum_chooser($vbphrase['destination_forum'], 'destforumid', -1, '', true);
 	print_move_prune_rows();
 	print_submit_row($vbphrase['move_threads']);
 }
@@ -1443,8 +1443,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40911 $
+|| # CVS: $RCSfile$ - $Revision: 49279 $
 || ####################################################################
 \*======================================================================*/
 ?>

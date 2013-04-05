@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,8 +16,8 @@
  * @package vBCms
  * @subpackage Search
  * @author Ed Brown, vBulletin Development Team
- * @version $Id: staticpage.php 38992 2010-09-15 19:29:46Z zoltan.szalay $
- * @since $Date: 2010-09-15 12:29:46 -0700 (Wed, 15 Sep 2010) $
+ * @version $Id: staticpage.php 60418 2012-03-16 15:52:01Z pmarsden $
+ * @since $Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 
@@ -26,8 +26,8 @@ require_once DIR . '/vb/search/indexcontroller.php';
  * @package vBulletin
  * @subpackage Search
  * @author Edwin Brown, vBulletin Development Team
- * @version $Revision: 38992 $
- * @since $Date: 2010-09-15 12:29:46 -0700 (Wed, 15 Sep 2010) $
+ * @version $Revision: 60418 $
+ * @since $Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 /**
@@ -36,7 +36,7 @@ require_once DIR . '/vb/search/indexcontroller.php';
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: staticpage.php 38992 2010-09-15 19:29:46Z zoltan.szalay $
+ * @version $Id: staticpage.php 60418 2012-03-16 15:52:01Z pmarsden $
  * @access public
  */
 class vBCms_Search_IndexController_StaticPage extends vB_Search_IndexController
@@ -59,7 +59,6 @@ class vBCms_Search_IndexController_StaticPage extends vB_Search_IndexController
 	 */
 	public function index($id)
 	{
-		global $vbulletin;
 		//we just pull a record from the database.
 
 		if ($record = $this->getIndexRecord($id))
@@ -99,7 +98,7 @@ class vBCms_Search_IndexController_StaticPage extends vB_Search_IndexController
 
 	// ###################### Start __construct ######################
 	/**
-\	 *  standard constructor, takes no parameters. We do need to set
+	 *  standard constructor, takes no parameters. We do need to set
 	 *  the content type
 	 */
 	public function __construct()
@@ -136,7 +135,6 @@ class vBCms_Search_IndexController_StaticPage extends vB_Search_IndexController
 	 */
 	private function recordToIndexfields($record)
 	{
-		global $vbulletin;
 		$fields['contenttypeid'] = $this->contenttypeid;
 		$fields['primaryid'] = $record['nodeid'];
 
@@ -155,7 +153,6 @@ class vBCms_Search_IndexController_StaticPage extends vB_Search_IndexController
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 38992 $
+|| # SVN: $Revision: 60418 $
 || ####################################################################
 \*======================================================================*/

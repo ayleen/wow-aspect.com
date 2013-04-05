@@ -54,9 +54,22 @@ if (empty($_REQUEST['do']) OR $_REQUEST['do'] == 'global')
 
 	/* skimlinks api */
 	$skimlinks_pub_id = isset($vbulletin->options['skimlinks_pub_id']) ? $vbulletin->options['skimlinks_pub_id'] : '';
+	$jquerypath = vB_Template_Runtime::fetchStyleVar('jquerymain');
+	if (!$show['remotejquery'])
+	{
+		$jquerypath = '../' . $jquerypath;
+	}	
 	?>
 
-	<script type="text/javascript" src="../clientscript/jquery/jquery-1.6.1.min.js"></script>
+	<script type="text/javascript" src="<?php echo $jquerypath; ?>"></script>
+	<script type="text/javascript">
+	<!--
+		if (typeof jQuery === "undefined")
+		{
+			document.write('<script type="text/javascript" src="../clientscript/jquery/jquery-<?php echo JQUERY_VERSION; ?>.min.js">');
+		}
+	// -->
+	</script>
 
 	<script type="text/javascript">
 	var skim_cert = '';
@@ -74,7 +87,7 @@ if (empty($_REQUEST['do']) OR $_REQUEST['do'] == 'global')
 	}
 	function skimShow(id) {
 		skimClearErrors();
-		document.getElementById('skim_setup_head').innerHTML = id == 'skim_form_register' ? ' - Create account' : ' - Associate account';
+		document.getElementById('skim_setup_head').innerHTML = id == 'skim_form_register' ? " - <?php echo addslashes($vbphrase['skimlinks_global_create_acc']); ?>" : " - <?php echo addslashes($vbphrase['skimlinks_global_ass_acc']); ?>";
 		$('#skim_buttons').fadeOut('fast', function() {
 			$('#'+id).fadeIn('fast');
 		});
@@ -113,9 +126,9 @@ if (empty($_REQUEST['do']) OR $_REQUEST['do'] == 'global')
 			e = e || self.window;
 			if (promptchange) {
 				if (e) {
-					e.returnValue = "You have unsaved changes.";
+					e.returnValue = "<?php echo addslashes($vbphrase['unsaved_changes_may_be_lost']); ?>";
 				}
-				return "You have unsaved changes.";
+				return "<?php echo addslashes($vbphrase['unsaved_changes_may_be_lost']); ?>";
 			}
 		}
 	};
@@ -273,7 +286,7 @@ if (empty($_REQUEST['do']) OR $_REQUEST['do'] == 'global')
 		if (call == 'register') {
 			document.getElementById('skima_email').value = document.getElementById('skimr_email').value;
 			document.getElementById('skima_domain').value = document.getElementById('skimr_domain').value;
-			document.getElementById('skim_setup_head').innerHTML = ' - Associate account';
+			document.getElementById('skim_setup_head').innerHTML = " - <?php echo addslashes($vbphrase['skimlinks_global_ass_acc']); ?>";
 			document.getElementById('skim_form_register').style.display = 'none';
 			document.getElementById('skim_form_register_form').style.display = 'block';
 			document.getElementById('skim_form_associate').style.display = 'block';
@@ -282,7 +295,7 @@ if (empty($_REQUEST['do']) OR $_REQUEST['do'] == 'global')
 		} else {
 			document.getElementById('skimr_email').value = document.getElementById('skima_email').value;
 			document.getElementById('skimr_domain').value = document.getElementById('skima_domain').value;
-			document.getElementById('skim_setup_head').innerHTML = ' - create account';
+			document.getElementById('skim_setup_head').innerHTML = " - <?php echo addslashes($vbphrase['skimlinks_global_create_acc']); ?>";
 			document.getElementById('skim_form_associate').style.display = 'none';
 			document.getElementById('skim_form_associate_form').style.display = 'block';
 			document.getElementById('skim_form_register').style.display = 'block';
@@ -571,11 +584,9 @@ $skimlinks_forum_url = str_replace('http://', '', $vbulletin->options['bburl']);
 	print_description_row($vbphrase['skimlinks_global_options'], false, 2, 'thead');
 
 	print_description_row($vbphrase['skimlinks_global_enable'], false, 2, fetch_row_bgclass().' skimLinksInfo');
-	$vbphrase['yes'] = 'On';
-	$vbphrase['no'] = 'Off';
+
 	print_yes_no_row($vbphrase['skimlinks_enabled'], 'skimlinks_enabled', $vbulletin->options['skimlinks_enabled'], 'skimEnableSubmit();');
-	$vbphrase['yes'] = 'Yes';
-	$vbphrase['no'] = 'No';
+
 	print_description_row($vbphrase['skimlinks_to_enable_products'],
 		false, 2, fetch_row_bgclass().' skimLinksInfo');
 	print_label_row($vbphrase['skimlinks_pub_id'],

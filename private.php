@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ï¿½2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -54,11 +54,9 @@ $actiontemplates = array(
 	),
 	'showpm' => array(
 		'pm_showpm',
-		'pm_messagelistbit_user',
 		'postbit',
 		'postbit_wrapper',
 		'postbit_onlinestatus',
-		'postbit_reputation',
 		'bbcode_code',
 		'bbcode_html',
 		'bbcode_php',
@@ -69,7 +67,6 @@ $actiontemplates = array(
 		'im_msn',
 		'im_yahoo',
 		'im_skype',
-		'pm_quickreply'
 	),
 	'newpm' => array(
 		'pm_newpm',
@@ -86,7 +83,6 @@ $actiontemplates = array(
 		'pm_messagelist',
 		'pm_messagelist_periodgroup',
 		'pm_messagelistbit',
-		'pm_messagelistbit_user',
 		'pm_messagelistbit_ignore',
 		'pm_filter',
 		'forumdisplay_sortarrow'
@@ -99,7 +95,6 @@ $actiontemplates = array(
 		'postbit',
 		'postbit_wrapper',
 		'postbit_onlinestatus',
-		'postbit_reputation',
 		'bbcode_code',
 		'bbcode_html',
 		'bbcode_php',
@@ -110,7 +105,6 @@ $actiontemplates = array(
 		'im_msn',
 		'im_yahoo',
 		'im_skype',
-		'pm_quickreply',
 		'pm_nomessagehistory'
 	)
 );
@@ -139,10 +133,6 @@ if (empty($_REQUEST['do']))
 require_once('./global.php');
 require_once(DIR . '/includes/functions_user.php');
 require_once(DIR . '/includes/functions_misc.php');
-
-// bootstrap framework
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -302,7 +292,7 @@ if ($_POST['do'] == 'updatefolders')
 
 	$itemtype = $vbphrase['private_message'];
 	$itemtypes = $vbphrase['private_messages'];
-	eval(print_standard_redirect('foldersedited'));
+	print_standard_redirect(array('foldersedited',$itemtype,$itemtypes));  
 }
 
 // ############################### start empty folders ###############################
@@ -369,7 +359,7 @@ if ($_POST['do'] == 'confirmemptyfolder')
 	($hook = vBulletinHook::fetch_hook('private_confirmemptyfolder')) ? eval($hook) : false;
 
 	$vbulletin->url = 'private.php?' . $vbulletin->session->vars['sessionurl'];
-	eval(print_standard_redirect('pm_messagesdeleted'));
+	print_standard_redirect('pm_messagesdeleted');  
 }
 
 // ############################### start edit folders ###############################
@@ -486,7 +476,7 @@ if ($_POST['do'] == 'deletepmreceipt')
 	}
 	else
 	{
-		eval(print_standard_redirect('pm_receiptsdeleted'));
+		print_standard_redirect('pm_receiptsdeleted');  
 	}
 }
 
@@ -732,7 +722,7 @@ if ($_POST['do'] == 'movepm')
 	// deselect messages
 	setcookie('vbulletin_inlinepm', '', TIMENOW - 3600, '/');
 
-	eval(print_standard_redirect('pm_messagesmoved'));
+	print_standard_redirect('pm_messagesmoved');  
 }
 
 // ############################### start pm manager ###############################
@@ -783,7 +773,7 @@ if ($_POST['do'] == 'managepm')
 		// deselect all messages
 		case 'clear':
 			setcookie('vbulletin_inlinepm', '', TIMENOW - 3600, '/');
-			eval(print_standard_redirect('pm_allmessagesdeselected'));
+			print_standard_redirect('pm_allmessagesdeselected');  
 		break;
 
 		// *****************************
@@ -836,7 +826,7 @@ if ($_POST['do'] == 'managepm')
 			// deselect messages
 			setcookie('vbulletin_inlinepm', '', TIMENOW - 3600, '/');
 
-			eval(print_standard_redirect('pm_messagesmarkedas'));
+			print_standard_redirect(array('pm_messagesmarkedas',$readunread));
 		break;
 
 		// *****************************
@@ -851,7 +841,7 @@ if ($_POST['do'] == 'managepm')
 			// deselect messages
 			setcookie('vbulletin_inlinepm', '', TIMENOW - 3600, '/');
 
-			eval(print_standard_redirect('pm_messagesmarkedas'));
+			print_standard_redirect(array('pm_messagesmarkedas',$readunread));
 		break;
 
 		// *****************************
@@ -911,7 +901,7 @@ if ($_POST['do'] == 'managepm')
 
 			// all done, redirect...
 			$vbulletin->url = 'private.php?' . $vbulletin->session->vars['sessionurl'] . 'folderid=' . $vbulletin->GPC['folderid'];
-			eval(print_standard_redirect('pm_messagesdeleted'));
+			print_standard_redirect('pm_messagesdeleted');  
 		break;
 
 		// *****************************
@@ -1399,7 +1389,7 @@ if ($_POST['do'] == 'insertpm')
 		($hook = vBulletinHook::fetch_hook('private_insertpm_complete')) ? eval($hook) : false;
 
 		$vbulletin->url = 'private.php' . $vbulletin->session->vars['sessionurl_q'];
-		eval(print_standard_redirect('pm_messagesent'));
+		print_standard_redirect('pm_messagesent');  
 	}
 }
 
@@ -1569,12 +1559,14 @@ if ($_REQUEST['do'] == 'newpm')
 	$show['sendmax'] = iif($permissions['pmsendmax'], true, false);
 	$show['sendmultiple'] = ($permissions['pmsendmax'] != 1);
 	$show['parseurl'] = $vbulletin->options['privallowbbcode'];
+	$show['signaturecheckbox'] = ($permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canusesignature'] AND $vbulletin->userinfo['signature']);
 
 	// build forum rules
-	$bbcodeon = iif($vbulletin->options['privallowbbcode'], $vbphrase['on'], $vbphrase['off']);
-	$imgcodeon = iif($vbulletin->options['privallowbbimagecode'], $vbphrase['on'], $vbphrase['off']);
-	$htmlcodeon = iif($vbulletin->options['privallowhtml'], $vbphrase['on'], $vbphrase['off']);
-	$smilieson = iif($vbulletin->options['privallowsmilies'], $vbphrase['on'], $vbphrase['off']);
+	$bbcodeon = ($vbulletin->options['privallowbbcode'] ? $vbphrase['on'] : $vbphrase['off']);
+	$imgcodeon = ($vbulletin->options['privallowbbimagecode'] ? $vbphrase['on'] : $vbphrase['off']);
+	$videocodeon = ($vbulletin->options['privallowbbvideocode'] ? $vbphrase['on'] : $vbphrase['off']);
+	$htmlcodeon = ($vbulletin->options['privallowhtml'] ? $vbphrase['on'] : $vbphrase['off']);
+	$smilieson = ($vbulletin->options['privallowsmilies'] ? $vbphrase['on'] : $vbphrase['off']);
 
 	// only show posting code allowances in forum rules template
 	$show['codeonly'] = true;
@@ -1584,6 +1576,7 @@ if ($_REQUEST['do'] == 'newpm')
 		$templater->register('can', $can);
 		$templater->register('htmlcodeon', $htmlcodeon);
 		$templater->register('imgcodeon', $imgcodeon);
+		$templater->register('videocodeon', $videocodeon);
 		$templater->register('smilieson', $smilieson);
 	$forumrules = $templater->render();
 
@@ -1684,9 +1677,10 @@ if ($_REQUEST['do'] == 'showpm')
 
 	$cclist = array();
 	$bcclist = array();
-	$ccrecipients = '';
-	$bccrecipients = '';
+	$ccrecipients = array();
+	$bccrecipients = array();
 	$touser = unserialize($pm['touserarray']);
+
 	if (!is_array($touser))
 	{
 		$touser = array();
@@ -1702,9 +1696,9 @@ if ($_REQUEST['do'] == 'showpm')
 					'userid'   => $subkey,
 					'username' => $subitem,
 				);
-				$templater = vB_Template::create('pm_messagelistbit_user');
-					$templater->register('userinfo', $userinfo);
-				${$key . 'list'}[] = $templater->render();
+
+				$userinfo['comma'] = $vbphrase['comma_space'];
+				${$key . 'list'}[] = $userinfo;
 			}
 		}
 		else
@@ -1713,27 +1707,42 @@ if ($_REQUEST['do'] == 'showpm')
 				'username' => $item,
 				'userid'   => $key,
 			);
-			$templater = vB_Template::create('pm_messagelistbit_user');
-				$templater->register('userinfo', $userinfo);
-			$bcclist[] = $templater->render();
+
+			$userinfo['comma'] = $vbphrase['comma_space'];
+			$bcclist[] = $userinfo;
 		}
 	}
 
-	if (count($cclist) > 1 OR (is_array($touser['cc']) AND !in_array($vbulletin->userinfo['username'], $touser['cc'])) OR ($vbulletin->userinfo['userid'] == $pm['fromuserid'] AND $pm['folderid'] == -1))
+	// Last elements
+	$countcc = sizeof($cclist);
+	$countbcc = sizeof($bcclist);
+
+	if ($countcc) 
 	{
-		if (!empty($cclist))
+		$cclist[$countcc-1]['comma'] = '';
+	}
+	
+	if ($countbcc) 
+	{
+		$bcclist[$countbcc-1]['comma'] = '';
+	}
+
+	if ($countcc > 1 OR (is_array($touser['cc']) AND !in_array($vbulletin->userinfo['username'], $touser['cc'])) OR ($vbulletin->userinfo['userid'] == $pm['fromuserid'] AND $pm['folderid'] == -1))
+	{
+		if ($countcc)
 		{
-			$ccrecipients = implode("\r\n", $cclist);
+			$ccrecipients = $cclist;
 		}
-		if (!empty($bcclist) AND $vbulletin->userinfo['userid'] == $pm['fromuserid'] AND $pm['folderid'] == -1)
+		
+		if ($countbcc AND $vbulletin->userinfo['userid'] == $pm['fromuserid'] AND $pm['folderid'] == -1)
 		{
-			if (empty($cclist) AND count($bcclist == 1))
+			if ($countcc)
 			{
-				$ccrecipients = implode("\r\n", $bcclist);
+				$bccrecipients = $bcclist;
 			}
 			else
 			{
-				$bccrecipients = implode("\r\n", $bcclist);
+				$ccrecipients = $bcclist;
 			}
 		}
 
@@ -1742,25 +1751,36 @@ if ($_REQUEST['do'] == 'showpm')
 
 	$show['quickreply'] = ($permissions['pmquota'] AND $vbulletin->userinfo['receivepm'] AND !fetch_privatemessage_throttle_reached($vbulletin->userinfo['userid']));
 
-	$recipient = $db->query_first("
-		SELECT usertextfield.*, user.*, userlist.type
-		FROM " . TABLE_PREFIX . "user AS user
-		LEFT JOIN " . TABLE_PREFIX . "usertextfield AS usertextfield ON(usertextfield.userid=user.userid)
-		LEFT JOIN " . TABLE_PREFIX . "userlist AS userlist ON(user.userid = userlist.userid AND userlist.relationid = " . $vbulletin->userinfo['userid'] . " AND userlist.type = 'buddy')
-		WHERE user.userid = " . intval($pm['fromuserid'])
-	);
-	if (!empty($recipient))
-	{
-		$recipient = array_merge($recipient , convert_bits_to_array($recipient['options'] , $vbulletin->bf_misc_useroptions));
-		cache_permissions($recipient, false);
-		if (!($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']) AND (!$recipient['receivepm'] OR !$recipient['permissions']['pmquota']
-					OR ($recipient['receivepmbuddies'] AND !can_moderate() AND $recipient['type'] != 'buddy')
-		))
+	if ($pm['fromuserid'])
+ 	{
+		$recipient = $db->query_first("
+			SELECT usertextfield.*, user.*, userlist.type
+			FROM " . TABLE_PREFIX . "user AS user
+			LEFT JOIN " . TABLE_PREFIX . "usertextfield AS usertextfield ON(usertextfield.userid=user.userid)
+			LEFT JOIN " . TABLE_PREFIX . "userlist AS userlist ON(user.userid = userlist.userid AND userlist.relationid = " . $vbulletin->userinfo['userid'] . " AND userlist.type = 'buddy')
+			WHERE user.userid = " . intval($pm['fromuserid'])
+		);
+		if (!empty($recipient))
 		{
-			$show['quickreply'] = false;
+			$recipient = array_merge($recipient , convert_bits_to_array($recipient['options'] , $vbulletin->bf_misc_useroptions));
+			cache_permissions($recipient, false);
+			if (!($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']) AND (!$recipient['receivepm'] OR !$recipient['permissions']['pmquota']
+						OR ($recipient['receivepmbuddies'] AND !can_moderate() AND $recipient['type'] != 'buddy')
+			))
+			{
+				$show['quickreply'] = false;
+			}
 		}
+		else
+ 		{
+ 			$show['quickreply'] = false;
+ 		}
 	}
-
+	else
+	{
+		$show['quickreply'] = false;
+ 	}
+ 
 	if ($vbulletin->GPC['showhistory'] AND $pm['parentpmid'])
 	{
 		$threadresult = $vbulletin->db->query_read_slave("
@@ -1997,6 +2017,7 @@ if ($_REQUEST['do'] == 'messagelist')
 					  : (('title' == $search['sort'] ? 'pmtext.title' : 'pmtext.dateline')));
 		$desc = ($search['order'] == 'desc');
 
+		$hook_query_fields = $hook_query_joins = $hook_query_where = '';
 		($hook = vBulletinHook::fetch_hook('private_messagelist_filter')) ? eval($hook) : false;
 
 		// get a sensible value for $perpage
@@ -2019,18 +2040,26 @@ if ($_REQUEST['do'] == 'messagelist')
 		$pms = $db->query_read_slave("
 			SELECT " . ($need_sql_calc_rows ? 'SQL_CALC_FOUND_ROWS' : '') . " pm.*, pmtext.*
 				" . iif($vbulletin->options['privallowicons'], ", icon.title AS icontitle, icon.iconpath") . "
+			$hook_query_fields
 			FROM " . TABLE_PREFIX . "pm AS pm
 			LEFT JOIN " . TABLE_PREFIX . "pmtext AS pmtext ON(pmtext.pmtextid = pm.pmtextid)
 			" . iif($vbulletin->options['privallowicons'], "LEFT JOIN " . TABLE_PREFIX . "icon AS icon ON(icon.iconid = pmtext.iconid)") . "
+			$hook_query_joins
 			WHERE pm.userid=" . $vbulletin->userinfo['userid'] . " AND pm.folderid=" . $vbulletin->GPC['folderid'] .
 			($search['searchtitle'] ? " AND pmtext.title LIKE '%" . $vbulletin->db->escape_string($search['searchtitle']) . "%'" : '') .
 			($search['searchuser'] ? " AND pmtext.fromusername LIKE '%" . $vbulletin->db->escape_string($search['searchuser']) . "%'" : '') .
 			($search['startdate'] ? " AND pmtext.dateline >= $search[startdate]" : '') .
 			($search['enddate'] ? " AND pmtext.dateline <= $search[enddate]" : '') . "
 			$readstatus
+			$hook_query_where
 			ORDER BY $sortfield " . ($desc ? 'DESC' : 'ASC') . "
 			LIMIT $startat, " . $vbulletin->GPC['perpage'] . "
 		");
+
+		if ($need_sql_calc_rows)
+		{
+			list($totalmessages) = $vbulletin->db->query_first_slave("SELECT FOUND_ROWS()", DBARRAY_NUM);
+		}
 
 		while ($pm = $db->fetch_array($pms))
 		{
@@ -2123,7 +2152,8 @@ if ($_REQUEST['do'] == 'messagelist')
 					$pm['senddate'] = vbdate($vbulletin->options['dateformat'], $pm['dateline']);
 					$pm['sendtime'] = vbdate($vbulletin->options['timeformat'], $pm['dateline']);
 
-					// get userbit
+					$clc = 0;
+					$userbit = array();
 					if ($vbulletin->GPC['folderid'] == -1)
 					{
 						$users = unserialize($pm['touserarray']);
@@ -2147,17 +2177,25 @@ if ($_REQUEST['do'] == 'messagelist')
 							}
 							uasort($touser, 'strnatcasecmp');
 						}
+
 						foreach ($touser AS $userid => $username)
 						{
 							$userinfo = array(
 								'userid'   => $userid,
 								'username' => $username,
 							);
-							$templater = vB_Template::create('pm_messagelistbit_user');
-								$templater->register('userinfo', $userinfo);
-							$tousers[] = $templater->render();
+
+							$clc++;
+							if (!VB_API)
+							{
+								$userinfo['comma'] = $vbphrase['comma_space'];
+								$userbit[$clc] = $userinfo;
+							}
+							else
+							{	// VBIV-14029
+								$userbit[]['userinfo'] = $userinfo;
+							}
 						}
-						$userbit = implode("\r\n", $tousers);
 					}
 					else
 					{
@@ -2165,9 +2203,31 @@ if ($_REQUEST['do'] == 'messagelist')
 							'userid'   => $pm['fromuserid'],
 							'username' => $pm['fromusername'],
 						);
-						$templater = vB_Template::create('pm_messagelistbit_user');
-							$templater->register('userinfo', $userinfo);
-						$userbit = $templater->render();
+
+						$clc++;
+						if (!VB_API)
+						{
+							$userbit[$clc] = $userinfo;
+						}
+						else
+						{	// VBIV-13915
+							$userbit[]['userinfo'] = $userinfo;
+						}
+					}
+
+					if (!VB_API)
+					{
+						if ($clc) 
+						{
+							$userbit[$clc]['comma'] = '';
+						}
+					}
+					else
+					{
+						if ($clc == 1) 
+						{	// Only one username ? we only send userinfo
+							$userbit['userinfo'] = $userbit[0]['userinfo'];
+						}
 					}
 
 					$show['pmicon'] = iif($pm['iconpath'], true, false);
@@ -2207,11 +2267,6 @@ if ($_REQUEST['do'] == 'messagelist')
 		$sorturl = urlimplode($search);
 
 		// build pagenav
-		if ($need_sql_calc_rows)
-		{
-			list($totalmessages) = $vbulletin->db->query_first_slave("SELECT FOUND_ROWS()", DBARRAY_NUM);
-		}
-
 		$pagenav = construct_page_nav($pagenumber, $perpage, $totalmessages, 'private.php?' . $vbulletin->session->vars['sessionurl'] . 'folderid=' . $vbulletin->GPC['folderid'] . '&amp;pp=' . $vbulletin->GPC['perpage'] . '&amp;' . $sorturl);
 
 		$sortfield = $search['sort'];
@@ -2347,6 +2402,8 @@ if ($_REQUEST['do'] == 'report' OR $_POST['do'] == 'sendemail')
 		$navbar = render_navbar_template($navbits);
 		$url =& $vbulletin->url;
 
+		$pminfo['itemlink'] = 'private.php?' . $vbulletin->session->vars['sessionurl_q'] . "do=showpm&amp;pmid=" . $pminfo['pmid'];
+
 		($hook = vBulletinHook::fetch_hook('report_form_start')) ? eval($hook) : false;
 
 		$forminfo = $reportobj->set_forminfo($pminfo);
@@ -2373,7 +2430,7 @@ if ($_REQUEST['do'] == 'report' OR $_POST['do'] == 'sendemail')
 		$reportobj->do_report($vbulletin->GPC['reason'], $pminfo);
 
 		$url =& $vbulletin->url;
-		eval(print_standard_redirect('redirect_reportthanks'));
+		print_standard_redirect('redirect_reportthanks');  
 	}
 }
 
@@ -2426,8 +2483,7 @@ if (!empty($page_templater))
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44888 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

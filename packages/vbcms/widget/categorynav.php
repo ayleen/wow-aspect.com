@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: categorynav.php 37602 2010-06-18 18:37:15Z ksours $
+ * @version $Id: categorynav.php 58956 2012-02-11 01:31:19Z pmarsden $
  * @access public
  */
 class vBCms_Widget_CategoryNav extends vBCms_Widget
@@ -158,7 +158,7 @@ class vBCms_Widget_CategoryNav extends vBCms_Widget
 
 		// Create view
 		$view = new vBCms_View_Widget($config['template_name']);
-		$this->sectionid = $this->content->getContentTypeId() == vb_Types::instance()->getContentTypeID("vBCms_Section") ?
+		$this->sectionid = $this->content->getContentTypeID() == vb_Types::instance()->getContentTypeID("vBCms_Section") ?
 			$this->content->getNodeId() : $this->content->getParentId();
 
 		try
@@ -263,18 +263,15 @@ class vBCms_Widget_CategoryNav extends vBCms_Widget
 	 */
 	protected function getHash($widgetid)
 	{
-		$context = new vB_Context('widget' , array('widgetid' => $widgetid,
+		$context = new vB_Context("widget_$widgetid" , array('widgetid' => $widgetid,
 			'permissions' => vB::$vbulletin->userinfo->permissions['cms'],
 			'sectionid' => $this->sectionid));
 		return strval($context);
-
 	}
-
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 37602 $
+|| # SVN: $Revision: 58956 $
 || ####################################################################
 \*======================================================================*/

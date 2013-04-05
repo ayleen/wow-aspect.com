@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -25,7 +25,7 @@ die('Access denied.');
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: rssfeed.php 40911 2010-12-02 22:38:25Z ksours $
+ * @version $Id: rssfeed.php 53237 2011-10-03 21:21:46Z michael.lavaveshkul $
  * @access public
  */
 class vBCms_Rssfeed
@@ -114,21 +114,14 @@ class vBCms_Rssfeed
 
 		if (!$result)
 		{
-
 			switch($vbulletin->GPC['type'])
 			{
-//				case 'newposts':
-//					$result = self::getNewPosts($user, $max_count, $datelimit);
-//					break;
-//				case 'newblogs':
-//					$result = self::getNewBlogs($user, $max_count, $datelimit);
-//					break;
 				case 'newcontent':
 					$result = self::getNewContent($user, $max_count, $datelimit);
 					break;
 				default:
 					$result = '';
-			} // switch
+			} 
 			vB_Cache::instance()->write($cachehash, $result, $externalcache);
 		}
 		header('Content-Type: text/xml' . (vB_Template_Runtime::fetchStyleVar('charset') != '' ? '; charset=' .  vB_Template_Runtime::fetchStyleVar('charset') : ''));
@@ -175,11 +168,8 @@ class vBCms_Rssfeed
 
 		//ungroup.
 		$criteria->set_grouped(vB_Search_Core::GROUP_NO);
-
 		$criteria->add_newitem_filter($datelimit, null, null);
-
 		$search_controller = new vBCms_Search_SearchController_NewContentNode;
-
 		$results = vB_Search_Results::create_from_criteria($user, $criteria, $search_controller);
 
 		$page = $results->get_page(1, $max_count, 1);
@@ -213,158 +203,6 @@ class vBCms_Rssfeed
 		return self::makeXml($headers, null, $items);
 	}
 
-
-
-	/**
-	 * This generates the rss for new posts.
-	 *
-	 * @param mixed $user : The user object
-	 * @return xml for the feed
-	 */
-
-/*	
-//per ed this isn't used anywhere.
-//additionally, checks of the code confirm this, and manually constructing links to hit
-//it show problems.  In short, it isn't used, its buggy, and I don't see a future need for it.
-	private static function getNewPosts($user, $max_count, $datelimit)
-	{
-		global $vbulletin;
-		global $vbphrase;
-		require_once DIR . '/packages/vbforum/search/searchcontroller/newpost.php' ;
-		require_once DIR . '/vb/search/core.php' ;
-		require_once DIR . '/vb/search/criteria.php' ;
-		require_once DIR . '/includes/functions_databuild.php' ;
-		fetch_phrase_group('vbcms');
-
-		//We can use the existing new structures to create this feed. We don't
-		// have to, we could do a direct sql query. But this structure is tested
-		// and we know it handles permissions properly.
-		//First we need a criteria object
-
-		$criteria = vB_Search_Core::get_instance()->create_criteria(vB_Search_Core::SEARCH_NEW);
-
-		//Do we get a forum id? If so, limit the query.
-		if ($vbulletin->GPC_exists['id'] AND intval($vbulletin->GPC['id']))
-		{
-			$criteria->add_forumid_filter($vbulletin->GPC['id'], true);
-		}
-
-		//Check to see if we're grouped
-		$criteria->set_grouped(vB_Search_Core::GROUP_NO);
-
-		$criteria->add_newitem_filter($datelimit, null, null);
-
-		$search_controller = new vBForum_Search_SearchController_NewPost;
-
-		if (! $results = vB_Search_Results::create_from_cache($user, $criteria, $search_controller))
-		{
-			$results = vB_Search_Results::create_from_criteria($user, $criteria, $search_controller);
-		}
-
-		$page = $results->get_page(1, $max_count, 1);
-		$headers = array(
-			'title' => $vbulletin->options['hometitle'] ,
-			'link' => $vbulletin->options['bburl'] ,
-			'description' => construct_phrase($vbphrase['recent_posts_from_x'], $vbulletin->options['hometitle']) ,
-			'language' => 'en-us',
-			'updated' => date('Y-m-d\TH:i:s', TIMENOW),
-			'lastBuildDate' => date('Y-m-d\TH:i:s', TIMENOW)
-		);
-		$items= array();
-
-		if (count($page))
-		{
-			$parser = new vBCms_BBCode_HTML(vB::$vbulletin, vBCms_BBCode_HTML::fetchCmsTags());
-			foreach ($page as $result)
-			{
-				$record = $result->get_post();
-				$items[] = array(
-					'title' => $record->get_field('title'),
-					'summary' => $parser->get_preview($record->get_field('pagetext'), 800),
-					'link' => $vbulletin->options['bburl'] . '/showthread.php?'
-						. $record->get_field('threadid') .'#post' . $record->get_field('postid') ,
-					'author' => 'noreply@noreply.com-' . $record->get_field('username')	);
-			}
-		}
-		return self::makeXml($headers, null, $items);
-	}
- */
-
-	/***
-	* This function creates an xml feed of new blog entries.
-	**/
-
-/*	
-//this isn't used and I don't think it quite works.
-	private static function getNewBlogs($user, $max_count, $datelimit)
-	{
-		global $vbulletin;
-		global $vbphrase;
-		if (! file_exists(DIR . '/packages/vbblog/search/searchcontroller/newblogentry.php')
-			or ! (vB_Search_Core::get_instance()->get_cansearch('vBBlog', 'BlogEntry') ))
-		{
-			return;
-		}
-		include_once DIR . '/packages/vbblog/search/searchcontroller/newblogentry.php' ;
-		require_once DIR . '/vb/search/core.php' ;
-		require_once DIR . '/vb/search/criteria.php' ;
-		require_once DIR . '/includes/functions_databuild.php' ;
-		//We can use the existing new structures to create this feed. We don't
-		// have to, we could do a direct sql query. But this structure is tested
-		// and we know it handles permissions properly.
-		//First we need a criteria object
-		fetch_phrase_group('vbcms');
-		$criteria = vB_Search_Core::get_instance()->create_criteria(vB_Search_Core::SEARCH_NEW);
-
-		//Do we get a user? If so, limit the query.
-		if ($vbulletin->GPC_exists['userid'] AND intval($vbulletin->GPC['userid']))
-		{
-			$criteria->add_userid_filter($vbulletin->GPC['userid'], true);
-		}
-		else if ($vbulletin->GPC_exists['searchuser'])
-		{
-			$criteria->add_user_filter($vbulletin->GPC['searchuser'], true);
-		}
-
-		$criteria->add_newitem_filter($datelimit, null, null);
-		$search_controller = new vBBlog_Search_SearchController_NewBlogEntry;
-		$results = vB_Search_Results::create_from_cache($user, $criteria, $search_controller);
-
-		if (! $results = vB_Search_Results::create_from_cache($user, $criteria, $search_controller))
-		{
-			$results = vB_Search_Results::create_from_criteria($user, $criteria, $search_controller);
-		}
-		$page = $results->get_page(1, $max_count, 1);
-		$headers = array(
-			'title' => $vbulletin->options['hometitle'] ,
-			'link' => $vbulletin->options['bburl'],
-			'description' => construct_phrase($vbphrase['recent_blogs_from_x'], $vbulletin->options['hometitle']) ,
-			'language' => 'en-us',
-			'updated' => date('Y-m-d\TH:i:s', TIMENOW),
-			'lastBuildDate' => date('Y-m-d\TH:i:s', TIMENOW)
-		);
-		$items= array();
-
-		if (count($page))
-		{
-			$parser = new vBCms_BBCode_HTML(vB::$vbulletin, vBCms_BBCode_HTML::fetchCmsTags());
-			foreach ($page as $result)
-			{
-				if ($blog = $result->get_record())
-				{
-					$items[] = array(
-						'title' => $blog['title'],
-						'summary' => $parser->get_preview($blog['pagetext'], 800),
-						'link' => $vbulletin->options['bburl'] . '/blog.php?blogid='
-							. $blog['blogid'],
-						'author' => 'noreply@noreply.com-' . $blog['username']);
-				}
-			}
-		}
-		return self::makeXml($headers, null, $items);
-	}
- */
-
 	/**** This composes the html for one item
 	 *
 	 * @param array
@@ -373,6 +211,7 @@ class vBCms_Rssfeed
 	 ****/
 	private static function makeXmlItem($item)
 	{
+		// Why doesnt this use the XML builder ??
 		$result = "
 			<item>
 				<pubDate>" . ($item['publishdate']? date(DATE_RSS, $item['publishdate']): '') . "</pubDate>";
@@ -443,6 +282,6 @@ class vBCms_Rssfeed
 /**
  *
  *
- * @version $Id: rssfeed.php 40911 2010-12-02 22:38:25Z ksours $
+ * @version $Id: rssfeed.php 53237 2011-10-03 21:21:46Z michael.lavaveshkul $
  * @copyright 2009
  */

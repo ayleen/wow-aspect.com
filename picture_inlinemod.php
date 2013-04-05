@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -47,9 +47,6 @@ require_once(DIR . '/includes/functions_log_error.php');
 // ######################## START MAIN SCRIPT ############################
 // #######################################################################
 
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-require_once(DIR . '/vb/types.php');
-vB_Bootstrap_Framework::init();
 $types = vB_Types::instance();
 $contenttypeid = $types->getContentTypeID('vBForum_Album');
 
@@ -161,14 +158,14 @@ if ($_POST['do'] == 'clearpicture')
 {
 	setcookie('vbulletin_inlinepicture', '', TIMENOW - 3600, '/');
 
-	eval(print_standard_redirect('redirect_inline_messagelist_cleared', true, $forceredirect));
+	print_standard_redirect('redirect_inline_messagelist_cleared', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'clearmessage')
 {
 	setcookie('vbulletin_inlinepicturecomment', '', TIMENOW - 3600, '/');
 
-	eval(print_standard_redirect('redirect_inline_messagelist_cleared', true, $forceredirect));
+	print_standard_redirect('redirect_inline_messagelist_cleared', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'inlineapprove' OR $_POST['do'] == 'inlineunapprove')
@@ -270,11 +267,11 @@ if ($_POST['do'] == 'inlineapprove' OR $_POST['do'] == 'inlineunapprove')
 
 	if ($approve)
 	{
-		eval(print_standard_redirect('redirect_inline_approvedmessages', true, $forceredirect));
+		print_standard_redirect('redirect_inline_approvedmessages', true, $forceredirect);  
 	}
 	else
 	{
-		eval(print_standard_redirect('redirect_inline_unapprovedmessages', true, $forceredirect));
+		print_standard_redirect('redirect_inline_unapprovedmessages', true, $forceredirect);  
 	}
 }
 
@@ -450,7 +447,7 @@ if ($_POST['do'] == 'doinlinedelete')
 
 	($hook = vBulletinHook::fetch_hook('picturecomment_inlinemod_dodelete')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_deletedmessages', true, $forceredirect));
+	print_standard_redirect('redirect_inline_deletedmessages', true, $forceredirect);  
 }
 
 if ($_POST['do'] == 'inlineundelete')
@@ -514,12 +511,11 @@ if ($_POST['do'] == 'inlineundelete')
 
 	($hook = vBulletinHook::fetch_hook('picturecomment_inlinemod_undelete')) ? eval($hook) : false;
 
-	eval(print_standard_redirect('redirect_inline_undeletedmessages', true, $forceredirect));
+	print_standard_redirect('redirect_inline_undeletedmessages', true, $forceredirect);  
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 32878 $
+|| # SVN: $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/

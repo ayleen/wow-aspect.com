@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -41,19 +41,12 @@ $actiontemplates = array(
 		'threadbit_deleted',
 		'threadbit_announcement',
 		'forumhome_lastpostby',
+		'forumhome_subforums',
 		'forumhome_forumbit_level1_post',
 		'forumhome_forumbit_level2_post',
 		'forumhome_forumbit_level1_nopost',
 		'forumhome_forumbit_level2_nopost',
-		'forumhome_subforumbit_nopost',
-		'forumhome_subforumseparator_nopost',
-		'forumdisplay_loggedinuser',
-		'forumhome_moderator',
-		'forumdisplay_moderator',
 		'forumdisplay_sortarrow',
-		'forumhome_subforumbit_post',
-		'forumhome_subforumseparator_post',
-		'forumhome_markread_script',
 		'forumrules',
 		'optgroup',
 		'threadadmin_imod_menu_thread',
@@ -134,7 +127,7 @@ if ($_REQUEST['do'] == 'markread')
 	$mark_read_result = mark_forums_read($foruminfo['forumid']);
 
 	$vbulletin->url = $mark_read_result['url'];
-	eval(print_standard_redirect($mark_read_result['phrase']));
+	print_standard_redirect($mark_read_result['phrase']);  
 }
 
 // Don't allow access to anything below if an invalid $forumid was specified
@@ -201,7 +194,7 @@ if ($_REQUEST['do'] == 'doenterpwd')
 
 		// workaround IIS cookie+location header bug
 		$forceredirect = (strpos($_SERVER['SERVER_SOFTWARE'], 'Microsoft-IIS') !== false);
-		eval(print_standard_redirect('forumpasswordcorrect', true, $forceredirect));
+		print_standard_redirect('forumpasswordcorrect', true, $forceredirect);  
 	}
 	else
 	{
@@ -237,6 +230,7 @@ $perpage =  $vbulletin->input->clean_gpc('r', 'perpage', TYPE_UINT);
 $pagenumber = $vbulletin->input->clean_gpc('r', 'pagenumber', TYPE_UINT);
 $daysprune = $vbulletin->input->clean_gpc('r', 'daysprune', TYPE_INT);
 $sortfield = $vbulletin->input->clean_gpc('r', 'sortfield', TYPE_STR);
+$sortorder = $vbulletin->input->clean_gpc('r', 'sortorder', TYPE_STR);
 
 // get permission to view forum
 $_permsgetter_ = 'forumdisplay';
@@ -266,6 +260,7 @@ verify_seo_url('forum', $foruminfo, array('pagenumber' => $_REQUEST['pagenumber'
 cache_ordered_forums(1, 1, $vbulletin->userinfo['userid']);
 
 $show['newthreadlink'] = iif(!$show['search_engine'] AND $foruminfo['allowposting'] AND $foruminfo['cancontainthreads'], true, false);
+$show['newthreadlink'] = ($show['newthreadlink'] AND ($forumperms & $vbulletin->bf_ugp_forumpermissions['canpostnew']));
 $show['threadicons'] = iif ($foruminfo['allowicons'], true, false);
 $show['threadratings'] = iif ($foruminfo['allowratings'], true, false);
 $show['subscribed_to_forum'] = ($vbulletin->forumcache["$foruminfo[forumid]"]['subscribeforumid'] != '' ? true : false);
@@ -301,7 +296,7 @@ $navbits[''] = $foruminfo['title'];
 $navbits = construct_navbits($navbits);
 $navbar = render_navbar_template($navbits);
 
-$moderatorslist = '';
+$moderatorslist = array();
 $listexploded = explode(',', $foruminfo['parentlist']);
 $showmods = array();
 $show['moderators'] = false;
@@ -312,6 +307,7 @@ foreach ($listexploded AS $parentforumid)
 	{
 		continue;
 	}
+
 	foreach ($imodcache["$parentforumid"] AS $moderator)
 	{
 		if ($showmods["$moderator[userid]"] === true)
@@ -322,16 +318,18 @@ foreach ($listexploded AS $parentforumid)
 		($hook = vBulletinHook::fetch_hook('forumdisplay_moderator')) ? eval($hook) : false;
 
 		$showmods["$moderator[userid]"] = true;
-
-		$show['comma_leader'] = ($moderatorslist != '');
-		$show['moderators'] = true;
-
-		$templater = vB_Template::create('forumdisplay_moderator');
-			$templater->register('moderator', $moderator);
-		$moderatorslist .= $templater->render();
+		$moderator['comma'] = $vbphrase['comma_space'];
 
 		$totalmods++;
+		$show['moderators'] = true;
+		$moderatorslist[$totalmods] = $moderator;
 	}
+}
+
+// Last element
+if ($totalmods) 
+{
+	$moderatorslist[$totalmods]['comma'] = '';
 }
 
 // ### BUILD FORUMS LIST #################################################
@@ -357,7 +355,9 @@ if (($vbulletin->options['showforumusers'] == 1 OR $vbulletin->options['showforu
 
 	$numberregistered = 0;
 	$numberguest = 0;
+	$numbervisible = 0;
 	$doneuser = array();
+	$activeusers = array();
 
 	if ($vbulletin->userinfo['userid'])
 	{
@@ -372,14 +372,13 @@ if (($vbulletin->options['showforumusers'] == 1 OR $vbulletin->options['showforu
 			'musername'     => $vbulletin->userinfo['musername'],
 		);
 		$numberregistered = 1;
+		$numbervisible = 1;
 		fetch_online_status($loggedin);
 
 		($hook = vBulletinHook::fetch_hook('forumdisplay_loggedinuser')) ? eval($hook) : false;
 
-		$show['comma_leader'] = false;
-		$templater = vB_Template::create('forumdisplay_loggedinuser');
-		$templater->register('loggedin', $loggedin);
-		$activeusers = $templater->render();
+		$loggedin['comma'] = $vbphrase['comma_space'];
+		$activeusers[$numberregistered] = $loggedin;
 		$doneuser["{$vbulletin->userinfo['userid']}"] = 1;
 	}
 
@@ -412,12 +411,10 @@ if (($vbulletin->options['showforumusers'] == 1 OR $vbulletin->options['showforu
 
 					if (fetch_online_status($loggedin))
 					{
+						$numbervisible++;
 						fetch_musername($loggedin);
-
-						$show['comma_leader'] = ($activeusers != '');
-						$templater = vB_Template::create('forumdisplay_loggedinuser');
-							$templater->register('loggedin', $loggedin);
-						$activeusers .= $templater->render();
+						$loggedin['comma'] = $vbphrase['comma_space'];
+						$activeusers[$numbervisible] = $loggedin;
 					}
 				}
 			}
@@ -426,6 +423,12 @@ if (($vbulletin->options['showforumusers'] == 1 OR $vbulletin->options['showforu
 				$doneuser["$loggedin[userid]"] = 1;
 			}
 		}
+	}
+
+	// Last element
+	if ($numbervisible) 
+	{
+		$activeusers[$numbervisible]['comma'] = '';
 	}
 
 	if (!$vbulletin->userinfo['userid'])
@@ -593,7 +596,7 @@ if ($foruminfo['cancontainthreads'])
 	// display threads
 	if (!($forumperms & $vbulletin->bf_ugp_forumpermissions['canviewothers']))
 	{
-		$limitothers = "AND postuserid = " . $vbulletin->userinfo['userid'] . " AND " . $vbulletin->userinfo['userid'] . " <> 0";
+		$limitothers = "AND thread.postuserid = " . $vbulletin->userinfo['userid'] . " AND " . $vbulletin->userinfo['userid'] . " <> 0";
 	}
 	else
 	{
@@ -624,7 +627,7 @@ if ($foruminfo['cancontainthreads'])
 	// remove threads from users on the global ignore list if user is not a moderator
 	if ($Coventry = fetch_coventry('string') AND !can_moderate($foruminfo['forumid']))
 	{
-		$globalignore = "AND postuserid NOT IN ($Coventry) ";
+		$globalignore = "AND thread.postuserid NOT IN ($Coventry) ";
 	}
 	else
 	{
@@ -701,17 +704,16 @@ if ($foruminfo['cancontainthreads'])
 	{
 		$sortfield = $foruminfo['defaultsortfield'];
 	}
-	if (empty($vbulletin->GPC['sortorder']))
+	if (empty($sortorder))
 	{
-		$vbulletin->GPC['sortorder'] = $foruminfo['defaultsortorder'];
+		$sortorder = $foruminfo['defaultsortorder'];
 	}
 
 	// look at sorting options:
-	if ('asc' != ($sortorder = $vbulletin->GPC['sortorder']))
+	if ('asc' != $sortorder)
 	{
 		$sqlsortorder = 'DESC';
 		$order = array('desc' => 'checked="checked"');
-		$vbulletin->GPC['sortorder'] = 'desc';
 	}
 	else
 	{
@@ -723,17 +725,15 @@ if ($foruminfo['cancontainthreads'])
 
 	switch ($sortfield)
 	{
-		case 'title':
-			$sqlsortfield = 'thread.title';
-			break;
 		case 'lastpost':
-			$sqlsortfield = 'lastpost';
-			break;
 		case 'replycount':
 		case 'views':
-			$sqlsortfield = 'views';
-		case 'postusername':
 			$sqlsortfield = $sortfield;
+			break;
+		case 'title':
+		case 'dateline':
+		case 'postusername':
+			$sqlsortfield = 'thread.'.$sortfield;
 			break;
 		case 'voteavg':
 			if ($foruminfo['allowratings'])
@@ -742,9 +742,6 @@ if ($foruminfo['cancontainthreads'])
 				$sqlsortfield2 = 'votenum';
 				break;
 			}
-		case 'dateline':
-			$sqlsortfield = 'thread.dateline';
-			break;
 		// else, use last post
 		default:
 			$handled = false;
@@ -946,9 +943,9 @@ if ($foruminfo['cancontainthreads'])
 
 	$threads = $db->query_read_slave("
 		SELECT $votequery $previewfield
-			thread.threadid, thread.title AS threadtitle, thread.forumid, pollid, open, postusername, postuserid, thread.iconid AS threadiconid,
-			thread.dateline, notes, thread.visible, sticky, votetotal, thread.attach, $tachy_columns,
-			thread.prefixid, thread.taglist, hiddencount, deletedcount,
+			thread.threadid, thread.title AS threadtitle, thread.forumid, thread.pollid, thread.open, thread.postusername, thread.postuserid, thread.iconid AS threadiconid,
+			thread.dateline, thread.notes, thread.visible, thread.sticky, thread.votetotal, thread.attach, $tachy_columns,
+			thread.prefixid, thread.taglist, thread.hiddencount, thread.deletedcount,
 			user.usergroupid, user.homepage, user.options AS useroptions, IF(userlist.friend = 'yes', 1, 0) AS isfriend,
 			user.lastactivity, user.lastvisit, IF(user.options & " . $vbulletin->bf_misc_useroptions['invisible'] . ", 1, 0) AS invisible
 			" . (($vbulletin->options['threadsubscribed'] AND $vbulletin->userinfo['userid']) ? ", NOT ISNULL(subscribethread.subscribethreadid) AS issubscribed" : "") . "
@@ -967,7 +964,7 @@ if ($foruminfo['cancontainthreads'])
 			$redirectjoin
 			$hook_query_joins
 		WHERE thread.threadid IN (0$ids) $hook_query_where
-		ORDER BY sticky DESC, $sqlsortfield $sqlsortorder" . (!empty($sqlsortfield2) ? ", $sqlsortfield2 $sqlsortorder" : '') . "
+		ORDER BY thread.sticky DESC, $sqlsortfield $sqlsortorder" . (!empty($sqlsortfield2) ? ", $sqlsortfield2 $sqlsortorder" : '') . "
 	");
 	unset($limitothers, $delthreadlimit, $deljoin, $datecut, $votequery, $sqlsortfield, $sqlsortorder, $threadids, $sqlsortfield2);
 
@@ -995,7 +992,7 @@ if ($foruminfo['cancontainthreads'])
 	}
 
 	$show['fetchseo'] = true;
-	$oppositesort = $vbulletin->GPC['sortorder'] == 'asc' ? 'desc' : 'asc';
+	$oppositesort = $sortorder == 'asc' ? 'desc' : 'asc';
 
 	$pageinfo_voteavg = $pageinfo + array('sort' => 'voteavg', 'order' => ('voteavg' == $sortfield) ? $oppositesort : 'desc');
 	$pageinfo_title = $pageinfo + array('sort' => 'title', 'order' => ('title' == $sortfield) ? $oppositesort : 'asc');
@@ -1104,7 +1101,7 @@ if ($foruminfo['cancontainthreads'])
 				$memberaction_dropdown = construct_memberaction_dropdown(fetch_lastposter_userinfo($thread));
 
 				$templater = vB_Template::create('threadbit');
-					$templater->register('pageinfo', $pageinfo);
+					$templater->register('pageinfo', array());
 					$templater->register('pageinfo_lastpage', $pageinfo_lastpage);
 					$templater->register('pageinfo_lastpost', $pageinfo_lastpost);
 					$templater->register('pageinfo_newpost', $pageinfo_newpost);
@@ -1184,8 +1181,6 @@ if (!$vbulletin->GPC['prefixid'] AND $newthreads < 1 AND $unreadchildforums < 1)
 	mark_forum_read($foruminfo, $vbulletin->userinfo['userid'], TIMENOW);
 }
 
-$forumhome_markread_script = vB_Template::create('forumhome_markread_script')->render();
-
 construct_forum_rules($foruminfo, $forumperms);
 
 // Revisit this at a later date as it can be made to work with each SEO option
@@ -1210,7 +1205,6 @@ $templater = vB_Template::create('FORUMDISPLAY');
 	$templater->register('daysprune', $daysprune);
 	$templater->register('daysprunesel', $daysprunesel);
 	$templater->register('forumbits', $forumbits);
-	$templater->register('forumhome_markread_script', $forumhome_markread_script);
 	$templater->register('forumid', $forumid);
 	$templater->register('foruminfo', $foruminfo);
 	$templater->register('forumjump', $forumjump);
@@ -1250,7 +1244,6 @@ print_output($templater->render());
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45681 $
+|| # CVS: $RCSfile$ - $Revision: 59310 $
 || ####################################################################
 \*======================================================================*/

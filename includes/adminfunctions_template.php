@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -40,15 +40,6 @@ global $_query_special_templates;
 	// message editor menu contents
 	'editor_jsoptions_font',
 	'editor_jsoptions_size',
-	// message editor interface styles
-	'editor_styles_button_normal',
-	'editor_styles_button_hover',
-	'editor_styles_button_down',
-	'editor_styles_button_selected',
-	'editor_styles_menu_normal',
-	'editor_styles_menu_hover',
-	'editor_styles_menu_down',
-	'editor_styles_popup_down',
 );
 
 /**
@@ -133,6 +124,7 @@ function fetch_template_update_sql($title, $template, $dostyleid, &$delete, $pro
 	}
 	else
 	{
+
 		// parse template conditionals
 		if (!in_array($title, $_query_special_templates))
 		{
@@ -185,7 +177,7 @@ function fetch_inherited_color($itemstyleid, $styleid)
 	switch ($itemstyleid)
 	{
 		case $styleid: // customized in current style, or is master set
-			if ($styleid == -1)
+			if ($styleid == -1 OR $styleid == -2)
 			{
 				return 'col-g';
 			}
@@ -193,6 +185,7 @@ function fetch_inherited_color($itemstyleid, $styleid)
 			{
 				return 'col-c';
 			}
+		case -2:
 		case -1: // inherited from master set
 		case 0:
 			return 'col-g';
@@ -214,7 +207,7 @@ function fetch_template_parentlist($styleid)
 {
 	global $vbulletin;
 
-	$ts_info = $vbulletin->db->query_first("SELECT parentid FROM " . TABLE_PREFIX . "style WHERE styleid = $styleid");
+	$ts_info = $vbulletin->db->query_first("SELECT parentid, type FROM " . TABLE_PREFIX . "style WHERE styleid = $styleid");
 
 	$ts_array = $styleid;
 
@@ -224,9 +217,17 @@ function fetch_template_parentlist($styleid)
 		$ts_array .= ',' . fetch_template_parentlist($ts_info['parentid']);
 	}
 
-	if (substr($ts_array, -2) != '-1')
+	if ($ts_info['type'])
 	{
-		$ts_array .= '-1';
+		$masterstyleid = $ts_info['type'] == 'standard' ? '-1' : '-2';
+		if (substr($ts_array, -2) != $masterstyleid)
+		{
+			if (substr($ts_array, -1) != ',')
+			{
+				$ts_array .= ',';
+			}
+			$ts_array .= $masterstyleid;
+		}
 	}
 
 	return $ts_array;
@@ -236,11 +237,16 @@ function fetch_template_parentlist($styleid)
 /**
 * Saves the correct style parentlist to each style in the database
 */
-function build_template_parentlists()
+function build_template_parentlists($mastertype = 'standard')
 {
 	global $vbulletin;
 
-	$styles = $vbulletin->db->query_read("SELECT styleid, title, parentlist, parentid, userselect FROM " . TABLE_PREFIX . "style ORDER BY parentid");
+	$styles = $vbulletin->db->query_read("
+		SELECT styleid, title, parentlist, parentid, userselect
+		FROM " . TABLE_PREFIX . "style
+		WHERE type = '" . $vbulletin->db->escape_string($mastertype) . "'
+		ORDER BY parentid
+	");
 	while($style = $vbulletin->db->fetch_array($styles))
 	{
 		$parentlist = fetch_template_parentlist($style['styleid']);
@@ -253,7 +259,6 @@ function build_template_parentlists()
 			");
 		}
 	}
-
 }
 
 // #############################################################################
@@ -320,27 +325,23 @@ function build_template_id_cache($styleid, $doreturn = false, $parentids = false
 {
 	global $vbulletin;
 
-	if ($styleid == -1)
+	if ($styleid == -1 OR $styleid == -2)
 	{
 		// doesn't have a cache
 		return '';
 	}
 
+	$type = $vbulletin->db->query_first("
+		SELECT type
+		FROM " . TABLE_PREFIX . "style
+		WHERE styleid = {$styleid}
+	");
+	$masterstyleid = ($type['type'] == 'mobile' ? -2 : -1);
+
 	//this is done as an array for historical reasons
 	if ($parentids == 0)
 	{
 		$style['parentlist'] = fetch_parentids($styleid);
-/*
-		$style = $vbulletin->db->query_first("
-			SELECT styleid, title, parentlist
-			FROM " . TABLE_PREFIX . "style
-			WHERE styleid = $styleid
-		");
-		if (empty($style))
-		{
-			trigger_error('Invalid styleid specified', E_USER_ERROR);
-		}
-*/
 	}
 	else
 	{
@@ -352,7 +353,7 @@ function build_template_id_cache($styleid, $doreturn = false, $parentids = false
 	$totalparents = $i;
 	foreach($parents AS $setid)
 	{
-		if ($setid != -1)
+		if ($setid != -1 AND $setid != -2)
 		{
 			$querySele = ",\nt$i.templateid AS templateid_$i, t$i.title AS title$i, t$i.styleid AS styleid_$i $querySele";
 			$queryJoin = "\nLEFT JOIN " . TABLE_PREFIX . "template AS t$i ON (t1.title=t$i.title AND t$i.styleid=$setid)$queryJoin";
@@ -365,13 +366,13 @@ function build_template_id_cache($styleid, $doreturn = false, $parentids = false
 	$templates = $vbulletin->db->query_read("
 		SELECT t1.templateid AS templateid_1, t1.title $querySele
 		FROM " . TABLE_PREFIX . "template AS t1 $queryJoin
-		WHERE t1.styleid IN (-1,0)
+		WHERE t1.styleid IN ({$masterstyleid},0)
 		ORDER BY t1.title
 	");
 	while ($template = $vbulletin->db->fetch_array($templates, DBARRAY_BOTH))
 	{
 		for ($tid = $totalparents; $tid > 0; $tid--)
-	{
+		{
 			if ($template["templateid_$tid"])
 			{
 				$templatelist["$template[title]"] = $template["templateid_$tid"];
@@ -384,7 +385,7 @@ function build_template_id_cache($styleid, $doreturn = false, $parentids = false
 					}
 					else
 					{
-						$templatelist["$bbcodetemplate"] = -1;
+						$templatelist["$bbcodetemplate"] = $masterstyleid;
 					}
 				}
 				break;
@@ -396,7 +397,7 @@ function build_template_id_cache($styleid, $doreturn = false, $parentids = false
 	$customtemps = $vbulletin->db->query_read("
 		SELECT t1.templateid, t1.title, INSTR(',$style[parentlist],', CONCAT(',', t1.styleid, ',') ) AS ordercontrol, t1.styleid
 		FROM " . TABLE_PREFIX . "template AS t1
-		LEFT JOIN " . TABLE_PREFIX . "template AS t2 ON (t2.title=t1.title AND t2.styleid=-1)
+		LEFT JOIN " . TABLE_PREFIX . "template AS t2 ON (t2.title=t1.title AND t2.styleid = {$masterstyleid})
 		WHERE t1.styleid IN (" . substr(trim($style['parentlist']), 0, -3) . ") AND
 		t2.title IS NULL
 		ORDER BY title, ordercontrol
@@ -441,10 +442,21 @@ function build_template_id_cache($styleid, $doreturn = false, $parentids = false
 * @param	boolean	If true, will fix styles with no parent style specified
 * @param	string	If set, will redirect to specified URL on completion
 * @param	boolean	If true, reset the master cache
+* @param	mixed	Which master style to rebuild (standard/-1 or mobile/-2)
+* @param	bool	Rebuild Style Datastore at end
 */
-function build_all_styles($renumber = 0, $install = 0, $goto = '', $resetcache = false)
+function build_all_styles($renumber = 0, $install = 0, $goto = '', $resetcache = false, $mastertype = 'standard', $builddatastore = true)
 {
 	global $vbulletin, $template_table_query, $template_table_fields, $vbphrase;
+
+	if ($mastertype == -1)
+	{
+		$mastertype = 'standard';
+	}
+	else if ($mastertype == -2)
+	{
+		$mastertype = 'mobile';
+	}
 
 	// -----------------------------------------------------------------------------
 	// -----------------------------------------------------------------------------
@@ -452,6 +464,7 @@ function build_all_styles($renumber = 0, $install = 0, $goto = '', $resetcache =
 	// is not available it should NOT be converted into phrases!!!
 	$phrases = array(
 		'master_style' => 'MASTER STYLE',
+		'mobile_master_style' => 'MOBILE MASTER STYLE',
 		'done' => 'Done',
 		'style' => 'Style',
 		'styles' => 'Styles',
@@ -499,18 +512,33 @@ function build_all_styles($renumber = 0, $install = 0, $goto = '', $resetcache =
 			echo "<p><b>" . $vbphrase['updating_styles_with_no_parents'] . "</b></p>\n<ul class=\"smallfont\">\n";
 			vbflush();
 		}
-		$vbulletin->db->query_write("
-			UPDATE " . TABLE_PREFIX . "style
-			SET parentid = -1,
-			parentlist = CONCAT(styleid,',-1')
-			WHERE parentid = 0
-		");
+		$total = 0;
+		if ($mastertype == 'standard')
+		{
+			$vbulletin->db->query_write("
+				UPDATE " . TABLE_PREFIX . "style
+				SET parentid = -1,
+				parentlist = CONCAT(styleid,',-1')
+				WHERE parentid = 0 AND type = 'standard'
+			");
+			$total += $vbulletin->db->affected_rows();
+		}
+		else
+		{
+			$mastertype = 'mobile';
+			$vbulletin->db->query_write("
+				UPDATE " . TABLE_PREFIX . "style
+				SET parentid = -2,
+				parentlist = CONCAT(styleid,',-2')
+				WHERE parentid = 0 AND type = 'mobile'
+			");
+			$total += $vbulletin->db->affected_rows();
+		}
 		if (VB_AREA != 'Upgrade' AND VB_AREA != 'Install')
 		{
-			$affected = $vbulletin->db->affected_rows();
-			if ($affected)
+			if ($total)
 			{
-				echo "<li>" . construct_phrase($vbphrase['updated_x_styles'], $affected) . "</li>\n";
+				echo "<li>" . construct_phrase($vbphrase['updated_x_styles'], $total) . "</li>\n";
 				vbflush();
 			}
 			else
@@ -576,23 +604,22 @@ function build_all_styles($renumber = 0, $install = 0, $goto = '', $resetcache =
 		vbflush();
 	}
 
-	build_template_parentlists();
+	build_template_parentlists($mastertype);
 
-	$styleactions = array('docss' => 1, 'dostylevars' => 1, 'doreplacements' => 1, 'doposteditor' => 1);
-	if (defined('NO_POST_EDITOR_BUILD'))
+	$styleactions = array('docss' => 1, 'dostylevars' => 1, 'doreplacements' => 1);
+	if ($mastertype == 'standard')
 	{
-		$styleactions['doposteditor'] = 0;
+		if ($error = build_style(-1, $vbphrase['master_style'], $styleactions, '', '', $resetcache))
+		{
+			return $error;
+		}
 	}
-
-	if ($resetcache)
+	else
 	{
-
-
-	}
-
-	if ($error = build_style(-1, $vbphrase['master_style'], $styleactions, '', '', $resetcache))
-	{
-		return $error;
+		if ($error = build_style(-2, $vbphrase['master_style'], $styleactions, '', '', $resetcache))
+		{
+			return $error;
+		}
 	}
 
 	if (VB_AREA != 'Upgrade' AND VB_AREA != 'Install')
@@ -610,7 +637,10 @@ function build_all_styles($renumber = 0, $install = 0, $goto = '', $resetcache =
 		vbflush();
 	}
 
-	build_style_datastore();
+	if ($builddatastore)
+	{
+		build_style_datastore();
+	}
 }
 
 // #############################################################################
@@ -622,9 +652,8 @@ function build_all_styles($renumber = 0, $install = 0, $goto = '', $resetcache =
 * @param	boolean	Build CSS?
 * @param	boolean	Build Stylevars?
 * @param	boolean	Build Replacements?
-* @param	boolean	Build Post Editor?
 */
-function print_rebuild_style($styleid, $title = '', $docss = 1, $dostylevars = 1, $doreplacements = 1, $doposteditor = 1)
+function print_rebuild_style($styleid, $title = '', $docss = 1, $dostylevars = 1, $doreplacements = 1)
 {
 	global $vbulletin, $vbphrase;
 
@@ -635,6 +664,10 @@ function print_rebuild_style($styleid, $title = '', $docss = 1, $dostylevars = 1
 		if ($styleid == -1)
 		{
 			$title = $vbphrase['master_style'];
+		}
+		else if ($styleid == -2)
+		{
+			$title = $vbphrase['mobile_master_style'];
 		}
 		else
 		{
@@ -652,7 +685,7 @@ function print_rebuild_style($styleid, $title = '', $docss = 1, $dostylevars = 1
 			$title = htmlspecialchars_uni($getstyle['title']);
 		}
 	}
-	else 
+	else
 	{
 		$title = htmlspecialchars($title);
 	}
@@ -671,8 +704,7 @@ function print_rebuild_style($styleid, $title = '', $docss = 1, $dostylevars = 1
 	build_style($styleid, $title, array(
 		'docss' => $docss,
 		'dostylevars' => $dostylevars,
-		'doreplacements' => $doreplacements,
-		'doposteditor' => $doposteditor
+		'doreplacements' => $doreplacements
 	));
 
 	if (VB_AREA != 'Upgrade' AND VB_AREA != 'Install')
@@ -818,7 +850,8 @@ function write_style_css_directory($styleid, $parentlist, $dir = 'ltr')
 	$set = $vbulletin->db->query_read($sql = "
 		SELECT DISTINCT title
 		FROM " . TABLE_PREFIX . "template
-		WHERE styleid IN (" . $parentlist . ") AND title LIKE '%.css'
+		WHERE styleid IN (" . $parentlist . ")
+		AND templatetype = 'template' AND title LIKE '%.css'
 	");
 
 	//collapse the list.
@@ -1036,7 +1069,7 @@ function process_css_rollup_file($file, $templatelist, $templates, $styledir, &$
 *
 * @param	integer	Style ID
 * @param	string	Title of style
-* @param	array	Array of actions set to true/false: docss/dostylevars/doreplacements/doposteditor
+* @param	array	Array of actions set to true/false: docss/dostylevars/doreplacements
 * @param	string	List of parent styles
 * @param	string	Indent for HTML printing
 * @param	boolean	Reset the master cache
@@ -1052,8 +1085,14 @@ function build_style($styleid, $title = '', $actions = array(), $parentlist = ''
 		$actions['doreplacements'] = true;
 	}
 
-	if ($styleid != -1)
+	if ($styleid != -1 AND $styleid != -2)
 	{
+		$style = $vbulletin->db->query_first("
+			SELECT *
+			FROM " . TABLE_PREFIX . "style
+			WHERE styleid = {$styleid}
+		");
+		$masterstyleid = ($style['type'] == 'standard' ? -1 : -2);
 		$QUERY = array(
 			'' => "dateline = " . TIMENOW
 		);
@@ -1081,43 +1120,40 @@ function build_style($styleid, $title = '', $actions = array(), $parentlist = ''
 		}
 
 		// cache special templates
-		if ($actions['docss'] OR $actions['dostylevars'] OR $actions['doreplacements'] OR $actions['doposteditor'])
+		if ($actions['docss'] OR $actions['dostylevars'] OR $actions['doreplacements'])
 		{
 			// get special templates for this style
 			$template_cache = array();
-			$templateids = implode(',' , unserialize($templatelist));
-			$templates = $vbulletin->db->query_read("
-				SELECT title, template, templatetype
-				FROM " . TABLE_PREFIX . "template
-				WHERE templateid IN ($templateids)
-					AND (templatetype <> 'template' OR title IN('" . implode("', '", $_query_special_templates) . "'))
-			");
-			while ($template = $vbulletin->db->fetch_array($templates))
+			if ($templateids = implode(',' , unserialize($templatelist)))
 			{
-				$template_cache["$template[templatetype]"]["$template[title]"] = $template;
+				$templates = $vbulletin->db->query_read("
+					SELECT title, template, templatetype
+					FROM " . TABLE_PREFIX . "template
+					WHERE templateid IN ($templateids)
+						AND (templatetype <> 'template' OR title IN('" . implode("', '", $_query_special_templates) . "'))
+				");
+				while ($template = $vbulletin->db->fetch_array($templates))
+				{
+					$template_cache["$template[templatetype]"]["$template[title]"] = $template;
+				}
+				$vbulletin->db->free_result($templates);
 			}
-			$vbulletin->db->free_result($templates);
 		}
 
 		// style vars
-		if ($actions['dostylevars'] AND $template_cache['stylevar'])
+		if ($actions['dostylevars'])
 		{
 			// rebuild the stylevars field for this style
 			$stylevars = array();
-			foreach($template_cache['stylevar'] AS $template)
+			if ($template_cache['stylevar'])
 			{
-				// set absolute paths for image directories
-				/*if (substr($template['title'], 0, 7) == 'imgdir_')
+				foreach($template_cache['stylevar'] AS $template)
 				{
-					if (!preg_match('#^https?://#i', $template['template']))
-					{
-						$template['template'] = "$template[template]";
-					}
-				}*/
-				$stylevars["$template[title]"] = $template['template'];
-			}
+					$stylevars["$template[title]"] = $template['template'];
+				}
 
-			$QUERY[] = "stylevars = '" . $vbulletin->db->escape_string(serialize($stylevars)) . '\'';
+				$QUERY[] = "stylevars = '" . $vbulletin->db->escape_string(serialize($stylevars)) . '\'';
+			}
 
 			if (VB_AREA != 'Upgrade' AND VB_AREA != 'Install')
 			{
@@ -1125,20 +1161,26 @@ function build_style($styleid, $title = '', $actions = array(), $parentlist = ''
 				vbflush();
 			}
 
-			static $master_stylevar_cache = null;
-			static $resetcachedone = false;
-			if ($resetcache AND !$resetcachedone)
+			static $master_stylevar_cache = array(
+				-1 => null,
+				-2 => null
+			);
+			static $resetcachedone = array(
+				-1 => false,
+				-2 => false
+			);
+			if ($resetcache AND !$resetcachedone[$masterstyleid])
 			{
-				$resetcachedone = true;
-				$master_stylevar_cache = null;
+				$resetcachedone[$masterstyleid] = true;
+				$master_stylevar_cache[$masterstyleid] = null;
 			}
-			if ($master_stylevar_cache === null)
+			if ($master_stylevar_cache[$masterstyleid] === null)
 			{
-				$master_stylevar_cache = array();
+				$master_stylevar_cache[$masterstyleid] = array();
 				$master_stylevars = $vbulletin->db->query_read("
 				SELECT stylevardfn.stylevarid, stylevardfn.datatype, stylevar.value
 				FROM " . TABLE_PREFIX . "stylevardfn AS stylevardfn
-				LEFT JOIN " . TABLE_PREFIX . "stylevar AS stylevar ON (stylevardfn.stylevarid = stylevar.stylevarid AND stylevar.styleid = -1)
+				LEFT JOIN " . TABLE_PREFIX . "stylevar AS stylevar ON (stylevardfn.stylevarid = stylevar.stylevarid AND stylevar.styleid = {$masterstyleid})
 				");
 				while ($master_stylevar = $vbulletin->db->fetch_array($master_stylevars))
 				{
@@ -1148,31 +1190,35 @@ function build_style($styleid, $title = '', $actions = array(), $parentlist = ''
 						$tmp = array('value' => $tmp);
 					}
 
-					$master_stylevar_cache[$master_stylevar['stylevarid']] = $tmp;
-					$master_stylevar_cache[$master_stylevar['stylevarid']]['datatype'] = $master_stylevar['datatype'];
+					$master_stylevar_cache[$masterstyleid][$master_stylevar['stylevarid']] = $tmp;
+					$master_stylevar_cache[$masterstyleid][$master_stylevar['stylevarid']]['datatype'] = $master_stylevar['datatype'];
 				}
-
 			}
 
-			$newstylevars = $master_stylevar_cache;
+			$newstylevars = $master_stylevar_cache[$masterstyleid];
 
 			if (substr(trim($parentlist), 0, -3) != '')
 			{
 				$new_stylevars = $vbulletin->db->query_read($sql = "
-				SELECT stylevarid, styleid, value, INSTR(',$parentlist,', CONCAT(',', styleid, ',') ) AS ordercontrol
+				SELECT
+					stylevarid, styleid, value, INSTR(',$parentlist,', CONCAT(',', styleid, ',') ) AS ordercontrol
 				FROM " . TABLE_PREFIX . "stylevar
-				WHERE styleid IN (" . substr(trim($parentlist), 0, -3) . ")
-				ORDER BY ordercontrol DESC
+				WHERE
+					styleid IN (" . substr(trim($parentlist), 0, -3) . ")
+				ORDER BY
+					ordercontrol DESC
 				");
 				while ($new_stylevar = $vbulletin->db->fetch_array($new_stylevars))
 				{
 					$newstylevars[$new_stylevar['stylevarid']] = unserialize($new_stylevar['value']);
-					$newstylevars[$new_stylevar['stylevarid']]['datatype'] = $master_stylevar_cache[$new_stylevar['stylevarid']]['datatype'];
+					$newstylevars[$new_stylevar['stylevarid']]['datatype'] = $master_stylevar_cache[$masterstyleid][$new_stylevar['stylevarid']]['datatype'];
 				}
 			}
 
-			$QUERY[] = "newstylevars = '" . $vbulletin->db->escape_string(serialize($newstylevars)) . '\'';
-
+			if ($newstylevars)
+			{
+				$QUERY[] = "newstylevars = '" . $vbulletin->db->escape_string(serialize($newstylevars)) . '\'';
+			}
 		}
 
 		// replacements
@@ -1201,8 +1247,6 @@ function build_style($styleid, $title = '', $actions = array(), $parentlist = ''
 				vbflush();
 			}
 		}
-
-
 
 		// css -- old style css
 		if ($actions['docss'] AND $template_cache['css'])
@@ -1263,30 +1307,6 @@ function build_style($styleid, $title = '', $actions = array(), $parentlist = ''
 			}
 		}
 
-		// post editor styles
-		if ($actions['doposteditor'] AND $template_cache['template'])
-		{
-			$editorstyles = array();
-			if (!empty($template_cache['template']))
-			{
-				foreach ($template_cache['template'] AS $template)
-				{
-					if (substr($template['title'], 0, 13) == 'editor_styles')
-					{
-						$title = 'pi' . substr($template['title'], 13);
-						$item = fetch_posteditor_styles($template['template']);
-						$editorstyles["$title"] = array($item['background'], $item['color'], $item['padding'], $item['border']);
-					}
-				}
-			}
-			$QUERY[] = 'editorstyles = \'' . $vbulletin->db->escape_string(serialize($editorstyles)) . '\'';
-			if (VB_AREA != 'Upgrade' AND VB_AREA != 'Install')
-			{
-				echo "($vbphrase[controls]) ";
-				vbflush();
-			}
-		}
-
 		// do the style update query
 		if (sizeof($QUERY))
 		{
@@ -1334,9 +1354,11 @@ function build_style($styleid, $title = '', $actions = array(), $parentlist = ''
 	}
 
 	$childsets = $vbulletin->db->query_read("
-		SELECT styleid, title, parentlist
+		SELECT
+			styleid, title, parentlist
 		FROM " . TABLE_PREFIX . "style
-		WHERE parentid = $styleid
+		WHERE
+			parentid = $styleid
 	");
 	if ($vbulletin->db->num_rows($childsets))
 	{
@@ -1892,7 +1914,7 @@ function construct_link_css($item, $what, $array)
 * @param	integer	Style ID
 * @param	array	Style info array
 */
-function print_style($styleid, $style = '')
+function print_style($styleid, $style = '', $mastertype = -1)
 {
 	global $vbulletin, $stylecache, $masterset;
 	global $only, $_query_special_templates;
@@ -1904,19 +1926,50 @@ function print_style($styleid, $style = '')
 	$searchstring =& $vbulletin->GPC['searchstring'];
 
 	$style['title'] = htmlspecialchars_uni($style['title']);
-	
 	if ($styleid == -1)
 	{
-		$THISstyleid = 0;
+		$master = 'standard';
 		$style['title'] = $vbphrase['master_style'];
-		$style['templatelist'] = serialize($masterset);
+		$style['type'] = 'standard';
+		$printstyleid = 'm1';
+	}
+	else if ($styleid == -2)
+	{
+		$master = 'mobile';
+		$style['title'] = $vbphrase['mobile_master_style'];
+		$style['type'] = 'mobile';
+		$printstyleid = 'm2';
+	}
+	else
+	{
+		if ($style['type'] == 'standard' AND $mastertype != -1)
+		{
+			return;
+		}
+		else if ($style['type'] == 'mobile' AND $mastertype != -2)
+		{
+			return;
+		}
+		$master = false;
+		$printstyleid = $styleid;
+	}
+
+	if ($master == 'standard')
+	{
+		$THISstyleid = 'n1';
+		$style['templatelist'] = serialize($masterset[$master]);
+	}
+	else if ($master == 'mobile')
+	{
+		$THISstyleid = 'n2';
+		$style['templatelist'] = serialize($masterset[$master]);
 	}
 	else
 	{
 		$THISstyleid = $styleid;
 	}
 
-	if ($expandset == 'all' OR $expandset == $styleid)
+	if ($expandset == $styleid OR ($expandset == 'all-1' AND $style['type'] == 'standard') OR ($expandset == 'all-2' AND $style['type'] == 'mobile'))
 	{
 		$showstyle = 1;
 	}
@@ -1931,41 +1984,40 @@ function print_style($styleid, $style = '')
 	$forumhome_url = fetch_seo_url('forumhome|bburl', array(), array('styleid' => $styleid));
 
 	// show the header row
-	$printstyleid = iif($styleid == -1, 'm', $styleid);
 	echo "
 	<!-- start header row for style '$style[styleid]' -->
 	<table cellpadding=\"2\" cellspacing=\"0\" border=\"0\" width=\"100%\" class=\"stylerow\">
 	<tr>
-		<td><label for=\"userselect_$styleid\" title=\"$vbphrase[allow_user_selection]\">&nbsp; " . 
-			construct_depth_mark($style['depth'], '- - ', iif($vbulletin->debug AND $styleid != -1, '- - ')) . 
-			iif($styleid != -1, "<input type=\"checkbox\" name=\"userselect[$styleid]\" value=\"1\" tabindex=\"1\"" . 
-			iif($style['userselect'], ' checked="checked"') . 
-			" id=\"userselect_$styleid\" onclick=\"check_children($styleid, this.checked)\" />") . 
+		<td><label for=\"userselect_$styleid\" title=\"$vbphrase[allow_user_selection]\">&nbsp; " .
+			construct_depth_mark($style['depth'], '- - ', (($vbulletin->debug AND !$master) ? '- - ' : '')) .
+			iif(!$master, "<input type=\"checkbox\" name=\"userselect[$styleid]\" value=\"1\" tabindex=\"1\"" .
+			iif($style['userselect'], ' checked="checked"') .
+			" id=\"userselect_$styleid\" onclick=\"check_children($styleid, this.checked)\" />") .
 		"</label><a href=\"$forumhome_url\" target=\"_blank\" title=\"$vbphrase[view_your_forum_using_this_style]\">$style[title]</a></td>
 		<td align=\"" . vB_Template_Runtime::fetchStyleVar('right') . "\" nowrap=\"nowrap\">
-			" . iif($styleid != -1, "<input type=\"text\" class=\"bginput\" name=\"displayorder[$styleid]\" value=\"$style[displayorder]\" tabindex=\"1\" size=\"2\" title=\"$vbphrase[display_order]\" />") . "
+			" . iif(!$master, "<input type=\"text\" class=\"bginput\" name=\"displayorder[$styleid]\" value=\"$style[displayorder]\" tabindex=\"1\" size=\"2\" title=\"$vbphrase[display_order]\" />") . "
 			&nbsp;
 			<select name=\"styleEdit_$printstyleid\" id=\"menu_$styleid\" onchange=\"Sdo(this.options[this.selectedIndex].value, $styleid);\" class=\"bginput\">
 				<optgroup label=\"" . $vbphrase['template_options'] . "\">
 					<option value=\"template_templates\">" . $vbphrase['edit_templates'] . "</option>
 					<option value=\"template_addtemplate\">" . $vbphrase['add_new_template'] . "</option>
-					" . iif($styleid != -1, "<option value=\"template_revertall\">" . $vbphrase['revert_all_templates'] . "</option>") . "
+					" . iif(!$master, "<option value=\"template_revertall\">" . $vbphrase['revert_all_templates'] . "</option>") . "
 				</optgroup>
 				<optgroup label=\"" . $vbphrase['edit_fonts_colors_etc'] . "\">
-					<option value=\"css_all\">$vbphrase[all_style_options]</option>
-					<option value=\"css_templates\">$vbphrase[common_templates]</option>
-					<option value=\"stylevar\" selected=\"selected\">$vbphrase[stylevars]</option>
-					" . iif($styleid != -1, "<option value=\"stylevar_revertall\">" . $vbphrase['revert_all_stylevars'] . "</option>") . "
-					<option value=\"css_maincss\">$vbphrase[main_css]</option>
-					<option value=\"css_replacements\">$vbphrase[replacement_variables]</option>
-					<option value=\"css_posteditor\">$vbphrase[toolbar_menu_options]</option>
+					" . ($style['type'] == 'standard' ? "<option value=\"css_all\">$vbphrase[all_style_options]</option>" : "") . "
+					" . ($style['type'] == 'standard' ? "<option value=\"css_templates\">$vbphrase[common_templates]</option>" : "") . "
+					<option value=\"stylevar\" selected=\"selected\">$vbphrase[stylevareditor]</option>
+					" . iif(!$master, "<option value=\"stylevar_revertall\">" . $vbphrase['revert_all_stylevars'] . "</option>") . "
+					" . ($style['type'] == 'standard' ? "<option value=\"css_maincss\">$vbphrase[main_css]</option>" : "") . "
+					<option value=\"" . ($style['type'] == 'standard' ? "css_replacements" : "replacements") . "\">$vbphrase[replacement_variables]</option>
+					" . ($style['type'] == 'standard' ? "<option value=\"css_posteditor\">$vbphrase[toolbar_menu_options]</option>" : "") . "
 				</optgroup>
 				<optgroup label=\"" . $vbphrase['edit_style_options'] . "\">
-					" . iif($styleid != -1, '<option value="template_editstyle">' . $vbphrase['edit_settings'] . '</option>') . "
+					" . iif(!$master, '<option value="template_editstyle">' . $vbphrase['edit_settings'] . '</option>') . "
 					<option value=\"template_addstyle\">" . $vbphrase['add_child_style'] . "</option>
 					<option value=\"template_download\">" . $vbphrase['download'] . "</option>
 					" . iif($show_generate_vb4_style, '<option value="stylevar_convertvb3tovb4">' . $vbphrase['generate_vb4_style'] . '</option>') . "
-					" . iif($styleid != -1, '<option value="template_delete" class="col-c">' . $vbphrase['delete_style'] . '</option>') . "
+					" . iif(!$master, '<option value="template_delete" class="col-c">' . $vbphrase['delete_style'] . '</option>') . "
 				</optgroup>
 			</select><input type=\"button\" class=\"button\" value=\"$vbphrase[go]\" onclick=\"Sdo(this.form.styleEdit_$printstyleid.options[this.form.styleEdit_$printstyleid.selectedIndex].value, $styleid);\" />
 			&nbsp;
@@ -1981,7 +2033,6 @@ function print_style($styleid, $style = '')
 
 	if ($showstyle)
 	{
-
 		if (empty($searchstring))
 		{
 			$searchconds = '';
@@ -2023,9 +2074,9 @@ function print_style($styleid, $style = '')
 		{
 			echo "<table cellpadding=\"0\" cellspacing=\"10\" border=\"0\" align=\"center\"><tr valign=\"top\">\n";
 			echo "<td>\n<select name=\"tl$THISstyleid\" id=\"templatelist$THISstyleid\" class=\"darkbg\" size=\"" . TEMPLATE_EDITOR_ROWS . "\" style=\"font-weight:bold; width:350px\"\n\t";
-			echo "onchange=\"Tprep(this.options[this.selectedIndex], $THISstyleid, 1);";
+			echo "onchange=\"Tprep(this.options[this.selectedIndex], '$THISstyleid', 1);";
 			echo "\"\n\t";
-			echo "ondblclick=\"Tdo(Tprep(this.options[this.selectedIndex], $THISstyleid, 0), '');\">\n";
+			echo "ondblclick=\"Tdo(Tprep(this.options[this.selectedIndex], '$THISstyleid', 0), '');\">\n";
 			echo "\t<option class=\"templategroup\" value=\"\">- - " . construct_phrase($vbphrase['x_templates'], $style['title']) . " - -</option>\n";
 		}
 		else
@@ -2053,7 +2104,7 @@ function print_style($styleid, $style = '')
 				else
 				{
 					$m = substr(strtolower($template['title']), 0, iif($n = strpos($template['title'], '_'), $n, strlen($template['title'])));
-					if ($template['styleid'] != -1 AND !isset($masterset["$template[title]"]) AND !isset($only["$m"]))
+					if ($template['styleid'] != -1 AND $template['styleid'] != -2 AND !isset($masterset[$style['type']]["$template[title]"]) AND !isset($only["$m"]))
 					{
 						$customtemplates["$template[templateid]"] = $template;
 					}
@@ -2068,7 +2119,6 @@ function print_style($styleid, $style = '')
 		// custom templates
 		if (!empty($customtemplates))
 		{
-
 			if (FORMTYPE)
 			{
 				echo "<optgroup label=\"\">\n";
@@ -2089,7 +2139,6 @@ function print_style($styleid, $style = '')
 				echo "</optgroup><!--<optgroup label=\"\"></optgroup>-->";
 			}
 			else
-
 			{
 				echo "</li>\n</ul>\n";
 			}
@@ -2098,7 +2147,6 @@ function print_style($styleid, $style = '')
 		// main templates
 		if (!empty($maintemplates))
 		{
-
 			$lastgroup = '';
 			$echo_ul = 0;
 
@@ -2125,7 +2173,6 @@ function print_style($styleid, $style = '')
 								echo "</optgroup><!--<optgroup label=\"\"></optgroup>-->\n";
 							}
 							else
-
 							{
 								echo "\t</ul>\n</li>\n";
 							}
@@ -2175,7 +2222,6 @@ function print_style($styleid, $style = '')
 
 		if (FORMTYPE)
 		{
-
 			echo "</select>\n";
 			echo "</td>\n<td width=\"100%\" align=\"center\" valign=\"top\">";
 			echo "
@@ -2185,11 +2231,11 @@ function print_style($styleid, $style = '')
 			</tr>
 			<tr>
 				<td class=\"alt2\" align=\"center\" style=\"font: 11px tahoma, verdana, arial, helvetica, sans-serif\">
-					<input type=\"button\" class=\"button\" style=\"font-weight: normal\" value=\"$vbphrase[customize]\" id=\"cust$THISstyleid\" onclick=\"Tdo(Tprep(this.form.tl{$THISstyleid}[this.form.tl$THISstyleid.selectedIndex], $THISstyleid, 0), '');\" />
-					<input type=\"button\" class=\"button\" style=\"font-weight: normal\" value=\"" . trim(construct_phrase($vbphrase['expand_x'], '')) . '/' . trim(construct_phrase($vbphrase['collapse_x'], '')) . "\" id=\"expa$THISstyleid\" onclick=\"Tdo(Tprep(this.form.tl{$THISstyleid}[this.form.tl$THISstyleid.selectedIndex], $THISstyleid, 0), '');\" /><br />
-					<input type=\"button\" class=\"button\" style=\"font-weight: normal\" value=\" $vbphrase[edit] \" id=\"edit$THISstyleid\" onclick=\"Tdo(Tprep(this.form.tl{$THISstyleid}[this.form.tl$THISstyleid.selectedIndex], $THISstyleid, 0), '');\" />
-					<input type=\"button\" class=\"button\" style=\"font-weight: normal\" value=\"$vbphrase[view_original]\" id=\"orig$THISstyleid\" onclick=\"Tdo(Tprep(this.form.tl{$THISstyleid}[this.form.tl$THISstyleid.selectedIndex], $THISstyleid, 0), 'vieworiginal');\" />
-					<input type=\"button\" class=\"button\" style=\"font-weight: normal\" value=\"$vbphrase[revert]\" id=\"kill$THISstyleid\" onclick=\"Tdo(Tprep(this.form.tl{$THISstyleid}[this.form.tl$THISstyleid.selectedIndex], $THISstyleid, 0), 'killtemplate');\" />
+					<input type=\"button\" class=\"button\" style=\"font-weight: normal\" value=\"$vbphrase[customize]\" id=\"cust$THISstyleid\" onclick=\"Tdo(Tprep(this.form.tl{$THISstyleid}[this.form.tl$THISstyleid.selectedIndex], '$THISstyleid', 0), '');\" />
+					<input type=\"button\" class=\"button\" style=\"font-weight: normal\" value=\"" . trim(construct_phrase($vbphrase['expand_x'], '')) . '/' . trim(construct_phrase($vbphrase['collapse_x'], '')) . "\" id=\"expa$THISstyleid\" onclick=\"Tdo(Tprep(this.form.tl{$THISstyleid}[this.form.tl$THISstyleid.selectedIndex], '$THISstyleid', 0), '');\" /><br />
+					<input type=\"button\" class=\"button\" style=\"font-weight: normal\" value=\" $vbphrase[edit] \" id=\"edit$THISstyleid\" onclick=\"Tdo(Tprep(this.form.tl{$THISstyleid}[this.form.tl$THISstyleid.selectedIndex], '$THISstyleid', 0), '');\" />
+					<input type=\"button\" class=\"button\" style=\"font-weight: normal\" value=\"$vbphrase[view_original]\" id=\"orig$THISstyleid\" onclick=\"Tdo(Tprep(this.form.tl{$THISstyleid}[this.form.tl$THISstyleid.selectedIndex], '$THISstyleid', 0), 'vieworiginal');\" />
+					<input type=\"button\" class=\"button\" style=\"font-weight: normal\" value=\"$vbphrase[revert]\" id=\"kill$THISstyleid\" onclick=\"Tdo(Tprep(this.form.tl{$THISstyleid}[this.form.tl$THISstyleid.selectedIndex], '$THISstyleid', 0), 'killtemplate');\" />
 					<div class=\"darkbg\" style=\"margin: 4px; padding: 4px; border: 2px inset; text-align: " . vB_Template_Runtime::fetchStyleVar('left') . "\" id=\"helparea$THISstyleid\">
 						" . construct_phrase($vbphrase['x_templates'], '<b>' . $style['title'] . '</b>') . "
 					</div>
@@ -2236,7 +2282,7 @@ function print_style($styleid, $style = '')
 			<!--
 			if (document.forms.tform.tl$THISstyleid.selectedIndex > 0)
 			{
-				Tprep(document.forms.tform.tl$THISstyleid.options[document.forms.tform.tl$THISstyleid.selectedIndex], $THISstyleid, 1);
+				Tprep(document.forms.tform.tl$THISstyleid.options[document.forms.tform.tl$THISstyleid.selectedIndex], '$THISstyleid', 1);
 			}
 			//-->
 			</script>";
@@ -2286,7 +2332,7 @@ function construct_template_option($template, $styleid, $doindent = false, $html
 		$template['title'] = htmlspecialchars_uni($template['title']);
 	}
 
-	if ($styleid == -1)
+	if ($styleid == -1 OR $styleid == -2)
 	{
 		return "\t<option value=\"$template[templateid]\" i=\"$template[username];$template[dateline]\"$selected>$indent$template[title]</option>\n";
 	}
@@ -2297,6 +2343,7 @@ function construct_template_option($template, $styleid, $doindent = false, $html
 			// template is inherited from the master set
 			case 0:
 			case -1:
+			case -2:
 			{
 				return "\t<option class=\"col-g\" value=\"~\" i=\"$template[username];$template[dateline]\"$selected>$indent$template[title]</option>\n";
 			}
@@ -2314,62 +2361,6 @@ function construct_template_option($template, $styleid, $doindent = false, $html
 			}
 		}
 	}
-}
-
-// #############################################################################
-/**
-* Equivalent to construct_template_option(), but creates an <a> instead of an <option>
-*
-* @param	array	Template info array
-* @param	integer	Style ID of style being shown
-* @param	boolean	Indent HTML code?
-* @param	boolean	Not used any more
-*
-* @return	string	Template <a> link
-*/
-function construct_template_link($template, $styleid, $doindent = false, $htmlise = false)
-{
-	global $LINKEXTRA, $info, $templateid, $vbulletin, $vbphrase;
-
-	$template['title'] = preg_replace('#^css_(.*)#i', '\\1', $template['title']);
-
-	if ($doindent)
-	{
-		$indent = "\t";
-	}
-	else
-	{
-		$indent = '';
-	}
-
-	if ($styleid == -1)
-	{ // (debug option)
-		return "$indent<li class=\"col-g\">$template[title]" .
-			construct_link_code($vbphrase['edit'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=edit&amp;templateid=$template[templateid]&amp;dostyleid=$template[styleid]$LINKEXTRA").
-			construct_link_code($vbphrase['delete'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=delete&amp;templateid=$template[templateid]&amp;dostyleid=$template[styleid]$LINKEXTRA").
-		"</li>\n";
-	}
-	else
-	{
-		switch ($template['styleid'])
-		{
-			case -1: // template is inherited from the master set
-				return "$indent<li class=\"col-g\">$template[title]" .
-					construct_link_code($vbphrase['customize'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=add&amp;dostyleid=$styleid&amp;title=" . urlencode($template['title']) . "$LINKEXTRA") . "</li>\n";
-			case $styleid: // template is customized for this specific style
-				return "$indent<li class=\"col-c\">$template[title]" .
-					construct_link_code($vbphrase['edit'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=edit&amp;templateid=$template[templateid]&amp;dostyleid=$template[styleid]$LINKEXTRA").
-					construct_link_code($vbphrase['revert'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=delete&amp;templateid=$template[templateid]&amp;dostyleid=$template[styleid]$LINKEXTRA").
-					construct_link_code($vbphrase['view_original'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=view&amp;title=" . urlencode($template['title']), 1).
-				"</li>\n";
-			default: // template is customized in a parent style - (inherited)
-				return "$indent<li class=\"col-i\">$template[title]" .
-					construct_link_code($vbphrase['customize_further'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=add&amp;dostyleid=$styleid&amp;templateid=$template[templateid]$LINKEXTRA").
-					construct_link_code($vbphrase['view_original'], "template.php?" . $vbulletin->session->vars['sessionurl'] . "do=view&amp;title=" . urlencode($template['title']), 1).
-				"</li>\n";
-		}
-	}
-
 }
 
 // #############################################################################
@@ -2484,6 +2475,10 @@ function process_template_conditionals($template, $haltonerror = true)
 		}
 		else if (strpos($condition_value, '`') !== false)
 		{
+			if (VB_AREA == 'Upgrade' OR VB_AREA == 'Install')
+			{
+				return false;
+			}
 			print_stop_message('expression_contains_backticks_x_please_rewrite_without', htmlspecialchars('<if condition="' . stripslashes($condition_value) . '">'));
 		}
 		else
@@ -2504,6 +2499,10 @@ function process_template_conditionals($template, $haltonerror = true)
 				}
 				if (!empty($functions))
 				{
+					if (VB_AREA == 'Upgrade' OR VB_AREA == 'Install')
+					{
+						return false;
+					}
 					unset($safe_functions[0], $safe_functions[1], $safe_functions[2]);
 
 					$errormsg = "
@@ -2604,10 +2603,18 @@ function process_template_conditionals($template, $haltonerror = true)
 		if (strpos($true_value, $if_lookfor) !== false)
 		{
 			$true_value = process_template_conditionals($true_value);
+			if ((VB_AREA == 'Upgrade' OR VB_AREA == 'Install') AND $true_value === false)
+			{
+				return false;
+			}
 		}
 		if (strpos($false_value, $if_lookfor) !== false)
 		{
 			$false_value = process_template_conditionals($false_value);
+			if ((VB_AREA == 'Upgrade' OR VB_AREA == 'Install') AND $false_value === false)
+			{
+				return false;
+			}
 		}
 
 		// clean up the extra slashes
@@ -2913,12 +2920,11 @@ function parse_tag_attribute($option, $text)
 *
 * @param	string	Template
 *
-* @return	string
+* @return	mixed	string on success, false on failure when in upgrade/install
 */
 function compile_template($template, &$errors = array())
 {
 	$orig_template = $template;
-
 
 	$template = preg_replace('#[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]#', '', $template);
 	$new_syntax = (strpos($template, '<vb:') !== false OR strpos($template, '{vb:') !== false);
@@ -2929,6 +2935,13 @@ function compile_template($template, &$errors = array())
 	{
 		$template = addslashes($template);
 		$template = process_template_conditionals($template);
+		if (VB_AREA == 'Upgrade' OR VB_AREA == 'Install')
+		{
+			if ($template === false)
+			{
+				return false;
+			}
+		}
 		$template = process_template_phrases('phrase', $template, 'parse_phrase_tag');
 		$template = process_seo_urls($template);
 
@@ -2939,8 +2952,12 @@ function compile_template($template, &$errors = array())
 
 		//only check the old style syntax, the new style doesn't use string interpolation and isn't affected
 		//by this exploit.  The new syntax doesn't 100% pass this check.
-		if(!validate_string_for_interpolation($template))
+		if (!validate_string_for_interpolation($template))
 		{
+			if (VB_AREA == 'Upgrade' OR VB_AREA == 'Install')
+			{
+				return false;
+			}
 			global $vbphrase;
 			echo "<p>&nbsp;</p><p>&nbsp;</p>";
 			print_form_header('', '', 0, 1, '', '65%');
@@ -2951,9 +2968,7 @@ function compile_template($template, &$errors = array())
 			exit;
 		}
 
-
 		$template = replace_template_variables($template, false);
-
 		$template = str_replace('\\\\$', '\\$', $template);
 
 		if (function_exists('token_get_all'))
@@ -2971,6 +2986,10 @@ function compile_template($template, &$errors = array())
 						case T_REQUIRE:
 						case T_REQUIRE_ONCE:
 						{
+							if (VB_AREA == 'Upgrade' OR VB_AREA == 'Install')
+							{
+								return false;
+							}
 							global $vbphrase;
 							echo "<p>&nbsp;</p><p>&nbsp;</p>";
 							print_form_header('', '', 0, 1, '', '65%');
@@ -2996,6 +3015,10 @@ function compile_template($template, &$errors = array())
 		}
 		catch (vB_Exception_TemplateFatalError $e)
 		{
+			if (VB_AREA == 'Upgrade' OR VB_AREA == 'Install')
+			{
+				return false;
+			}
 			global $vbphrase;
 			echo "<p>&nbsp;</p><p>&nbsp;</p>";
 			print_form_header('', '', 0, 1, '', '65%');
@@ -3051,16 +3074,25 @@ function cache_styles($getids = false, $styleid = -1, $depth = 0)
 		define('STYLECOUNT', $vbulletin->db->num_rows($styles));
 		while ($style = $vbulletin->db->fetch_array($styles))
 		{
-			if (trim($style['parentlist']) == '')
+			if (!$style['parentid'])
+			{
+				$masterstyleid = $style['parentid'] = ($style['type'] == 'standard') ? -1 : -2;
+				$parentlist = $style['parentlist'] = "{$style['styleid']}, {$masterstyleid}";
+				$vbulletin->db->query_write("
+					UPDATE " . TABLE_PREFIX . "style
+					SET parentid = {$masterstyleid},
+					parentlist = '{$parentlist}'
+					WHERE styleid = " . intval($style['styleid'])  . "
+				");
+			}
+			else if (trim($style['parentlist']) == '')
 			{
 				$parentlist = fetch_template_parentlist($style['styleid']);
-
 				$vbulletin->db->query_write("
 					UPDATE " . TABLE_PREFIX . "style
 					SET parentlist = '" . $vbulletin->db->escape_string($parentlist) . "'
 					WHERE styleid = " . intval($style['styleid'])  . "
 				");
-
 				$style['parentlist'] = $parentlist;
 			}
 
@@ -3094,6 +3126,19 @@ function cache_styles($getids = false, $styleid = -1, $depth = 0)
 		} // end foreach ($tcache["$styleid"] AS $holder)
 	} // end if (found $tcache["$styleid"])
 
+	if ($styleid == -1 AND is_array($cache[-2]))
+	{
+		foreach ($cache[-2] AS $holder)
+		{
+			foreach ($holder AS $style)
+			{
+				$stylecache["$style[styleid]"] = $style;
+				$stylecache["$style[styleid]"]['depth'] = $depth;
+				cache_styles($getids, $style['styleid'], $depth + 1);
+
+			} // end foreach ($holder AS $style)
+		} // end foreach ($tcache["$styleid"] AS $holder)
+	}
 }
 
 // #############################################################################
@@ -3126,10 +3171,12 @@ function build_style_datastore()
 		$localstyle['parentid'] = $style['parentid'];
 		$localstyle['displayorder'] = $style['displayorder'];
 		$localstyle['userselect'] = $style['userselect'];
+		$localstyle['type'] = $style['type'];
 
 		($hook = vBulletinHook::fetch_hook('admin_style_datastore')) ? eval($hook) : false;
 
 		$datastorecache["$localstyle[parentid]"]["$localstyle[displayorder]"][] = $localstyle;
+		$datastorecache[$style['type']][$style['styleid']] = $style['userselect'] ? 'selectable' : 'unselectable';
 	}
 
 	build_datastore('stylecache', serialize($datastorecache), 1);
@@ -3143,13 +3190,18 @@ function build_style_datastore()
 *
 * @param	string	Name for <select>
 * @param	integer	Selected style ID
-* @param	string	Name of top item in <select>
+* @param	mixed	Name of top item in <select>, array [-1]/[-2] to set individual top names
 * @param	string	Title of row
 * @param	boolean	Display top item?
 */
-function print_style_chooser_row($name = 'parentid', $selectedid = -1, $topname = NULL, $title = NULL, $displaytop = true)
+function print_style_chooser_row($name = 'parentid', $selectedid = -1, $topname = NULL, $title = NULL, $displaytop = true, $type = 'both')
 {
 	global $stylecache, $vbphrase;
+
+	if ($type == 'mobile' AND $selectedid == -1)
+	{
+		$selectedid = -2;
+	}
 
 	if ($topname === NULL)
 	{
@@ -3162,19 +3214,68 @@ function print_style_chooser_row($name = 'parentid', $selectedid = -1, $topname 
 
 	cache_styles();
 
+	$_styles = array();
 	$styles = array();
 
 	if ($displaytop)
 	{
-		$styles['-1'] = $topname;
+		if (is_array($topname) AND $topname[0])
+		{
+			$styles[] = $topname[0];
+		}
+		if ($type == 'both' OR $type == 'standard')
+		{
+			if (is_array($topname))
+			{
+				if ($topname[-1])
+				{
+					$_styles['standard'][-1] = $topname[-1];
+				}
+			}
+			else
+			{
+				$_styles['standard'][-1] = $topname;
+			}
+		}
+		if ($type == 'both' OR $type == 'mobile')
+		{
+			if (is_array($topname))
+			{
+				if ($topname[-2])
+				{
+					$_styles['mobile'][-2] = $topname[-2];
+				}
+			}
+			else
+			{
+				if ($topname == $vbphrase['master_style'])
+				{
+					$topname = $vbphrase['mobile_master_style'];
+				}
+				$_styles['mobile'][-2] = $topname;
+			}
+		}
 	}
 
 	foreach($stylecache AS $style)
 	{
-		$styles["$style[styleid]"] = construct_depth_mark($style['depth'], '--', iif($displaytop, '--')) . " $style[title]";
+		$_styles[$style['type']]["$style[styleid]"] = construct_depth_mark($style['depth'], '--', ($displaytop ? '--' : '')) . " $style[title]";
 	}
 
+	if ($type == 'both' OR $type == 'standard')
+	{
+		$styles[$vbphrase['standard_styles']] = $_styles['standard'];
+	}
+	if ($type == 'both' OR $type == 'mobile')
+	{
+		$styles[$vbphrase['mobile_styles']] = $_styles['mobile'];
+	}
+
+
+	//	$styles = $styles[$type];
+
 	print_select_row($title, $name, $styles, $selectedid);
+
 }
 
 // #############################################################################
@@ -3202,6 +3303,7 @@ function construct_revert_code($itemstyleid, $templatetype, $varname)
 
 	switch ($itemstyleid)
 	{
+		case -2:
 		case -1:
 			return array('info' => '', 'revertcode' => '&nbsp;');
 		case $vbulletin->GPC['dostyleid']:
@@ -3695,7 +3797,7 @@ function construct_color_picker($size = 12, $display = 'none')
 	<div id=\"colorPicker\" style=\"display:$display\" oncontextmenu=\"switch_color_picker(1); return false\" onmousewheel=\"switch_color_picker(event.wheelDelta * -1); return false;\">
 	<table id=\"colorFeedback\" class=\"tcat\" cellpadding=\"0\" cellspacing=\"4\" border=\"0\" width=\"100%\">
 	<tr>
-		<td><button onclick=\"col_click('transparent'); return false\"><img src=\"../cpstyles/" . $vbulletin->options['cpstylefolder'] . "/colorpicker_transparent.gif\" title=\"'transparent'\" alt=\"\" /></button></td>
+		<td><button type=\"button\" onclick=\"col_click('transparent'); return false\"><img src=\"../cpstyles/" . $vbulletin->options['cpstylefolder'] . "/colorpicker_transparent.gif\" title=\"'transparent'\" alt=\"\" /></button></td>
 		<td>
 			<table id=\"colorSurround\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">
 			<tr>
@@ -3707,8 +3809,8 @@ function construct_color_picker($size = 12, $display = 'none')
 		<td width=\"100%\"><input id=\"txtColor\" type=\"text\" value=\"\" size=\"8\" /></td>
 		<td style=\"white-space:nowrap\">
 			<input type=\"hidden\" name=\"colorPickerType\" id=\"colorPickerType\" value=\"$colorPickerType\" />
-			<button onclick=\"switch_color_picker(1); return false\"><img src=\"../cpstyles/" . $vbulletin->options['cpstylefolder'] . "/colorpicker_toggle.gif\" alt=\"\" /></button>
-			<button onclick=\"close_color_picker(); return false\"><img src=\"../cpstyles/" . $vbulletin->options['cpstylefolder'] . "/colorpicker_close.gif\" alt=\"\" /></button>
+			<button type=\"button\" onclick=\"switch_color_picker(1); return false\"><img src=\"../cpstyles/" . $vbulletin->options['cpstylefolder'] . "/colorpicker_toggle.gif\" alt=\"\" /></button>
+			<button type=\"button\" onclick=\"close_color_picker(); return false\"><img src=\"../cpstyles/" . $vbulletin->options['cpstylefolder'] . "/colorpicker_close.gif\" alt=\"\" /></button>
 		</td>
 	</tr>
 	</table>
@@ -3803,6 +3905,7 @@ function print_css_row($title, $description, $item, $dolinks = false, $restartta
 	$title = htmlspecialchars_uni($title);
 	switch ($css_info["$item"])
 	{
+		case -2:
 		case -1:
 			$tblhead_title = $title;
 			$revertlink = '';
@@ -3923,7 +4026,7 @@ function build_special_templates($newtemplates, $templatetype, $vartype)
 		// if delete the customized template, delete and continue
 		if ($vbulletin->GPC['delete']["$vartype"]["$title"])
 		{
-			if ($vbulletin->GPC['dostyleid'] != -1)
+			if ($vbulletin->GPC['dostyleid'] != -1 AND $vbulletin->GPC['dostyleid'] != -2)
 			{
 				$vbulletin->db->query_write("
 					DELETE FROM " . TABLE_PREFIX . "template
@@ -4041,25 +4144,23 @@ function print_template_javascript()
 // ###########################################################################################
 // START XML STYLE FILE FUNCTIONS
 
-
-function get_style_export_xml
-(
-	$styleid,
-	$product,
-	$product_version,
-	$title,
-	$mode
-)
+function get_style_export_xml($styleid, $product, $product_version, $title, $mode)
 {
-	//only is the (badly named) list of template groups
+	// $only is the (badly named) list of template groups
 	global $vbulletin, $vbphrase, $only;
-	if ($styleid == -1)
+
+	/* Load the master 'style' phrases for use in
+	the export, and then rebuild the $only array */
+	load_phrases(array('style'), -1);
+	build_template_groups($only);
+
+	if ($styleid == -1 OR $styleid == -2)
 	{
 		// set the style title as 'master style'
-		$style = array('title' => $vbphrase['master_style']);
-		$sqlcondition = "styleid = -1";
-		$parentlist = "-1";
-		$is_master = true;
+		$style = array('title' => ($styleid == -1) ? $vbphrase['master_style'] : $vbphrase['mobile_master_style']);
+		$sqlcondition = "styleid = {$styleid}";
+		$parentlist = $styleid;
+		$styletype = ($styleid  == -1) ? 'master' : 'mobilemaster';
 	}
 	else
 	{
@@ -4083,7 +4184,7 @@ function get_style_export_xml
 			$sqlcondition = "templateid IN(" . implode(',', unserialize($style['templatelist'])) . ")";
 			$sqlcondition .= " AND title NOT LIKE 'vbcms_grid_%'";
 			$parentlist = $style['parentlist'];
-			$is_master = true;
+			$styletype = ($style['type'] == 'standard') ? 'master' : 'mobilemaster';
 			$title = $vbphrase['master_style'];
 		}
 
@@ -4091,10 +4192,10 @@ function get_style_export_xml
 		else if ($mode == 1)
 		{
 			// get all items from this style and all parent styles (except master)
-			$sqlcondition = "styleid <> -1 AND templateid IN(" . implode(',', unserialize($style['templatelist'])) . ")";
+			$sqlcondition = "styleid <> -1 AND styleid <> -2 AND templateid IN(" . implode(',', unserialize($style['templatelist'])) . ")";
 			//remove the master style id off the end of the list
 			$parentlist = substr(trim($style['parentlist']), 0, -3);
-			$is_master = false;
+			$styletype = 'custom';
 		}
 
 		//this style only
@@ -4103,7 +4204,7 @@ function get_style_export_xml
 			// get only items customized in THIS style
 			$sqlcondition = "styleid = " . $styleid;
 			$parentlist = $styleid;
-			$is_master = false;
+			$styletype = 'custom';
 		}
 	}
 
@@ -4117,7 +4218,7 @@ function get_style_export_xml
 	}
 
 	// set a default title
-	if ($title == '' OR $styleid == -1)
+	if ($title == '' OR $styleid == -1 OR $styleid == -2)
 	{
 		$title = $style['title'];
 	}
@@ -4194,13 +4295,13 @@ function get_style_export_xml
 	// --------------------------------------------
 	// fetch stylevar-dfns
 
-	$stylevarinfo = get_stylevars_for_export($product, $parentlist, $is_master);
+	$stylevarinfo = get_stylevars_for_export($product, $parentlist);
 	$stylevar_cache = $stylevarinfo['stylevars'];
 	$stylevar_dfn_cache = $stylevarinfo['stylevardfns'];
 
 	if (empty($templates) AND empty($stylevar_cache) AND empty($stylevar_dfn_cache))
 	{
-		print_stop_message('download_contains_no_customizations');
+		throw new vB_Exception_AdminStopMessage('download_contains_no_customizations');
 	}
 
 	// --------------------------------------------
@@ -4210,10 +4311,10 @@ function get_style_export_xml
 	$xml = new vB_XML_Builder($vbulletin);
 	$xml->add_group('style',
 		array(
-			'name' => $title,
+			'name'      => $title,
 			'vbversion' => $product_version,
-			'product' => $product,
-			'type' => $is_master ? 'master' : 'custom'
+			'product'   => $product,
+			'type'      => $styletype,
 		)
 	);
 
@@ -4224,11 +4325,11 @@ function get_style_export_xml
 		{
 			$xml->add_tag('template', $template['template'],
 				array(
-					'name' => htmlspecialchars($template['title']),
+					'name'         => htmlspecialchars($template['title']),
 					'templatetype' => $template['templatetype'],
-					'date' => $template['dateline'],
-					'username' => $template['username'],
-					'version' => htmlspecialchars_uni($template['version'])),
+					'date'         => $template['dateline'],
+					'username'     => $template['username'],
+					'version'      => htmlspecialchars_uni($template['version'])),
 				true
 			);
 		}
@@ -4243,10 +4344,10 @@ function get_style_export_xml
 		{
 			$xml->add_tag('stylevar', '',
 				array(
-					'name' => htmlspecialchars($stylevar['stylevarid']),
-					'datatype' => $stylevar['datatype'],
-					'validation' => base64_encode($stylevar['validation']),
-					'failsafe' => base64_encode($stylevar['failsafe'])
+					'name'       => htmlspecialchars($stylevar['stylevarid']),
+					'datatype'   => $stylevar['datatype'],
+					'validation' => vb_base64_encode($stylevar['validation']),
+					'failsafe'   => vb_base64_encode($stylevar['failsafe'])
 				)
 			);
 		}
@@ -4259,8 +4360,8 @@ function get_style_export_xml
 	{
 		$xml->add_tag('stylevar', '',
 			array(
-				'name' => htmlspecialchars($stylevar['stylevarid']),
-				'value' => base64_encode($stylevar['value'])
+				'name'  => htmlspecialchars($stylevar['stylevarid']),
+				'value' => vb_base64_encode($stylevar['value'])
 			)
 		);
 	}
@@ -4285,8 +4386,10 @@ function get_style_export_xml
 * @param	boolean	Allow vBulletin version mismatch
 * @param	integer	Display order for new style
 * @param	boolean	Allow user selection of new style
-* @param  int|null Starting template group index for this run of importing templates (0 based). Null means all templates (single run)
-* @param  int|null
+* @param	int|null Starting template group index for this run of importing templates (0 based). Null means all templates (single run)
+* @param	int|null
+* @param	int 0 = normal import, 1 = style generator
+* @param	string Import Filename
 *
 * @return	array	Array of information about the imported style
 */
@@ -4299,7 +4402,9 @@ function xml_import_style(
 	$displayorder = 1,
 	$userselect = true,
 	$startat = null,
-	$perpage = null
+	$perpage = null,
+	$importtype = 0,
+	$filename = 'vbulletin-style.xml'
 )
 {
 	// $GLOBALS['path'] needs to be passed into this function or reference $vbulletin->GPC['path']
@@ -4320,7 +4425,7 @@ function xml_import_style(
 	else if ($xmlobj->error_no == 2)
 	{
 			print_dots_stop();
-			print_stop_message('please_ensure_x_file_is_located_at_y', 'vbulletin-style.xml', $vbulletin->GPC['path']);
+			print_stop_message('please_ensure_x_file_is_located_at_y', $filename, $vbulletin->GPC['path']);
 	}
 
 	if(!$parsed_xml = $xmlobj->parse())
@@ -4329,11 +4434,28 @@ function xml_import_style(
 		print_stop_message('xml_error_x_at_line_y', $xmlobj->error_string(), $xmlobj->error_line());
 	}
 
+	if (!$styleid)
+	{
+		if ($parentid == -1 OR $parentid == -2)
+		{
+			$styleid = $parentid;
+		}
+		else
+		{
+			$style = $vbulletin->db->query_first("
+				SELECT IF(type = 'standard', -1, -2) AS mastertype
+				FROM " . TABLE_PREFIX . "style
+				WHERE styleid = $parentid
+			");
+			$styleid = $style['mastertype'];
+		}
+	}
+
 	$version = $parsed_xml['vbversion'];
-	$master = ($parsed_xml['type'] == 'master' ? 1 : 0);
+	$master = ($parsed_xml['type'] == 'master' ? true : false);
+	$mobilemaster = ($parsed_xml['type'] == 'mobilemaster' ? true : false);
 	$title = (empty($title) ? $parsed_xml['name'] : $title);
 	$product = (empty($parsed_xml['product']) ? 'vbulletin' : $parsed_xml['product']);
-
 
 	$one_pass = (is_null($startat) AND is_null($perpage));
 	if (!$one_pass AND (!is_numeric($startat) OR !is_numeric($perpage) OR $perpage <= 0 OR $startat < 0))
@@ -4348,51 +4470,64 @@ function xml_import_style(
 		$full_product_info = fetch_product_list(true);
 		$product_info = $full_product_info["$product"];
 
-		if ($version != $product_info['version'] AND !$anyversion AND !$master)
+		if ($version != $product_info['version'] AND !$anyversion AND !$master AND !$mobilemaster)
 		{
 			print_dots_stop();
 			print_stop_message('upload_file_created_with_different_version', $product_info['version'], $version);
 		}
 
 		//Initialize the style -- either init the master, create a new style, or verify the style to overwrite.
-		if ($master)
+		if ($master OR $mobilemaster)
 		{
-			$import_data = @unserialize(fetch_adminutil_text('master_style_import'));
+			$styleid = $master ? -1 : -2;
+			$specialstyleid = $master ? -10 : -20;
+			$import_data = @unserialize(fetch_adminutil_text("master_style_import_{$product}_{$specialstyleid}"));
 			if (!empty($import_data) AND (TIMENOW - $import_data['last_import']) <= 30)
 			{
 				print_dots_stop();
-				print_stop_message('must_wait_x_seconds_master_style_import', vb_number_format($import_data['last_import'] + 30 - TIMENOW));
+				if ($master)
+				{
+					print_stop_message('must_wait_x_seconds_master_style_import', vb_number_format($import_data['last_import'] + 30 - TIMENOW));
+				}
+				else
+				{
+					print_stop_message('must_wait_x_seconds_mobile_master_style_import', vb_number_format($import_data['last_import'] + 30 - TIMENOW));
+				}
 			}
 
+			$stylename = $master ? $vbphrase['master_style'] : $vbphrase['mobile_master_style'];
 			// overwrite master style
 			if (VB_AREA != 'Upgrade' AND VB_AREA != 'Install')
 			{
-				echo "<h3>$vbphrase[master_style]</h3>\n<p>$vbphrase[please_wait]</p>";
+				echo "<h3>$stylename</h3>\n<p>$vbphrase[please_wait]</p>";
 				vbflush();
 			}
 
 			$vbulletin->db->query_write("
 				DELETE FROM " . TABLE_PREFIX . "template
-				WHERE styleid = -10 AND (product = '" . $vbulletin->db->escape_string($product) . "'" .
-					iif($product == 'vbulletin', " OR product = ''") . ")"
+				WHERE styleid = {$specialstyleid} AND (product = '" . $vbulletin->db->escape_string($product) . "'" .
+					(($product == 'vbulletin') ? " OR product = ''" : "") . ")"
 			);
 
 			$vbulletin->db->query_write("
 				UPDATE " . TABLE_PREFIX . "template
-				SET styleid = -10 WHERE styleid = -1 AND (product = '" . $vbulletin->db->escape_string($product) . "'" .
-					iif($product == 'vbulletin', " OR product = ''") . ")
-			");
-			$styleid = -1;
+				SET styleid = {$specialstyleid} WHERE styleid = {$styleid} AND (product = '" . $vbulletin->db->escape_string($product) . "'" .
+					(($product == 'vbulletin') ? " OR product = ''" : "") . ")"
+			);
 		}
 		else
 		{
-			if ($styleid == -1)
+			if ($styleid == -1 OR $styleid == -2)
 			{
+				$type = ($styleid == -1) ? 'standard' : 'mobile';
 				// creating a new style
 				$test = $vbulletin->db->query_first("
 					SELECT styleid FROM " . TABLE_PREFIX . "style
-					WHERE title = '" . $vbulletin->db->escape_string($title) . "'"
-				);
+					WHERE
+						title = '" . $vbulletin->db->escape_string($title) . "'
+							AND
+						type = '{$type}'
+				");
 
 				if ($test)
 				{
@@ -4403,12 +4538,13 @@ function xml_import_style(
 				{
 					echo "<h3><b>" . construct_phrase($vbphrase['creating_a_new_style_called_x'], $title) . "</b></h3>\n<p>$vbphrase[please_wait]</p>";
 					vbflush();
+
 					/*insert query*/
 					$styleresult = $vbulletin->db->query_write("
 						INSERT INTO " . TABLE_PREFIX . "style
-						(title, parentid, displayorder, userselect)
+						(title, parentid, displayorder, userselect, type)
 						VALUES
-						('" . $vbulletin->db->escape_string($title) . "', $parentid, $displayorder, " . ($userselect ? 1 : 0) . ")
+						('" . $vbulletin->db->escape_string($title) . "', $parentid, $displayorder, " . ($userselect ? 1 : 0) . ", '{$type}')
 					");
 					$styleid = $vbulletin->db->insert_id($styleresult);
 				}
@@ -4435,11 +4571,17 @@ function xml_import_style(
 	else
 	{
 		//We should never get styleid = -1 unless $master is true;
-		if (($styleid == -1) AND !$master)
+		if (($styleid == -1 AND !$master) OR ($styleid == -2 AND !$mobilemaster))
 		{
+			$type = ($styleid == -1) ? 'standard' : 'mobile';
 			$stylerec =	$vbulletin->db->query_first("
-				SELECT styleid FROM " . TABLE_PREFIX . "style
-					WHERE title = '" . $vbulletin->db->escape_string($title) . "'");
+				SELECT styleid
+				FROM " . TABLE_PREFIX . "style
+				WHERE
+					title = '" . $vbulletin->db->escape_string($title) . "'
+						AND
+					type = '{$type}'
+			");
 
 			if ($stylerec AND intval($stylerec['styleid']))
 			{
@@ -4452,7 +4594,7 @@ function xml_import_style(
 			}
 		}
 	}
-	
+
 	$outputtext = '';
 	//load the templates
 	if ($arr = $parsed_xml['templategroup'])
@@ -4486,35 +4628,37 @@ function xml_import_style(
 	{
 		//load stylevars and definitions
 		// re-import any stylevar definitions
-		if ($master AND !empty($parsed_xml['stylevardfns']['stylevargroup']))
+		if (($master OR $mobilemaster) AND is_array($parsed_xml['stylevardfns']) AND !empty($parsed_xml['stylevardfns']['stylevargroup']))
 		{
-			xml_import_stylevar_definitions($parsed_xml['stylevardfns'], 'vbulletin');
+			xml_import_stylevar_definitions($parsed_xml['stylevardfns'], 'vbulletin', $master ? -1 : -2);
 		}
 
 		//if the tag is present but empty we'll end up with a string with whitespace which
 		//is a non "empty" value.
 		if (!empty($parsed_xml['stylevars']) AND is_array($parsed_xml['stylevars']))
 		{
-			xml_import_stylevars($parsed_xml['stylevars'], $styleid);
+			xml_import_stylevars($parsed_xml['stylevars'], $styleid, $importtype);
 		}
 
-		if ($master)
+		if ($master OR $mobilemaster)
 		{
-			xml_import_restore_ad_templates();
-			build_adminutil_text('master_style_import', serialize(array('last_import' => TIMENOW)));
+			xml_import_restore_ad_templates($styleid);
+			$specialstyleid = $master ? -10 : -20;
+			build_adminutil_text("master_style_import_{$product}_{$specialstyleid}", serialize(array('last_import' => TIMENOW)));
 		}
 
 		print_dots_stop();
 	}
 
 	return array(
-		'version' => $version,
-		'master'  => $master,
-		'title'   => $title,
-		'product' => $product,
-		'done'    => $done,
+		'version'          => $version,
+		'master'           => $master,
+		'mobilemaster'     => $mobilemaster,
+		'title'            => $title,
+		'product'          => $product,
+		'done'             => $done,
 		'overwritestyleid' => $styleid,
-		'output'  => $outputtext,
+		'output'           => $outputtext,
 	);
 }
 
@@ -4627,9 +4771,11 @@ function xml_import_template_groups($styleid, $product, $templategroup_array, $o
 	return $outputtext;
 }
 
-function xml_import_restore_ad_templates()
+function xml_import_restore_ad_templates($styleid = -1)
 {
 	global $vbulletin;
+
+	$specialstyleid = ($styleid == -2 ? -20 : -10);
 
 	// Get the template titles
 	$save = array();
@@ -4637,7 +4783,7 @@ function xml_import_restore_ad_templates()
 		SELECT title
 		FROM " . TABLE_PREFIX . "template
 		WHERE templatetype = 'template'
-			AND styleid = -10
+			AND styleid = {$specialstyleid}
 			AND product IN('vbulletin', '')
 			AND title LIKE 'ad\_%'
 	");
@@ -4654,87 +4800,190 @@ function xml_import_restore_ad_templates()
 		$vbulletin->db->query_write("
 			DELETE FROM " . TABLE_PREFIX . "template
 			WHERE templatetype = 'template'
-				AND styleid = -1
+				AND styleid = {$styleid}
 				AND product IN('vbulletin', '')
 				AND title IN (" . implode(',', $save) . ")
 		");
 
-		// Replace the -1 templates with the -10 before they are deleted
+		// Replace the -1 templates with the special styleid before they are deleted
 		$vbulletin->db->query_write("
 			UPDATE " . TABLE_PREFIX . "template
-			SET styleid = -1
+			SET styleid = {$styleid}
 			WHERE templatetype = 'template'
-				AND styleid = -10
+				AND styleid = {$specialstyleid}
 				AND product IN('vbulletin', '')
 				AND title IN (" . implode(',', $save) . ")
 		");
 	}
 }
 
-function xml_import_stylevar_definitions($stylevardfns, $product)
+function xml_import_templates($templates, $masterstyleid, $info, &$rebuild)
+{
+	global $vbulletin;
+
+	$querybits = array();
+	$querytemplates = 0;
+
+	if (!isset($templates[0]))
+	{
+		$templates = array($templates);
+	}
+
+	foreach ($templates AS $template)
+	{
+		$title = $vbulletin->db->escape_string($template['name']);
+		$template['template'] = $vbulletin->db->escape_string($template['value']);
+		$template['username'] = $vbulletin->db->escape_string($template['username']);
+		$template['templatetype'] = $vbulletin->db->escape_string($template['templatetype']);
+		$template['date'] = intval($template['date']);
+
+		if ($template['templatetype'] != 'template')
+		{
+			// template is a special template
+			$querybits[] = "({$masterstyleid}, '$template[templatetype]', '$title', '$template[template]', '', $template[date], '$template[username]', '" . $vbulletin->db->escape_string($template['version']) . "', '" . $vbulletin->db->escape_string($info['productid']) . "')";
+		}
+		else
+		{
+			// template is a standard template
+			$querybits[] = "({$masterstyleid}, '$template[templatetype]', '$title', '" . $vbulletin->db->escape_string(compile_template($template['value'])) . "', '$template[template]', $template[date], '$template[username]', '" . $vbulletin->db->escape_string($template['version']) . "', '" . $vbulletin->db->escape_string($info['productid']) . "')";
+		}
+
+		if (++$querytemplates % 20 == 0)
+		{
+			/*insert query*/
+			$vbulletin->db->query_write("
+				REPLACE INTO " . TABLE_PREFIX . "template
+					(styleid, templatetype, title, template, template_un, dateline, username, version, product)
+				VALUES
+					" . implode(',', $querybits) . "
+			");
+			$querybits = array();
+		}
+
+		// Send some output to the browser inside this loop so certain hosts
+		// don't artificially kill the script. See bug #34585
+		if (VB_AREA != 'Upgrade' AND VB_AREA != 'Install')
+		{
+			echo ' ';
+			vbflush();
+		}
+	}
+
+	// insert any remaining templates
+	if (!empty($querybits))
+	{
+		/*insert query*/
+		$vbulletin->db->query_write("
+			REPLACE INTO " . TABLE_PREFIX . "template
+				(styleid, templatetype, title, template, template_un, dateline, username, version, product)
+			VALUES
+				" . implode(',', $querybits) . "
+		");
+	}
+	unset($querybits);
+
+	$rebuild['templates'] = true;
+}
+
+function xml_import_stylevar_definitions($stylevardfns, $product, $masterstyleid = -1)
 {
 	global $vbulletin;
 
 	$querybits = array();
 	$stylevardfns = get_xml_list($stylevardfns['stylevargroup']);
+
+	/* Mark current definitions as old data.
+	   Use -10 as thats what the templates use
+	   parentid will = 0 for imported stylevars,
+	   but is set to -1 for custom added sytlevars.
+	   We only really care about this for default
+	   vbulletin as any other products will clear up
+	   their own stylevars when they are uninstalled. */
+
+	if ($product == 'vbulletin')
+	{
+		$where = "product = 'vbulletin' AND parentid = 0 AND styleid = {$masterstyleid}";
+	}
+	else
+	{
+		$where = "product = '" . $vbulletin->db->escape_string($product) . "' AND styleid = {$masterstyleid}";
+	}
+
+	$specialstyleid = ($masterstyleid == -1) ? -10 : -20;
+	$vbulletin->db->query_write("
+		UPDATE IGNORE " . TABLE_PREFIX . "stylevardfn
+		SET styleid = {$specialstyleid} WHERE $where
+	");
+
+	$deletebits = array();
 	foreach ($stylevardfns AS $stylevardfn_group)
 	{
 		$sg = get_xml_list($stylevardfn_group['stylevar']);
 		foreach ($sg AS $stylevardfn)
 		{
-			$querybits[] = "('" . $vbulletin->db->escape_string($stylevardfn['name']) . "', -1, '" .
+			$querybits[] = "('" . $vbulletin->db->escape_string($stylevardfn['name']) . "', {$masterstyleid}, '" .
 				$vbulletin->db->escape_string($stylevardfn_group['name']) . "', '" .
 				$vbulletin->db->escape_string($product) . "', '" .
 				$vbulletin->db->escape_string($stylevardfn['datatype']) . "', '" .
-				$vbulletin->db->escape_string(base64_decode($stylevardfn['validation'])) . "', '" .
-				$vbulletin->db->escape_string(base64_decode($stylevardfn['failsafe'])) .
-			"')";
+				$vbulletin->db->escape_string(vb_base64_decode($stylevardfn['validation'])) . "', '" .
+				$vbulletin->db->escape_string(vb_base64_decode($stylevardfn['failsafe'])) . "', 0, 0
+			)";
+
+			$deletebits[] = $vbulletin->db->escape_string($stylevardfn['name']);
 		}
 
 		if (!empty($querybits))
 		{
 			$vbulletin->db->query_write("
 				REPLACE INTO " . TABLE_PREFIX . "stylevardfn
-				(stylevarid, styleid, stylevargroup, product, datatype, validation, failsafe)
+				(stylevarid, styleid, stylevargroup, product, datatype, validation, failsafe, parentid, parentlist)
 				VALUES
 				" . implode(',', $querybits) . "
+			");
+
+			$vbulletin->db->query_write("
+				DELETE FROM " . TABLE_PREFIX . "stylevardfn
+				WHERE
+					styleid = {$specialstyleid}
+						AND
+					stylevarid IN ('" . implode("','", $deletebits) . "')
 			");
 		}
 		$querybits = array();
 	}
 }
 
-function xml_import_stylevars($stylevars, $styleid)
+function xml_import_stylevars($stylevars, $styleid, $importtype = 0)
 {
 	global $vbulletin;
 
 	$querybits = array();
 	$sv = get_xml_list($stylevars['stylevar']);
 
+	$dateline = TIMENOW;
+	$importname = ($importtype ? 'Style-Generator' : 'Style-Importer');
+
 	foreach ($sv AS $stylevar)
 	{
 		//the parser merges attributes and child nodes into a single array.  The unnamed text
 		//children get placed into a key called "value" automagically.  Since we don't have any
 		//text children we just take the first one.
-		$value = base64_decode($stylevar['value'][0]);
+		$value = vb_base64_decode($stylevar['value'][0]);
 		$querybits[] = "('" . $vbulletin->db->escape_string($stylevar['name']) . "', $styleid, '" .
-			$vbulletin->db->escape_string($value) . "')";
+			$vbulletin->db->escape_string($value) . "', $dateline, '$importname')";
 	}
 
 	if (!empty($querybits))
 	{
 		$vbulletin->db->query_write($sql = "
 			REPLACE INTO " . TABLE_PREFIX . "stylevar
-			(stylevarid, styleid, value)
+			(stylevarid, styleid, value, dateline, username)
 			VALUES
 			" . implode(',', $querybits) . "
 		");
 	}
 	$querybits = array();
 }
-
-
-
 
 /**
 *	Get a list from the parsed xml array
@@ -4792,9 +5041,8 @@ function get_xml_list($xmlarray)
 *	@param string stylelist -- The styles to export as a comma seperated string
 *		(in descending order of precedence).  THE CALLER IS RESPONSIBLE FOR SANITIZING THE
 *		INPUT.
-*	@param bool is_master -- True if this is a master export, false if not.
 */
-function get_stylevars_for_export($product, $stylelist, $is_master)
+function get_stylevars_for_export($product, $stylelist)
 {
 	global $vbulletin;
 
@@ -4803,28 +5051,11 @@ function get_stylevars_for_export($product, $stylelist, $is_master)
 
 	$stylevar_cache = array();
 
-	//ksours 2009-08-17 Not sure why this is this way -- code is more or less
-	//copied from the orginal export code in template.php.  The actual code
-	//appears to do the opposite of what the comment says it does (we only
-	//restrict the product when we are exporting a master style).  Leaving
-	//since it doesn't appear to be a problem at the moment and it was probably
-	//done for a reason.
-	//
-	// (Original comment)
-	// Only fetch product specific stylevars if exporting master style
-	if ($is_master)
-	{
-		$product_join = "
-			INNER JOIN " . TABLE_PREFIX . "stylevardfn AS stylevardfn
-				ON stylevardfn.stylevarid = stylevar.stylevarid
-				AND $product_filter ";
-	}
-
 	$stylevars = $vbulletin->db->query_read("
 		SELECT stylevar.*,
 			INSTR(',$stylelist,', CONCAT(',', stylevar.styleid, ',') ) AS ordercontrol
 		FROM " . TABLE_PREFIX . "stylevar AS stylevar
-		$product_join
+		INNER JOIN " . TABLE_PREFIX . "stylevardfn AS stylevardfn ON (stylevardfn.stylevarid = stylevar.stylevarid AND $product_filter)
 		WHERE stylevar.styleid IN ($stylelist)
 		ORDER BY ordercontrol DESC
 	");
@@ -5292,17 +5523,23 @@ function fetch_changed_templates_count()
 * @return query to fetch changed templates
 */
 //should only be called by the above cover functions
-function fetch_changed_templates_query_internal($select)
+function fetch_changed_templates_query_internal($select, $styleid = -1)
 {
 	$query = "
 		SELECT $select
 		FROM " . TABLE_PREFIX . "template AS tCustom
 		INNER JOIN " . TABLE_PREFIX . "template AS tGlobal ON
-			(tGlobal.styleid = -1 AND tGlobal.title = tCustom.title)
+			(tGlobal.styleid = {$styleid} AND tGlobal.title = tCustom.title)
 		LEFT JOIN " . TABLE_PREFIX . "templatemerge AS templatemerge ON
 			(templatemerge.templateid = tCustom.templateid)
-		WHERE tCustom.styleid <> -1
-			AND tCustom.templatetype = 'template' AND tCustom.mergestatus IN ('merged', 'conflicted')
+		WHERE
+			tCustom.styleid <> -1
+				AND
+			tCustom.styleid <> -2
+				AND
+			tCustom.templatetype = 'template'
+				AND
+			tCustom.mergestatus IN ('merged', 'conflicted')
 		ORDER BY tCustom.title
 	";
 
@@ -5317,7 +5554,7 @@ function fetch_changed_templates_query_internal($select)
 */
 function fetch_template_by_id($id)
 {
-	$filter = "templateid = " . intval($id);
+	$filter = "template.templateid = " . intval($id);
 	return fetch_template_internal($filter);
 }
 
@@ -5332,7 +5569,7 @@ function fetch_template_by_title($styleid, $title)
 {
 	global $db;
 	$qTitle = "'" . $db->escape_string($title) . "'";
-	$filter = "styleid = " . intval($styleid) . " AND title = $qTitle AND templatetype='template'";
+	$filter = "template.styleid = " . intval($styleid) . " AND template.title = $qTitle AND template.templatetype='template'";
 	return fetch_template_internal($filter);
 }
 
@@ -5351,8 +5588,8 @@ function fetch_template_by_title($styleid, $title)
 function fetch_origin_template_by_id($id)
 {
 	global $db;
-	$result = $db->query_first(
-		"SELECT *
+	$result = $db->query_first("
+		SELECT *
 		FROM " . TABLE_PREFIX . "templatemerge
 		WHERE templateid = " . intval($id)
 	);
@@ -5378,10 +5615,10 @@ function fetch_origin_template_by_id($id)
 function fetch_historical_template_by_id($id)
 {
 	global $db;
-	$result = $db->query_first(
-		"SELECT *
+	$result = $db->query_first("
+		SELECT *
 		FROM " . TABLE_PREFIX ."templatehistory
-			WHERE templatehistoryid = " . intval($id)
+		WHERE templatehistoryid = " . intval($id)
 	);
 
 	//adjust to look like the main template result
@@ -5404,11 +5641,12 @@ function fetch_historical_template_by_id($id)
 function fetch_template_internal($filter)
 {
 	global $db;
-	return $db->query_first(
-		"SELECT template.*
+	return $db->query_first("
+		SELECT template.*, style.type
 		FROM " . TABLE_PREFIX . "template AS template
-		WHERE $filter"
-	);
+		LEFT JOIN " . TABLE_PREFIX . "style AS style ON (template.styleid = style.styleid)
+		WHERE $filter
+	");
 }
 
 
@@ -5453,7 +5691,7 @@ function fetch_templates_for_merge($templateid)
 		throw new Exception($vbphrase['merge_error_nomerge']);
 	}
 
-	$new = fetch_template_by_title(-1, $custom['title']);
+	$new = fetch_template_by_title(($custom['type'] == 'mobile' ? -2 : -1), $custom['title']);
 	if (!$new)
 	{
 		throw new Exception(construct_phrase($vbphrase['merge_error_nodefault'],  $custom['title']));
@@ -5581,62 +5819,70 @@ function get_conflict_text_re()
 *
 * @var	array
 */
-$only = array
-(
-	// phrased groups
-	'buddylist'      => $vbphrase['group_buddy_list'],
-	'calendar'       => $vbphrase['group_calendar'],
-	'faq'            => $vbphrase['group_faq'],
-	'reputation'     => $vbphrase['group_user_reputation'],
-	'poll'           => $vbphrase['group_poll'],
-	'pm'             => $vbphrase['group_private_message'],
-	'register'       => $vbphrase['group_registration'],
-	'search'         => $vbphrase['group_search'],
-	'usercp'         => $vbphrase['group_user_control_panel'],
-	'usernote'       => $vbphrase['group_user_note'],
-	'whosonline'     => $vbphrase['group_whos_online'],
-	'showgroup'      => $vbphrase['group_show_groups'],
-	'posticon'       => $vbphrase['group_post_icon'],
-	'userfield'      => $vbphrase['group_user_profile_field'],
-	'bbcode'         => $vbphrase['group_bb_code_layout'],
-	'help'           => $vbphrase['group_help'],
-	'editor'         => $vbphrase['group_editor'],
-	'forumdisplay'   => $vbphrase['group_forum_display'],
-	'forumhome'      => $vbphrase['group_forum_home'],
-	'pagenav'        => $vbphrase['group_page_navigation'],
-	'postbit'        => $vbphrase['group_postbit'],
-	'posthistory'    => $vbphrase['group_posthistory'],
-	'threadbit'      => $vbphrase['group_threadbit'],
-	'im_'            => $vbphrase['group_instant_messaging'],
-	'memberinfo'     => $vbphrase['group_member_info'],
-	'memberlist'     => $vbphrase['group_members_list'],
-	'moderation'     => $vbphrase['group_moderation'],
-	'modify'         => $vbphrase['group_modify_user_option'],
-	'new'            => $vbphrase['group_new_posting'],
-	'showthread'     => $vbphrase['group_show_thread'],
-	'smiliepopup'    => $vbphrase['group_smilie_popup'],
-	'subscribe'      => $vbphrase['group_subscribed_thread'],
-	'whoposted'      => $vbphrase['group_who_posted'],
-	'threadadmin'    => $vbphrase['group_thread_administration'],
-	'navbar'         => $vbphrase['group_navigation_breadcrumb'],
-	'printthread'    => $vbphrase['group_printable_thread'],
-	'attachmentlist' => $vbphrase['group_attachment_list'],
-	'userinfraction' => $vbphrase['group_user_infraction'],
-	'subscription'   => $vbphrase['group_paid_subscriptions'],
-	'announcement'   => $vbphrase['announcement'],
-	'visitormessage' => $vbphrase['group_visitor_message'],
-	'humanverify'    => $vbphrase['group_human_verification'],
-	'socialgroups'	 => $vbphrase['group_socialgroups'],
-	'picture'        => $vbphrase['group_picture_comment'],
-	'ad_'            => $vbphrase['group_ad_location'],
-	'album'          => $vbphrase['group_album'],
-	'tag'            => $vbphrase['tag'],
-	'assetmanager'   => $vbphrase['group_asset_manager'],
-	'css'            => $vbphrase['group_css'],
-	'block'          => $vbphrase['group_block'],
-	'facebook'		 => $vbphrase['group_facebook'],
-	'aaa' => 'AAA Old Backup'
-);
+function build_template_groups(&$only)
+{
+	global $vbphrase;
+
+	$only = array
+	(
+		// phrased groups
+		'activitystream' => $vbphrase['group_activity_stream'],
+		'buddylist'      => $vbphrase['group_buddy_list'],
+		'calendar'       => $vbphrase['group_calendar'],
+		'faq'            => $vbphrase['group_faq'],
+		'reputation'     => $vbphrase['group_user_reputation'],
+		'poll'           => $vbphrase['group_poll'],
+		'pm'             => $vbphrase['group_private_message'],
+		'register'       => $vbphrase['group_registration'],
+		'search'         => $vbphrase['group_search'],
+		'usercp'         => $vbphrase['group_user_control_panel'],
+		'usernote'       => $vbphrase['group_user_note'],
+		'whosonline'     => $vbphrase['group_whos_online'],
+		'showgroup'      => $vbphrase['group_show_groups'],
+		'posticon'       => $vbphrase['group_post_icon'],
+		'userfield'      => $vbphrase['group_user_profile_field'],
+		'bbcode'         => $vbphrase['group_bb_code_layout'],
+		'help'           => $vbphrase['group_help'],
+		'editor'         => $vbphrase['group_editor'],
+		'forumdisplay'   => $vbphrase['group_forum_display'],
+		'forumhome'      => $vbphrase['group_forum_home'],
+		'pagenav'        => $vbphrase['group_page_navigation'],
+		'postbit'        => $vbphrase['group_postbit'],
+		'posthistory'    => $vbphrase['group_posthistory'],
+		'threadbit'      => $vbphrase['group_threadbit'],
+		'im_'            => $vbphrase['group_instant_messaging'],
+		'memberinfo'     => $vbphrase['group_member_info'],
+		'memberlist'     => $vbphrase['group_members_list'],
+		'moderation'     => $vbphrase['group_moderation'],
+		'modify'         => $vbphrase['group_modify_user_option'],
+		'new'            => $vbphrase['group_new_posting'],
+		'showthread'     => $vbphrase['group_show_thread'],
+		'smiliepopup'    => $vbphrase['group_smilie_popup'],
+		'subscribe'      => $vbphrase['group_subscribed_thread'],
+		'whoposted'      => $vbphrase['group_who_posted'],
+		'threadadmin'    => $vbphrase['group_thread_administration'],
+		'navbar'         => $vbphrase['group_navigation_breadcrumb'],
+		'printthread'    => $vbphrase['group_printable_thread'],
+		'attachmentlist' => $vbphrase['group_attachment_list'],
+		'userinfraction' => $vbphrase['group_user_infraction'],
+		'subscription'   => $vbphrase['group_paid_subscriptions'],
+		'announcement'   => $vbphrase['group_announcement'],
+		'visitormessage' => $vbphrase['group_visitor_message'],
+		'humanverify'    => $vbphrase['group_human_verification'],
+		'socialgroups'	 => $vbphrase['group_socialgroups'],
+		'picture'        => $vbphrase['group_picture_comment'],
+		'ad_'            => $vbphrase['group_ad_location'],
+		'album'          => $vbphrase['group_album'],
+		'tag'            => $vbphrase['group_tag'],
+		'assetmanager'   => $vbphrase['group_asset_manager'],
+		'css'            => $vbphrase['group_css'],
+		'block'          => $vbphrase['group_block'],
+		'facebook'		 => $vbphrase['group_facebook'],
+	);
+}
+
+$only = array();
+build_template_groups($only);
 
 if (class_exists('vBulletinHook', false))
 {
@@ -5679,7 +5925,7 @@ function print_style_palette($palette)
 *
 */
 
-function generate_style($data, $parentid, $title, $anyversion=false, $displayorder, $userselect, $version)
+function generate_style($data, $parentid, $title, $anyversion = false, $displayorder, $userselect, $version)
 {
 	global $vbulletin;
 	require_once(DIR . '/includes/class_xml.php');
@@ -5689,6 +5935,20 @@ function generate_style($data, $parentid, $title, $anyversion=false, $displayord
 	$hex = array(0 => ''); // start at one
 	$match = $match2 = array(); // initialize
 	$type = 'lps'; // checked below
+
+	// Get master stylevar data
+	$svdata = $vbulletin->db->query_read("
+		SELECT stylevarid
+		FROM " . TABLE_PREFIX . "stylevar
+		WHERE styleid = -1
+	");
+
+	// Generate list
+	$masterlist = array();
+	while ($svlist = $vbulletin->db->fetch_array($svdata))
+	{
+		$masterlist[$svlist['stylevarid']] = true;
+	}
 
 	foreach ($arr AS $key => $value)
 	{
@@ -5711,35 +5971,32 @@ function generate_style($data, $parentid, $title, $anyversion=false, $displayord
 			print_stop_message('incorrect_color_mapping');
 	}
 
-	if ($type == 'lps') // Color : Primary and Secondary
+	switch ($type)
 	{
-		$sample_file = "style_generator_sample_light.xml";
-		$from = array('#FF0000', '#BF3030', '#A60000', '#FF4040', '#FF7373', '#009999', '#1D7373', '#5CCCCC');
-		$to = array($hex[1], $hex[2], $hex[3], $hex[4], $hex[5], $hex[6], $hex[7], $hex[10]);
-	}
-	else if ($type == 'lpt') // White : Similar to the current style
-	{
-		$sample_file = "style_generator_sample_white.xml";
-		$from = array('#A60000', '#BF3030', '#FF4040', '#FF7373');
-		$to = array($hex[3], $hex[2], $hex[1], $hex[1]);
-	}
-	else if ($type == 'gry') // Grey :: Primary 3 and Primary 4 only
-	{
-		$sample_file = "style_generator_sample_gray.xml";
-		$from = array('#A60000', '#FF4040');
-		$to = array($hex[1], $hex[4]);
-	}
-	else if ($type == 'drk') // Dark : Primary 3 and Primary 4 only
-	{
-		$sample_file = "style_generator_sample_dark.xml";
-		$from = array('#A60000', '#FF4040');
-		$to = array($hex[1], $hex[4]);
-	}
-	else // Dark : Default to Dark
-	{
-		$sample_file = "style_generator_sample_dark.xml";
-		$from = array('#A60000', '#FF4040');
-		$to = array($hex[1], $hex[4]);
+		case 'lpt': // White : Similar to the current style
+			$sample_file = "style_generator_sample_white.xml";
+			$from = array('#A60000', '#BF3030', '#FF4040', '#FF7373');
+			$to = array($hex[3], $hex[2], $hex[1], $hex[1]);
+			break;
+
+		case 'gry': // Grey :: Primary 3 and Primary 4 only
+			$sample_file = "style_generator_sample_gray.xml";
+			$from = array('#A60000', '#FF4040');
+			$to = array($hex[1], $hex[4]);
+			break;
+
+		case 'drk': // Dark : Primary 3 and Primary 4 only
+			$sample_file = "style_generator_sample_dark.xml";
+			$from = array('#A60000', '#FF4040');
+			$to = array($hex[1], $hex[4]);
+			break;
+
+		case 'lps': // Light : Primary and Secondary
+		default: // Default to lps (as previously set at start of function, not dark).
+			$sample_file = "style_generator_sample_light.xml";
+			$from = array('#FF0000', '#BF3030', '#A60000', '#FF4040', '#FF7373', '#009999', '#1D7373', '#5CCCCC');
+			$to = array($hex[1], $hex[2], $hex[3], $hex[4], $hex[5], $hex[6], $hex[7], $hex[10]);
+			break;
 	}
 
 	$decode = $match = array();
@@ -5751,7 +6008,7 @@ function generate_style($data, $parentid, $title, $anyversion=false, $displayord
 		// The XML Parser outputs 2 values for the value field when one is set as an attribute.
 		// The work around for now is to specify the first value (the attribute). In reality
 		// the parser shouldn't add a blank 'value' if it exists as an attribute.
-		$decode[$stylevars['name']] = base64_decode($stylevars['value'][0]);
+		$decode[$stylevars['name']] = vb_base64_decode($stylevars['value'][0]);
 	}
 
 	// Preg match and then replace. Shutter, a better method is on the way.
@@ -5769,22 +6026,26 @@ function generate_style($data, $parentid, $title, $anyversion=false, $displayord
 	$xml = new vB_XML_Builder($vbulletin);
 	$xml->add_group('style',
 		array(
-			'name' => $title,
+			'name'      => $title,
 			'vbversion' => $version,
-			'product' => 'vbulletin',
-			'type' => 'custom'
+			'product'   => 'vbulletin',
+			'type'      => 'custom'
 		)
 	);
 
 	$xml->add_group('stylevars');
 	foreach ($stylevarparts AS $stylevarid => $stylevar)
 	{
-		$xml->add_tag('stylevar', '',
-			array(
-				'name' => htmlspecialchars($stylevarid),
-				'value' => base64_encode($stylevar)
-			)
-		);
+		// Add if exists
+		if($masterlist[$stylevarid])
+		{
+			$xml->add_tag('stylevar', '',
+				array(
+					'name'  => htmlspecialchars($stylevarid),
+					'value' => vb_base64_encode($stylevar)
+				)
+			);
+		}
 	}
 	// Close stylevar group
 	$xml->close_group();
@@ -5795,7 +6056,20 @@ function generate_style($data, $parentid, $title, $anyversion=false, $displayord
 	$doc .= $xml->output();
 	$xml = null;
 
-	xml_import_style($doc, -1, $parentid, $title, $anyversion, $displayorder, $userselect);
+	if ($parentid == -1 OR $parentid == -2)
+	{
+		$masterstyleid = $parentid;
+	}
+	else
+	{
+		$style = $vbulletin->db->query_first("
+			SELECT IF(type = 'standard', '-1', '-2') AS masterstyleid
+			FROM " . TABLE_PREFIX . "style
+			WHERE styleid = {$parentid}
+		");
+		$masterstyleid = $style['masterstyleid'];
+	}
+	xml_import_style($doc, $masterstyleid, $parentid, $title, $anyversion, $displayorder, $userselect, null, null, 1);
 
 	print_cp_redirect("template.php?" . $vbulletin->session->vars['sessionurl'] . "do=rebuild&amp;goto=template.php?" . $vbulletin->session->vars['sessionurl']);
 }
@@ -5805,7 +6079,8 @@ function generate_style($data, $parentid, $title, $anyversion=false, $displayord
 * Prints out the save options for the style generator
 */
 
-function import_generated_style() {
+function import_generated_style()
+{
 	global $vbphrase, $stylecache;
 
 	cache_styles();
@@ -5816,7 +6091,7 @@ function import_generated_style() {
 	{
 		if (filefield.value == \"\")
 		{
-			return confirm(\"".construct_phrase($vbphrase['you_did_not_specify_a_file_to_upload'], " + tform.serverfile.value + ")."\");
+			return confirm(\"" . construct_phrase($vbphrase['you_did_not_specify_a_file_to_upload'], " + tform.serverfile.value + ") . "\");
 		}
 		return true;
 	}
@@ -5826,6 +6101,7 @@ function import_generated_style() {
 		document.forms.downloadform.title.value = style[styleid];
 	}
 	var style = new Array();
+	style['-2'] = \"" . $vbphrase['mobile_master_style'] . "\"
 	style['-1'] = \"" . $vbphrase['master_style'] . "\"";
 	foreach($stylecache AS $styleid => $style)
 	{
@@ -5843,7 +6119,7 @@ function import_generated_style() {
 	echo '<div class="styledetails"><div id="title-generated-style" class="help title-generated-style">';
 	print_input_row($vbphrase['title_generated_style'], 'name', null, null, null, null, null, null, 'form-name');
 	echo '</div><div id="parent-id" class="help parent-id">';
-	print_style_chooser_row('parentid', -1, $vbphrase['no_parent_style'], $vbphrase['parent_style'], 1);
+	print_style_chooser_row('parentid', -1, $vbphrase['no_parent_style'], $vbphrase['parent_style'], 1, 'standard');
 	echo '</div></div><div class="styleoptions"><div id="display-order" class="help display-order">';
 	print_input_row($vbphrase['display_order'], 'displayorder', 1, null, null, null, null, null, 'form-displayorder');
 	echo '</div><div id="allow-user-selection" class="help allow-user-selection">';
@@ -5919,11 +6195,41 @@ function is_customized_vb3_style($styleid)
 	return (bool)$resultcache[$styleid];
 }
 
+/* Load groups of phrases for a specific language */
+function load_phrases($groups = false, $language = -1)
+{
+	global $vbulletin, $vbphrase;
+
+	$where = '';
+	$language = intval($language);
+
+	if (is_array($groups))
+	{
+		$glist = array();
+		foreach($groups AS $group)
+		{
+			$glist[] = "'" . $vbulletin->db->escape_string($group) . "'";
+		}
+		$where = 'AND fieldname IN (' . implode(',', $glist) . ') ';
+	}
+
+	$getphrases = $vbulletin->db->query_read_slave("
+		SELECT languageid, varname, text
+		FROM " . TABLE_PREFIX . "phrase
+		WHERE languageid = $language $where
+	");
+
+	while ($phrase = $vbulletin->db->fetch_array($getphrases))
+	{
+		$vbphrase[$phrase['varname']] = $phrase['text'];
+	}
+
+	$vbulletin->db->free_result($getphrases);
+}
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45579 $
+|| # CVS: $RCSfile$ - $Revision: 62619 $
 || ####################################################################
 \*======================================================================*/
 ?>

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -33,13 +33,14 @@ class vBCms_NavBar
 
 	/*Properties====================================================================*/
 
-	/**
-	 * The navbar link view
-	 *
-	 * @var vB_View
-	 */
-	public static $view;
 	private static $cache_ttl = 10;
+
+	/**
+	 * The navbar link list
+	 *
+	 * @var array
+	 */
+	public static $linklist = array();
 
 	/**
 	 * A prefix for all cache references.
@@ -62,7 +63,7 @@ class vBCms_NavBar
 	public static function prepareNavBar($node = false, $refresh = false)
 	{
 		// Normalize node
-		$node = ($node ?  $node : 1);
+		$node = ($node ? $node : 1);
 
 		if (!$node instanceof vBCms_Item_Content)
 		{
@@ -71,7 +72,7 @@ class vBCms_NavBar
 
 		$cache_key = self::getHash($node);
 
-		if ($refresh OR !$navnodes = vB_Cache::instance()->read($cache_key, false, true))
+		if ($refresh OR !($navnodes = vB_Cache::instance()->read($cache_key, false, true)))
 		{
 
 			//The query to pull the navigation requires that the
@@ -144,39 +145,34 @@ class vBCms_NavBar
 			{
 				$route->node = $navnode->getUrlSegment();
 				$links[] = array(
+					'type' => 'link',
 					'title' => $navnode->getTitle(),
 					'url' => $route->getCurrentUrl()
 				);
 			}
 		}
 
-
-		if (!self::$view OR $refresh)
+		if (!self::$linklist OR $refresh)
 		{
-			self::$view = new vB_View('vbcms_navbar_link');
-			self::$view->links = $links;
+			self::$linklist = $links;
 		}
-
 	}
 
 
 	/**
-	 * Fetches the prepared nabar view.
+	 * Fetches the prepared nabar list.
 	 *
-	 * @return vB_View							- The navbar link view
-	 */
-	public static function renderView()
+	 * @return array	- The navbar links
+	*/
+	public static function getLinks()
 	{
-		global $template_hook;
-
-		if (self::$view)
+		if (self::$linklist)
 		{
-			vB::$vbulletin->options['selectednavtab'] = 'vbcms';
-			return self::$view->render();
+			return self::$linklist;
 		}
 		else
 		{
-			return false;
+			return array();
 		}
 	}
 
@@ -185,7 +181,7 @@ class vBCms_NavBar
 	 ********/
 	protected static function getHash($node)
 	{
-		$context = new vB_Context(self::$cache_prefix, array(vB::$vbulletin->userinfo['usergroupid'], vB::$vbulletin->userinfo['membergroupids']));
+		$context = new vB_Context(self::$cache_prefix, array($node, vB::$vbulletin->userinfo['usergroupid'], vB::$vbulletin->userinfo['membergroupids']));
 		return strval($context);
 	}
 
@@ -205,7 +201,6 @@ class vBCms_NavBar
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 31871 $
 || ####################################################################
 \*======================================================================*/

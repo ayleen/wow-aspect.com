@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -705,8 +705,12 @@ class vB_UserProfile
 				$this->prepare('userperms');
 			}
 
-			fetch_reputation_image($this->userinfo, $this->prepared['userperms']);
+			if ($this->registry->options['reputationenable'])
+			{
+				fetch_reputation_image($this->userinfo, $this->prepared['userperms']);
+			}
 
+			$this->prepared['level'] = $this->userinfo['level'];
 			$this->prepared['reputationdisplay'] = $this->userinfo['reputationdisplay'];
 		}
 	}
@@ -841,6 +845,17 @@ class vB_UserProfile
 				)
 			);
 
+			if ($this->registry->options['reputationenable'])
+			{
+				$show['reputation'] = true;
+			}
+			else
+			{
+				$show['reputation'] = false;
+			}
+
+			$show['cssuid'] = ($this->registry->userinfo['options'] & $this->registry->bf_misc_useroptions['showusercss'] ? 0 : $this->registry->userinfo['userid']);
+
 			$this->prepared['show'] = true;
 		}
 	}
@@ -945,8 +960,7 @@ class vB_UserProfile
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 37230 $
+|| # CVS: $RCSfile$ - $Revision: 54782 $
 || ####################################################################
 \*======================================================================*/
 ?>

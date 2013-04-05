@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 37602 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 57655 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('bbcode');
@@ -307,7 +307,7 @@ if ($_POST['do'] == 'test')
 	));
 
 	$parser = new vB_BbCodeParser($vbulletin, fetch_tag_list());
-	$parsed_code = $parser->do_parse($vbulletin->GPC['text'], false, false, true, false, true);
+	$parsed_code = $parser->do_parse($vbulletin->GPC['text'], false, false, true, false, true, false, null, false, false);
 
 	print_form_header('bbcode', 'test');
 	print_table_header($vbphrase['test_your_bb_code']);
@@ -331,7 +331,7 @@ if ($_REQUEST['do'] == 'previewbbcode')
 	if ($bbcode = $vbulletin->db->query_first("SELECT * FROM " . TABLE_PREFIX . "bbcode WHERE bbcodeid = " . $vbulletin->GPC['bbcodeid']))
 	{
 		$parser = new vB_BbCodeParser($vbulletin, fetch_tag_list());
-		$parsed_code = $parser->do_parse($bbcode['bbcodeexample'], false, false, true, false, true);
+		$parsed_code = $parser->do_parse($bbcode['bbcodeexample'], false, false, true, false, true, false, null, false, false);
 
 		echo $parsed_code;
 	}
@@ -353,7 +353,7 @@ if ($_REQUEST['do'] == 'modify')
 		$class = fetch_row_bgclass();
 		$altclass = iif($class == 'alt1', 'alt2', 'alt1');
 
-		$parsed_code = $parser->do_parse($bbcode['bbcodeexample'], false, false, true, false, true);
+		$parsed_code = $parser->do_parse($bbcode['bbcodeexample'], false, false, true, false, true, false, null, false, false);
 
 		$cell = array(
 			"<b>$bbcode[title]</b>",
@@ -397,8 +397,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 37602 $
+|| # CVS: $RCSfile$ - $Revision: 57655 $
 || ####################################################################
 \*======================================================================*/
 ?>

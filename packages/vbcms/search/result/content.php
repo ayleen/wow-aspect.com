@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  * @package vBulletin
  * @subpackage Search
  * @author Ed Brown, vBulletin Development Team
- * @version $Id: content.php 38280 2010-08-11 20:20:21Z ksours $
- * @since $Date: 2010-08-11 13:20:21 -0700 (Wed, 11 Aug 2010) $
+ * @version $Id: content.php 58613 2012-02-03 20:05:25Z michael.lavaveshkul $
+ * @since $Date: 2012-02-03 12:05:25 -0800 (Fri, 03 Feb 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 
@@ -47,7 +47,7 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 	 */
 	public static function create($id)
 	{
-		$contenttypeid = vb_Types::instance()->getContentTypeId('vBCms_Article');
+		$contenttypeid = vb_Types::instance()->getContentTypeID('vBCms_Article');
 
 		if ($rst = vB::$vbulletin->db->query_read("SELECT a.contentid as itemid,
 		u.username, a.contentid, n.nodeid, u.userid, i.html_title,
@@ -89,7 +89,7 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 	 */
 	public static function create_array($ids)
 	{
-		$contenttypeid = vb_Types::instance()->getContentTypeId('vBCms_Article');
+		$contenttypeid = vb_Types::instance()->getContentTypeID('vBCms_Article');
 
 		if ($rst = vB::$vbulletin->db->query_read("SELECT a.contentid as itemid,
 		u.username, a.contentid, n.nodeid, u.userid, i.html_title,
@@ -98,12 +98,10 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 		LEFT JOIN " . TABLE_PREFIX . "cms_node n ON n.contentid = a.contentid
   		LEFT JOIN " . TABLE_PREFIX . "cms_nodeinfo i ON i.nodeid = n.nodeid
   		LEFT JOIN " . TABLE_PREFIX . "user u ON u.userid = n.userid
-		WHERE a.contentid IN (" . implode(', ', $ids) .
-			") AND n.contenttypeid = " . $contenttypeid))
+		WHERE a.contentid IN (" . implode(', ', $ids) .	") AND n.contenttypeid = " . $contenttypeid))
 		{
 			while ($search_result = vB::$vbulletin->db->fetch_array($rst))
 			{
-
 				//If unpublished we hide this.
 				if (!($search_result['publishdate'] < TIMENOW))
 				{
@@ -115,7 +113,18 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 				$item->record = $search_result;
 				$items[$search_result['itemid']] = $item;
 			}
-			return $items;
+
+			$ordered_items = array();
+			foreach($ids AS $item_key)
+			{
+				if(isset($items[$item_key]))
+				{
+					$ordered_items[$item_key] = $items[$item_key];
+					unset($items[$item_key]);
+				}
+			}
+
+			return $ordered_items;
 		}
 		return false;
 	}
@@ -184,11 +193,11 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 			vB_Search_Searchtools::getSummary($this->record['pagetext'], 100));
 
 		$template->register('dateline', date($vbulletin->options['dateformat']. ' '
-			. $vbulletin->options['default_timeformat'], $this->record['dateline']));
+			. $vbulletin->options['timeformat'], $this->record['dateline']));
 
 		if (vB::$vbulletin->options['avatarenabled'])
 		{
-			$avatar = fetch_avatar_from_record($post);
+			$avatar = fetch_avatar_from_record($post, true);
 		}
 		else
 		{
@@ -228,7 +237,6 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 38280 $
+|| # SVN: $Revision: 58613 $
 || ####################################################################
 \*======================================================================*/

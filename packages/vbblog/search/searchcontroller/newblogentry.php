@@ -69,7 +69,7 @@ class vBBlog_Search_SearchController_NewBlogEntry extends vB_Search_SearchContro
 			$lastentry_where = "blog.dateline >= $datecut";
 		}
 
-		$contenttypeid = vB_Types::instance()->getContentTypeId('vBBlog_BlogEntry');
+		$contenttypeid = vB_Types::instance()->getContentTypeID('vBBlog_BlogEntry');
 		$entries = $db->query_read_slave($q = "
 			SELECT blog.blogid
 			FROM " . TABLE_PREFIX . "blog AS blog
@@ -91,7 +91,6 @@ class vBBlog_Search_SearchController_NewBlogEntry extends vB_Search_SearchContro
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28694 $
 || ####################################################################
 \*======================================================================*/

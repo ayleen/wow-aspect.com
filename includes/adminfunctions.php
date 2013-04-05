@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -11,8 +11,11 @@
 \*======================================================================*/
 
 error_reporting(E_ALL & ~E_NOTICE);
-define('ADMINHASH', md5(COOKIE_SALT . $vbulletin->userinfo['userid'] . $vbulletin->userinfo['salt']));
 
+if (!defined('ADMINHASH'))
+{
+	define('ADMINHASH', md5(COOKIE_SALT . $vbulletin->userinfo['userid'] . $vbulletin->userinfo['salt']));
+}
 // #############################################################################
 
 /**
@@ -360,6 +363,13 @@ function print_cp_header($title = '', $onload = '', $headinsert = '', $marginwid
 	var SECURITYTOKEN = \"" . $vbulletin->userinfo['securitytoken'] . "\";
 	var IMGDIR_MISC = \"../cpstyles/" . $vbulletin->options['cpstylefolder'] . "\";
 	var CLEARGIFURL = \"./clear.gif\";
+	var AJAXBASEURL = \"" . VB_URL_BASE_PATH . "../\";
+	var BBURL = \"{$vbulletin->options['bburl']}\";
+	var PATHS = {
+		forum : \"{$vbulletin->options['vbforum_url']}\",
+		cms   : \"{$vbulletin->options['vbcms_url']}\",
+		blog  : \"{$vbulletin->options['vbblog_url']}\"
+	};
 	function set_cp_title()
 	{
 		if (typeof(parent.document) != 'undefined' && typeof(parent.document) != 'unknown' && typeof(parent.document.title) == 'string')
@@ -371,7 +381,6 @@ function print_cp_header($title = '', $onload = '', $headinsert = '', $marginwid
 	</script>
 	<script type=\"text/javascript\" src=\"../clientscript/yui/yuiloader-dom-event/yuiloader-dom-event.js\"></script>
 	<script type=\"text/javascript\" src=\"../clientscript/yui/connection/connection-min.js\"></script>
-	<script type=\"text/javascript\" src=\"../clientscript/vbulletin_global.js\"></script>
 	<script type=\"text/javascript\" src=\"../clientscript/vbulletin-core.js\"></script>
 	<script type=\"text/javascript\" src=\"../clientscript/vbulletin_ajax_suggest.js\"></script>\n\r";
 	echo "</head>\r\n";
@@ -709,7 +718,7 @@ function print_table_footer($colspan = 2, $rowhtml = '', $tooltip = '', $echofor
 		}
 		else
 		{
-			echo "<p align=\"center\"$tooltip>$extra</p>\n";
+			echo "<p align=\"center\"$tooltip>$rowhtml</p>\n";
 		}
 	}
 
@@ -755,7 +764,6 @@ function print_table_break($insert = '', $width = '90%')
 */
 function print_form_middle($ratval, $call = true)
 {
-	global $vbulletin, $uploadform;
 	return $ratval;
 }
 
@@ -1394,7 +1402,7 @@ function print_time_row($title, $name = 'date', $unixtime = '', $showtime = true
 * @param	boolean	Whether or not to treat the cells as part of columns - will alternate classes horizontally instead of vertically
 * @param	boolean	Whether or not to use 'smallfont' for cell contents
 */
-function print_cells_row($array, $isheaderrow = false, $class = false, $i = 0, $valign = 'top', $column = false, $smallfont = false)
+function print_cells_row($array, $isheaderrow = false, $class = false, $i = 0, $valign = 'top', $column = false, $smallfont = false, $helpname = NULL)
 {
 	global $colspan, $bgcounter;
 
@@ -1455,6 +1463,12 @@ function print_cells_row($array, $isheaderrow = false, $class = false, $i = 0, $
 				{
 					$val = "<span class=\"smallfont\">$val</span>";
 				}
+
+				if ($helpname !== NULL AND $help = construct_help_button($helpname) AND $j == $colspan)
+				{
+					$val = "<span style=\"float:" . vB_Template_Runtime::fetchStyleVar('right') . "\">&nbsp;$help</span>$val";
+				}
+
 				$out .= "\t<td" . iif($column, " class=\"$bgclass\"", " class=\"$bgclass\"") . "$align>$val</td>\n";
 			}
 
@@ -1814,7 +1828,7 @@ function print_calendar_chooser($title, $name, $selectedid, $topname = '')
 */
 function print_forum_chooser($title, $name, $selectedid = -1, $topname = null, $displayselectforum = false, $multiple = false, $category_phrase = null)
 {
-	if ($displayselectforum AND $selectedid <= 0)
+	if ($displayselectforum AND $selectedid < 0)
 	{
 		$selectedid = 0;
 	}
@@ -2721,6 +2735,13 @@ function print_delete_confirmation($table, $itemid, $phpscript, $do, $itemname =
 				WHERE stylevarid = '" . $vbulletin->db->escape_string($itemid) . "'
 			");
 			break;
+		case 'navigation':
+			$item = $vbulletin->db->query_first("
+				SELECT navid, navtype, name
+				FROM " . TABLE_PREFIX . "navigation
+				WHERE navid = $itemid
+			");
+			break;
 		default:
 			$handled = false;
 			($hook = vBulletinHook::fetch_hook('admin_delete_confirmation')) ? eval($hook) : false;
@@ -2770,6 +2791,12 @@ function print_delete_confirmation($table, $itemid, $phpscript, $do, $itemname =
 
 			$deleteword = 'revert';
 		break;
+
+		case 'navigation':
+			$phrasename = 'vb_navigation_' . $item['navtype'] . '_' . $item['name'] . '_text';
+			$item['title'] = $vbphrase[$phrasename] ? $vbphrase[$phrasename] : $item['name'];
+		break;
+
 	}
 
 	if ($encodehtml
@@ -3323,6 +3350,7 @@ function build_forum_permissions($rebuild_genealogy = true)
 			$vbulletin->usergroupcache["$usergroup[usergroupid]"]['sigmaxlines'] = -1;
 			$vbulletin->usergroupcache["$usergroup[usergroupid]"]['sigmaxsizebbcode'] = -1;
 			$vbulletin->usergroupcache["$usergroup[usergroupid]"]['sigmaximages'] = -1;
+			$vbulletin->usergroupcache["$usergroup[usergroupid]"]['sigmaxvideos'] = -1;
 			$vbulletin->usergroupcache["$usergroup[usergroupid]"]['signaturepermissions'] = 0;
 		}
 
@@ -3716,10 +3744,12 @@ function vbflush()
 *
 * @param	boolean	If true, SELECT *, otherwise SELECT productid, title
 * @param	boolean	Allow a previously cached version to be used
+* @param	boolean	Include or exclude disabled products
+* @param	string	Include this product even if its disabled, and disabled are excluded
 *
 * @return	array
 */
-function fetch_product_list($alldata = false, $use_cached = true)
+function fetch_product_list($alldata = false, $use_cached = true, $incdisabled = true, $incproduct = false)
 {
 	global $vbulletin;
 
@@ -3739,10 +3769,18 @@ function fetch_product_list($alldata = false, $use_cached = true)
 				)
 			);
 
-			$products = $vbulletin->db->query_read("SELECT * FROM " . TABLE_PREFIX . "product ORDER BY title");
+			$products = $vbulletin->db->query_read("
+				SELECT *
+				FROM " . TABLE_PREFIX . "product
+				ORDER BY title
+			");
 			while ($product = $vbulletin->db->fetch_array($products))
 			{
-				$productlist["$product[productid]"] = $product;
+				if($incdisabled OR $product['active']
+				OR $product['productid'] == $incproduct)
+				{
+					$productlist["$product[productid]"] = $product;
+				}
 			}
 
 			$all_data_cache = $productlist;
@@ -3758,10 +3796,19 @@ function fetch_product_list($alldata = false, $use_cached = true)
 			'vbulletin' => 'vBulletin'
 		);
 
-		$products = $vbulletin->db->query_read("SELECT productid, title FROM " . TABLE_PREFIX . "product ORDER BY title");
+		$products = $vbulletin->db->query_read("
+			SELECT productid, title, active
+			FROM " . TABLE_PREFIX . "product
+			ORDER BY title
+		");
+
 		while ($product = $vbulletin->db->fetch_array($products))
 		{
-			$productlist["$product[productid]"] = $product['title'];
+			if($incdisabled OR $product['active']
+			OR $product['productid'] == $incproduct)
+			{
+				$productlist["$product[productid]"] = $product['title'];
+			}
 		}
 	}
 
@@ -3773,6 +3820,42 @@ function fetch_product_list($alldata = false, $use_cached = true)
 	return $productlist;
 }
 
+// ############################## Start build_activitystream_datastore ####################################
+/**
+* Stores the list of currently active activitystream types into the datastore
+*/
+function build_activitystream_datastore()
+{
+	global $vbulletin;
+
+	$streamdata = array();
+	$activities = $vbulletin->db->query_read("
+		SELECT
+			a.typeid, a.section, a.type, a.enabled,
+			p.class
+		FROM " . TABLE_PREFIX . "activitystreamtype AS a
+		INNER JOIN " . TABLE_PREFIX . "package AS p ON (a.packageid = p.packageid)
+	");
+	while ($activity = $vbulletin->db->fetch_array($activities))
+	{
+		$section = $activity['section'];
+		$type = $activity['type'];
+		if ($activity['enabled'])
+		{
+			$streamdata['enabled']['all'][] = $activity['typeid'];
+			$streamdata['enabled'][$activity['section']][] = $activity['typeid'];
+		}
+		if ($type == 'photo')
+		{
+			$streamdata['photo'][] = $activity['typeid'];
+		}
+		unset($activity['section'], $activity['type']);
+		$streamdata["{$section}_{$type}"] = $activity;
+	}
+
+	build_datastore('activitystream', serialize($streamdata), 1);
+}
+//build_activitystream_datastore();
 // ############################## Start build_product_datastore ####################################
 /**
 * Stores the list of currently installed products into the datastore.
@@ -3781,21 +3864,19 @@ function build_product_datastore()
 {
 	global $vbulletin;
 
+	$vbulletin->products = array('vbulletin' => 1);
+
 	$products_list = $vbulletin->db->query_read("
 		SELECT productid, active
 		FROM " . TABLE_PREFIX . "product
 	");
 
-	$products = array();
 	while ($product = $vbulletin->db->fetch_array($products_list))
 	{
-		$products["$product[productid]"] = $product['active'];
+		$vbulletin->products[$product['productid']] = $product['active'];
 	}
-	$products['vbulletin'] = '1';
 
-	$vbulletin->products = $products;
-
-	build_datastore('products', serialize($products), 1);
+	build_datastore('products', serialize($vbulletin->products), 1);
 }
 
 /**
@@ -3989,7 +4070,6 @@ function print_style_help($stylehelp)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 42666 $
+|| # CVS: $RCSfile$ - $Revision: 63392 $
 || ####################################################################
 \*======================================================================*/

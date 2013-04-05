@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 38280 $
- * @since $Date: 2010-08-11 13:20:21 -0700 (Wed, 11 Aug 2010) $
+ * @version $Revision: 48079 $
+ * @since $Date: 2011-08-12 12:55:39 -0700 (Fri, 12 Aug 2011) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Widget_RecentContent extends vBCms_Widget_RecentArticle
@@ -66,7 +66,7 @@ class vBCms_Widget_RecentContent extends vBCms_Widget_RecentArticle
 		$sql = "SELECT node.contenttypeid, node.url, node.publishdate, node.userid,
 		node.setpublish, node.publicpreview, info.title, user.username, node.showuser,
 		node.nodeid, node.contenttypeid, thread.replycount, user.avatarrevision
-		" . (vB::$vbulletin->options['avatarenabled'] ? ",avatar.avatarpath,
+		" . (vB::$vbulletin->options['avatarenabled'] ? ",avatar.avatarpath, info.creationdate AS dateline,
 		NOT ISNULL(customavatar.userid) AS hascustomavatar, customavatar.dateline AS avatardateline,
 		customavatar.width AS avwidth,customavatar.height AS avheight" : "") . "
 		FROM "
@@ -119,7 +119,7 @@ class vBCms_Widget_RecentContent extends vBCms_Widget_RecentArticle
 				//get the avatar
 				if (vB::$vbulletin->options['avatarenabled'])
 				{
-					$item['avatar'] = fetch_avatar_from_record($item);
+					$item['avatar'] = fetch_avatar_from_record($item, true);
 				}
 
 				if (method_exists($node, 'getPageText'))
@@ -189,7 +189,6 @@ class vBCms_Widget_RecentContent extends vBCms_Widget_RecentArticle
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 38280 $
+|| # SVN: $Revision: 48079 $
 || ####################################################################
 \*======================================================================*/

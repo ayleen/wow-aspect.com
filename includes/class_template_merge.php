@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -97,13 +97,14 @@ class vB_Template_Merge
 	* return value indicates whether more data needs to be processed.
 	*
 	* @param	vB_Template_Merge_Data	Potential merge candidates
-	* @param	array										Output data, in array form
+	* @param	array					Output data, in array form
+	* @param	int						Master Styleid .. -1 or -2
 	*
 	* @return	bool					True when all templates are processed, false when more remain
 	*/
-	public function merge_templates(vB_Template_Merge_Data $data, &$output)
+	public function merge_templates(vB_Template_Merge_Data $data, &$output, $masterstyleid = -1)
 	{
-		$candidates = $data->fetch_merge_candidates();
+		$candidates = $data->fetch_merge_candidates($masterstyleid);
 
 		$this->merge_start();
 
@@ -373,7 +374,7 @@ class vB_Template_Merge_Data
 	*
 	* @return	resource	DB result object
 	*/
-	public function fetch_merge_candidates()
+	public function fetch_merge_candidates($masterstyleid = -1)
 	{
 		// see top of adminfunctions_templates.php
 		global $_query_special_templates;
@@ -389,19 +390,24 @@ class vB_Template_Merge_Data
 			''
 		);
 
+		$styletype = ($masterstyleid == -1 ? 'standard' : 'mobile');
+		$specialstyleid = ($masterstyleid == -1 ? -10 : -20);
 		return $this->registry->db->query_read("
 			SELECT tcustom.*,
 				tcustom.template_un AS customtext,
 				tnewmaster.version AS newmasterversion, tnewmaster.template_un AS newmastertext,
 				toldmaster.version AS oldmasterversion, toldmaster.template_un AS oldmastertext
 			FROM " . TABLE_PREFIX . "template AS tcustom
+			INNER JOIN " . TABLE_PREFIX . "style AS style ON (tcustom.styleid = style.styleid AND style.type = '{$styletype}')
 			INNER JOIN " . TABLE_PREFIX . "template AS tnewmaster ON
-				(tcustom.title = tnewmaster.title AND tnewmaster.styleid = -1 AND tnewmaster.templatetype = 'template')
+				(tcustom.title = tnewmaster.title AND tnewmaster.styleid = {$masterstyleid} AND tnewmaster.templatetype = 'template')
 			INNER JOIN " . TABLE_PREFIX . "template AS toldmaster ON
-				(tcustom.title = toldmaster.title AND toldmaster.styleid = -10 AND toldmaster.templatetype = 'template'
+				(tcustom.title = toldmaster.title AND toldmaster.styleid = {$specialstyleid} AND toldmaster.templatetype = 'template'
 				AND toldmaster.version <> tnewmaster.version)
-			WHERE tcustom.styleid > 0
-				AND tcustom.templatetype = 'template'
+			WHERE
+				tcustom.styleid > 0
+					AND
+				tcustom.templatetype = 'template'
 				$title_skip
 				$extra_conditions
 			ORDER BY tcustom.styleid, tcustom.title
@@ -430,7 +436,6 @@ class vB_Template_Merge_Data
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 27819 $
 || ####################################################################
 \*======================================================================*/

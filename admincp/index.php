@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 44593 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62555 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('cphome');
@@ -154,6 +154,7 @@ if ($_POST['do'] == 'notes')
 // ################################# HEADER FRAME ##############################
 // #############################################################################
 
+
 if ($_REQUEST['do'] == 'head')
 {
 	ignore_user_abort(true);
@@ -167,7 +168,6 @@ if ($_REQUEST['do'] == 'head')
 	<table border="0" width="100%" height="100%">
 	<tr align="center" valign="top">
 		<td style="text-align:<?php echo vB_Template_Runtime::fetchStyleVar('left'); ?>"><b><?php echo $vbphrase['admin_control_panel']; ?></b> (vBulletin <?php echo ADMIN_VERSION_VBULLETIN; ?>)<?php echo iif(is_demo_mode(), ' <b>DEMO MODE</b>'); ?></td>
-		<td>&nbsp;</td>
 		<td style="white-space:nowrap; text-align:<?php echo vB_Template_Runtime::fetchStyleVar('right'); ?>; font-weight:bold">
 			<a href="<?php echo $forumhomelink; ?>" target="_blank"><?php echo $vbphrase['forum_home_page']; ?></a>
 			|
@@ -175,7 +175,6 @@ if ($_REQUEST['do'] == 'head')
 		</td>
 	</tr>
 	</table>
-
 	<?php
 
 	define('NO_CP_COPYRIGHT', true);
@@ -250,7 +249,8 @@ if ($_REQUEST['do'] == 'buildvideo')
 
 	print_cp_header();
 	require_once(DIR . '/includes/adminfunctions_template.php');
-	build_all_styles();
+	build_all_styles(0, 0, '', false, 'standard');
+	build_all_styles(0, 0, '', false, 'mobile');
 
 	define('CP_REDIRECT', 'index.php');
 	print_stop_message('rebuilt_video_bbcodes_successfully');
@@ -852,19 +852,21 @@ $messagecount = $db->query_first("
 	WHERE moderation.type = 'visitormessage'
 ");
 
+$mailqueue = $vbulletin->db->query_first("
+	SELECT COUNT(mailqueueid) AS queued FROM " . TABLE_PREFIX . "mailqueue 
+");
+
 print_form_header('index', 'home');
 if ($vbulletin->options['adminquickstats'])
 {
 	print_table_header($vbphrase['welcome_to_the_vbulletin_admin_control_panel'], 6);
 	print_cells_row(array(
 		$vbphrase['server_type'], PHP_OS . $serverinfo,
-
 		$vbphrase['database_data_usage'], vb_number_format($vbulletin->acpstats['datasize'], 2, true),
 		$vbphrase['users_awaiting_moderation'], vb_number_format($waiting['users']) . ' ' . construct_link_code($vbphrase['view'], "user.php?" . $vbulletin->session->vars['sessionurl'] . "do=moderate"),
 	), 0, 0, -5, 'top', 1, 1);
 	print_cells_row(array(
 		$vbphrase['web_server'], $webserver,
-
 		$vbphrase['database_index_usage'], vb_number_format($vbulletin->acpstats['indexsize'], 2, true),
 		$vbphrase['threads_awaiting_moderation'], vb_number_format($threadcount['count']) . ' ' . construct_link_code($vbphrase['view'], '../' . $vbulletin->config['Misc']['modcpdir'] . '/moderate.php?' . $vbulletin->session->vars['sessionurl'] . "do=posts"),
 	), 0, 0, -5, 'top', 1, 1);
@@ -896,7 +898,7 @@ if ($vbulletin->options['adminquickstats'])
 	print_cells_row(array(
 		$vbphrase['mysql_max_packet_size'], vb_number_format($maxpacket, 2, 1),
 		$vbphrase['new_posts_today'], vb_number_format($vbulletin->acpstats['newposts']),
-		'&nbsp;', '&nbsp;',
+	$vbphrase['queued_emails'], vb_number_format($mailqueue['queued']) 
 	), 0, 0, -5, 'top', 1, 1);
 }
 else
@@ -922,18 +924,17 @@ else
 		$vbphrase['php_max_upload_size'], ($postmaxuploadsize = ini_get('upload_max_filesize')) ? vb_number_format($postmaxuploadsize, 2, true) : $vbphrase['n_a'],
 		$vbphrase['events_awaiting_moderation'], vb_number_format($eventcount['count']) . ' ' . construct_link_code($vbphrase['view'], '../' . $vbulletin->config['Misc']['modcpdir'] . '/moderate.php?' . $vbulletin->session->vars['sessionurl'] . "do=events")
 	), 0, 0, -5, 'top', 1, 1);
-	if ($memorylimit AND $memorylimit != '-1')
-	{
-		print_cells_row(array(
-			$vbphrase['php_memory_limit'], vb_number_format($memorylimit, 2, true),
-			'&nbsp;', '&nbsp;'
-		), 0, 0, -5, 'top', 1, 1);
-	}
+	print_cells_row(array(
+		$vbphrase['php_memory_limit'], ($memorylimitx AND $memorylimit != '-1') ? vb_number_format($memorylimit, 2, true) : $vbphrase['none'],
+	$vbphrase['queued_emails'], vb_number_format($mailqueue['queued'])
+	), 0, 0, -5, 'top', 1, 1);
 	print_cells_row(array(
 		$vbphrase['mysql_version'], $mysqlversion['version'],
 		'&nbsp;', '&nbsp;'
 	), 0, 0, -5, 'top', 1, 1);
-	print_cells_row(array($vbphrase['mysql_max_packet_size'], vb_number_format($maxpacket, 2, 1), '&nbsp;', '&nbsp;'), 0, 0, -5, 'top', 1, 1);
+	print_cells_row(array($vbphrase['mysql_max_packet_size'], vb_number_format($maxpacket, 2, 1), 
+		'&nbsp;', '&nbsp;'
+	), 0, 0, -5, 'top', 1, 1);
 }
 
 print_table_footer();
@@ -1073,16 +1074,12 @@ require_once(DIR . '/includes/vbulletin_credits.php');
 
 <p class="smallfont" align="center">
 <!--<?php echo construct_phrase($vbphrase['vbulletin_copyright'], $vbulletin->options['templateversion'], date('Y')); ?><br />-->
-
 </p>
 
 <?php
 
 unset($DEVDEBUG);
 
-?>
-
-<?php
 
 print_cp_footer();
 
@@ -1210,8 +1207,7 @@ if ($_POST['do'] == 'handlemessage')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44593 $
+|| # CVS: $RCSfile$ - $Revision: 62555 $
 || ####################################################################
 \*======================================================================*/
 ?>

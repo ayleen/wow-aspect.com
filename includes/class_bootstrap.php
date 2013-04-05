@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright Â©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -50,6 +50,14 @@ class vB_Bootstrap
 	*/
 	public $cache_templates = array();
 
+	/**
+	* A list of templates groups to be cached e.g. vbcms.section will 
+	* cache all templates that start with vbcms_ and contain 'section'
+	*
+	* @var	array
+	*/
+	public $group_templates = array();
+	
 	// ============ MAIN BOOTSTRAPPING FUNCTIONS ===============
 
 	/**
@@ -68,9 +76,6 @@ class vB_Bootstrap
 
 		$this->read_input_context();
 		$this->load_show_variables();
-
-		//$this->load_style();
-		//$this->process_templates();
 
 		if (!defined('NOCHECKSTATE') AND (!VB_API OR $VB_API_REQUESTS['api_m'] != 'api_init'))
 		{
@@ -93,19 +98,9 @@ class vB_Bootstrap
 
 		define('CWD', (($getcwd = getcwd()) ? $getcwd : '.'));
 
-		if (!defined('VB_API'))
-		{
-			define('VB_API', false);
-		}
-		
 		require_once(CWD . '/includes/init.php');
 
 		($hook = vBulletinHook::fetch_hook('global_bootstrap_init_start')) ? eval($hook) : false;
-
-		if (!defined('VB_ENTRY'))
-		{
-			define('VB_ENTRY', 1);
-		}
 
 		// Set Display of Ads to true - Set to false on non content pages
 		if (!defined('CONTENT_PAGE'))
@@ -174,7 +169,10 @@ class vB_Bootstrap
 		{
 			$vbphrase = init_language();
 			// Disable "Directional Markup Fix" from language options. API doesn't need it.
-			$vbulletin->userinfo['lang_options'] -= $vbulletin->bf_misc_languageoptions['dirmark'];
+			if (defined(VB_API) AND VB_API === true)
+			{
+				$vbulletin->userinfo['lang_options'] -= $vbulletin->bf_misc_languageoptions['dirmark'];
+			}
 		}
 		else
 		{
@@ -199,11 +197,11 @@ class vB_Bootstrap
 		}
 		$this->called['style'] = true;
 
-		global $style;
+		global $style, $vbulletin;
 		$style = $this->fetch_style_record($this->force_styleid);
 		define('STYLEID', $style['styleid']);
-
-		global $vbulletin;
+		define('STYLE_TYPE', $style['type']);
+		define('IS_MOBILE_STYLE', isset($vbulletin->stylecache['mobile'][$style['styleid']]) ? 1 : 0);
 		$vbulletin->stylevars = unserialize($style['newstylevars']);
 		fetch_stylevars($style, $vbulletin->userinfo);
 	}
@@ -215,6 +213,11 @@ class vB_Bootstrap
 	public function load_facebook()
 	{
 		global $vbulletin, $show;
+
+		$vbulletin->input->clean_array_gpc('r', array(
+			'dofbredirect'	=> TYPE_BOOL
+		));
+		$dofbredirect = ($vbulletin->GPC_exists['dofbredirect'] AND $vbulletin->GPC['dofbredirect'] == 1);
 
 		// check if facebook and session is enabled
 		if (is_facebookenabled())
@@ -230,15 +233,19 @@ class vB_Bootstrap
 					if ($vbulletin->userinfo['fbuserid'] != vB_Facebook::instance()->getLoggedInFbUserId())
 					{
 						if (do_facebook_redirect())
-					{
-						exec_header_redirect('register.php' . $vbulletin->session->vars['sessionurl_q']);
-					}
+						{
+							exec_header_redirect('register.php' . $vbulletin->session->vars['sessionurl_q']);
+						}
 
 						// if not doing facebook redirect and not on the reg page,
 						// pretend the user is not logged into facebook at all so user can browse
 						else if (THIS_SCRIPT != 'register')
 						{
 							$show['facebookuser'] = false;
+							if ($dofbredirect)
+							{
+								standard_error(fetch_error('facebook_connect_fail'));
+							}
 						}
 					}
 				}
@@ -248,7 +255,7 @@ class vB_Bootstrap
 				{
 					// check if there is an associated vb account, if so attempt to log that user in
 					if (vB_Facebook::instance()->getVbUseridFromFbUserid())
-				{
+					{
 						// make sure user is trying to login
 						if (do_facebook_redirect())
 						{
@@ -256,21 +263,25 @@ class vB_Bootstrap
 							// the login welcome message properly
 							$this->load_style();
 
-					require_once(DIR . '/includes/functions_login.php');
-					if (verify_facebook_authentication())
-					{
-						// create new session
-						process_new_login('fbauto', false, '');
+							require_once(DIR . '/includes/functions_login.php');
+							if (verify_facebook_authentication())
+							{
+								// create new session
+								process_new_login('fbauto', false, '');
 
-						// do redirect
-						do_login_redirect();
-					}
-				}
+								// do redirect
+								do_login_redirect();
+							}
+						}
 						// if user is not trying to login with FB connect,
 						// pretend like the user is not logged in to FB
 						else if (THIS_SCRIPT != 'register')
 						{
 							$show['facebookuser'] = false;
+							if ($dofbredirect)
+							{
+								standard_error(fetch_error('facebook_connect_fail'));
+							}
 						}
 					}
 
@@ -279,18 +290,22 @@ class vB_Bootstrap
 					{
 						// redirect to the registration page to create a vb account
 						if (do_facebook_redirect())
-				{
-					exec_header_redirect('register.php' . $vbulletin->session->vars['sessionurl_q']);
-				}
+						{
+							exec_header_redirect('register.php' . $vbulletin->session->vars['sessionurl_q']);
+						}
 
 						// if not doing redirect and not trying to register,
 						// pretend user is not logged into facebook so they can still browse the site
 						else if (THIS_SCRIPT != 'register')
-			{
-				$show['facebookuser'] = false;
-			}
-		}
-	}
+						{
+							$show['facebookuser'] = false;
+							if ($dofbredirect)
+							{
+								standard_error(fetch_error('facebook_connect_fail'));
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -362,10 +377,11 @@ class vB_Bootstrap
 				$show['languagechooser'] = false;
 			}
 
-			if ($vbulletin->options['allowchangestyles'] AND empty($_POST['do']))
+			if (empty($_POST['do']))
 			{
 				$stylecount = 0;
-				$quickchooserbits = construct_style_options(-1, '--', true, true, $stylecount);
+				$quickchooserbits1 = construct_style_options(-1, '--', true, true, $stylecount);
+				$quickchooserbits2 = construct_style_options(-2, '--', true, true, $stylecount);
 				$show['quickchooser'] = ($stylecount > 1 ? true : false);
 			}
 			else
@@ -433,6 +449,11 @@ class vB_Bootstrap
 		$template->register('adsense_host_id', $vbulletin->adsense_host_id);
 		$ad_location['ad_footer_start'] = $template->render();
 
+		$template = vB_Template::create('ad_footer_end');
+		$template->register('adsense_pub_id', $vbulletin->adsense_pub_id);
+		$template->register('adsense_host_id', $vbulletin->adsense_host_id);
+		$ad_location['ad_footer_end'] = $template->render();
+
 		// #############################################################################
 		// handle notices
 		global $notices;
@@ -473,7 +494,9 @@ class vB_Bootstrap
 			//$templater->register('style', $style);
 			$templater->register('basepath', $vbulletin->input->fetch_basepath());
 			$templater->register('this_script', THIS_SCRIPT);
+			$templater->register('user_default_style_type', USER_DEFAULT_STYLE_TYPE);
 			$templater->register('facebook_opengraph', $facebook_opengraph);
+			$templater->register('ajaxbaseurl', VB_URL_BASE_PATH);
 		$headinclude = $templater->render();
 
 		$templater = vB_Template::create('headinclude_bottom');
@@ -498,7 +521,8 @@ class vB_Bootstrap
 			$templater->register('cronimage', $cronimage);
 			$templater->register('languagechooserbits', $languagechooserbits);
 			$templater->register('modcpdir', $modcpdir);
-			$templater->register('quickchooserbits', $quickchooserbits);
+			$templater->register('quickchooserbits1', $quickchooserbits1);
+			$templater->register('quickchooserbits2', $quickchooserbits2);
 			$templater->register('template_hook', $template_hook);
 			$templater->register('facebook_footer', $facebook_footer);
 		$footer = $templater->render();
@@ -656,7 +680,7 @@ class vB_Bootstrap
 		$show['spacer'] = true; // used in postbit template
 
 		$show['dst_correction'] = (
-			THIS_SCRIPT != 'register'
+			THIS_SCRIPT != 'register' AND $vbulletin->options['bbactive']
 			AND ($vbulletin->session->vars['loggedin'] == 1 OR $vbulletin->session->created OR THIS_SCRIPT == 'usercp')
 			AND $vbulletin->userinfo['dstauto'] == 1
 			AND $vbulletin->userinfo['userid']
@@ -686,6 +710,20 @@ class vB_Bootstrap
 		);
 		$show['communitylink'] = ($show['quick_links_groups'] OR $show['quick_links_albums'] OR $vbulletin->userinfo['userid'] OR $show['memberslist']);
 
+		$show['canviewforums'] = $vbulletin->userinfo['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview'];
+
+		/*
+		Added as part of VBIV-5313
+		This is a temporary setting to replicate the current behaviour of always showing the calendar link.
+		It is planned to do a proper check of calendar permissions, and only show the link as appropriate, in a future update.
+		*/
+		$show['canviewcalendar'] = true; 
+
+		$show['bbmenu'] = $vbulletin->options['bbmenu']; 
+		$show['forumleaders'] = $vbulletin->options['forumleaders']; 
+	
+		($hook = vBulletinHook::fetch_hook('load_show_variables')) ? eval($hook) : false;
+	
 		// We don't want the number of columns to be more than the total number of smilies to display #36621
 		$vbulletin->options['smcolumns'] = $vbulletin->options['smcolumns'] > $vbulletin->options['smtotal'] ? $vbulletin->options['smtotal'] : $vbulletin->options['smcolumns'];
 	}
@@ -725,10 +763,14 @@ class vB_Bootstrap
 			}
 			exit;
 		}
+		else if (defined('VB_ERROR_LITE') AND VB_ERROR_LITE === true)
+		{
+			standard_error(VB_ERROR_LITE_ERROR);
+		}		
 
 		// #############################################################################
 		// check to see if server is too busy. this is checked at the end of session.php
-		if ($this->server_overloaded() AND !($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']) AND THIS_SCRIPT != 'login')
+		if (server_overloaded() AND !($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']) AND THIS_SCRIPT != 'login')
 		{
 			$vbulletin->options['useforumjump'] = 0;
 			standard_error(fetch_error('toobusy'));
@@ -778,11 +820,18 @@ class vB_Bootstrap
 					define('VB_ERROR_PERMISSION', true);
 				}
 
-				$show['enableforumjump'] = true;
 				unset($vbulletin->db->shutdownqueries['lastvisit']);
-
 				require_once(DIR . '/includes/functions_misc.php');
-				eval('standard_error("' . make_string_interpolation_safe(str_replace("\\'", "'", addslashes($vbulletin->options['bbclosedreason']))) . '");');
+
+				// If CMS, just flag as closed for now.
+				if (defined('CMS_SCRIPT') AND CMS_SCRIPT == true)
+				{
+					define('BB_CLOSED', true);
+				}
+				else
+				{
+					eval('standard_error("' . make_string_interpolation_safe(str_replace("\\'", "'", addslashes($vbulletin->options['bbclosedreason']))) . '");');
+				}
 			}
 		}
 
@@ -884,19 +933,49 @@ class vB_Bootstrap
 	*/
 	protected function fetch_style_record($force_styleid = 0)
 	{
-		global $vbulletin, $mobile_browser;
+		global $vbulletin;
 
 		$userselect = THIS_SCRIPT == 'css' ? true : false;
-
+		// Ignore forum override if user has chosen a mobile style that is enabled
+		// if this style is not selectable then it must either be an Admin or one of the default mobile styles and the user has to be a mobile user
+		if (
+			isset($vbulletin->stylecache['mobile'][$vbulletin->userinfo['styleid']])
+				AND
+			(
+				$vbulletin->stylecache['mobile'][$vbulletin->userinfo['styleid']] == 'selectable'
+					OR
+				$vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']
+					OR
+				($vbulletin->mobile_browser_advanced AND $vbulletin->options['mobilestyleid_advanced'] == $vbulletin->userinfo['styleid'])
+					OR
+				($vbulletin->mobile_browser AND $vbulletin->options['mobilestyleid_basic'] == $vbulletin->userinfo['styleid'])				
+			)
+		)
+		{
+			$styleid = $vbulletin->userinfo['styleid'];
+			$userselect = true;		
+		}		
 		// is style in the forum/thread set?
-		if ($force_styleid AND !$mobile_browser)
+		else if ($force_styleid > 0)
 		{
 			// style specified by forum
 			$styleid = $force_styleid;
 			$vbulletin->userinfo['styleid'] = $styleid;
 			$userselect = true;
 		}
-		else if ($vbulletin->userinfo['styleid'] > 0 AND ($vbulletin->options['allowchangestyles'] == 1 OR ($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel'])))
+		// The only disabled mobile styles that can be overriden are those set to advanced/basic and when viewed by a mobile user
+		// Otherwise they behave like the other styles
+		else if (
+			$vbulletin->userinfo['styleid'] > 0
+				AND
+			(
+				THIS_SCRIPT == 'css'
+					OR
+				$vbulletin->options['allowchangestyles'] == 1
+					OR
+				$vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']
+			)
+		)
 		{
 			// style specified in user profile
 			$styleid = $vbulletin->userinfo['styleid'];
@@ -921,9 +1000,9 @@ class vB_Bootstrap
 			$style = $vbulletin->db->query_first_slave("
 				SELECT *
 				FROM " . TABLE_PREFIX . "style
-				WHERE (styleid = $styleid" . iif(!($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']) AND !$userselect, ' AND userselect = 1') . ")
+				WHERE (styleid = $styleid" . ((!($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']) AND !$userselect) ? " AND userselect = 1" : "") . ")
 					OR styleid = " . $vbulletin->options['styleid'] . "
-				ORDER BY styleid " . iif($styleid > $vbulletin->options['styleid'], 'DESC', 'ASC') . "
+				ORDER BY styleid " . ($styleid > $vbulletin->options['styleid'] ? "DESC" : "ASC") . "
 				LIMIT 1
 			");
 		}
@@ -1015,6 +1094,24 @@ class vB_Bootstrap
 				'phrase' => $vbphrase['unread_private_messages'],
 				'link'   => 'private.php' . $vbulletin->session->vars['sessionurl_q'],
 				'order'  => 10
+			);
+		}
+
+		if ($vbulletin->options['newrepcount'])
+		{
+			if ($vbulletin->userinfo['newrepcount'] == 1)
+			{
+				$new_reputation = $vbphrase['reputation_comment'];
+			}
+			else
+			{
+				$new_reputation = $vbphrase['reputation_comments'];
+			}
+
+			$notifications['newrepcount'] = array(
+				'phrase' => $new_reputation,
+				'link'   => 'usercp.php?' . $vbulletin->session->vars['sessionurl'] . '#reprecv',
+				'order'  => 15
 			);
 		}
 
@@ -1215,6 +1312,7 @@ class vB_Bootstrap
 		global $vbulletin, $show;
 
 		$cache = is_array($this->cache_templates) ? $this->cache_templates : array();
+		$this->group_templates = is_array($this->group_templates) ? $this->group_templates : array();
 
 		// Choose proper human verification template
 		if ($vbulletin->options['hv_type'] AND in_array('humanverify', $cache))
@@ -1239,11 +1337,15 @@ class vB_Bootstrap
 			'ad_global_header2',
 			'ad_global_below_navbar',
 			'ad_global_above_footer',
+			'ad_showthread_firstpost_sig',
+			'ad_showthread_firstpost_start',
+			'ad_thread_first_post_content',
 			// new private message script
 			'pm_popup_script',
 			'memberaction_dropdown',
 			// navbar construction
 			'navbar',
+			'navbar_tabs',
 			'navbar_link',
 			'navbar_noticebit',
 			'navbar_notifications_menubit',
@@ -1264,7 +1366,6 @@ class vB_Bootstrap
 			'spacer_close',
 			'STANDARD_ERROR',
 			'STANDARD_REDIRECT',
-			//'board_inactive_warning'
 			// facebook templates
 			'facebook_header',
 			'facebook_footer',
@@ -1276,7 +1377,8 @@ class vB_Bootstrap
 		if (defined('GET_EDIT_TEMPLATES'))
 		{
 			$_get_edit_templates = explode(',', GET_EDIT_TEMPLATES);
-			if (GET_EDIT_TEMPLATES === true OR in_array($_REQUEST['do'], $_get_edit_templates))
+			if (GET_EDIT_TEMPLATES === true 
+				OR in_array($_REQUEST['do'], $_get_edit_templates))
 			{
 				$cache = array_merge($cache, array(
 					// ckeditor
@@ -1305,6 +1407,8 @@ class vB_Bootstrap
 					'posticons',
 					'newpost_usernamecode',
 					'newpost_errormessage',
+					'newpost_attachment',
+					'newpost_attachmentbit',
 					'forumrules'
 				));
 
@@ -1313,6 +1417,48 @@ class vB_Bootstrap
 		}
 
 		($hook = vBulletinHook::fetch_hook('cache_templates')) ? eval($hook) : false;
+
+		if ($this->group_templates)
+		{
+			$wherelist = '';
+			$cachelist = array_unique($this->group_templates);
+
+			foreach($cachelist AS $group)
+			{
+				list($name,$type) = explode('.',$group);
+				$wherelist .= $wherelist ? ' OR ' : 'WHERE ';	
+
+				if($type)
+				{
+					if ($name == 'class')
+					{
+						// Whole class e.g. class.vbblog
+						$wherelist .= "title LIKE '{$type}_%'";
+					}
+					else
+					{
+						// Group list e.g. vbcms.grid
+						$wherelist .= "title LIKE '{$name}_%{$type}%'";	
+					}	
+				}
+				else
+				{
+					// Single template
+					$wherelist .= "title = '{$name}'";	
+				}
+			}
+
+			$grouplist = $vbulletin->db->query_read_slave("
+				SELECT title
+				FROM " . TABLE_PREFIX . "template
+				$wherelist
+			");
+
+			while ($data = $vbulletin->db->fetch_array($grouplist))
+			{
+				$cache[] = $data['title'];
+			}
+		}
 
 		cache_templates($cache, $template_ids);
 	}
@@ -1373,31 +1519,6 @@ class vB_Bootstrap
 				$newpm['username'] = addslashes_js(unhtmlspecialchars($newpm['fromusername']), '"');
 				$newpm['title'] = addslashes_js(unhtmlspecialchars($newpm['title']), '"');
 				return $newpm;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	* Determines if the server is over the defined load limits
-	*
-	* @return	bool
-	*/
-	protected function server_overloaded()
-	{
-		global $vbulletin;
-
-		if (strtoupper(substr(PHP_OS, 0, 3)) != 'WIN' AND $vbulletin->options['loadlimit'] > 0)
-		{
-			if (!is_array($vbulletin->loadcache) OR $vbulletin->loadcache['lastcheck'] < (TIMENOW - $vbulletin->options['recheckfrequency']))
-			{
-				update_loadavg();
-			}
-
-			if ($vbulletin->loadcache['loadavg'] > $vbulletin->options['loadlimit'])
-			{
-				return true;
 			}
 		}
 
@@ -1574,10 +1695,11 @@ class vB_Bootstrap_Forum extends vB_Bootstrap
 				}
 			}
 
+			verify_seo_url('forum', $foruminfo, array('pagenumber' => $_REQUEST['pagenumber']));
 			exec_header_redirect($foruminfo['link'], 301);
 		}
 
-		$this->force_styleid = $codestyleid;
+		$this->force_styleid = $codestyleid;	
 	}
 
 	/**
@@ -1621,12 +1743,13 @@ class vB_Bootstrap_Forum extends vB_Bootstrap
 		{
 			$show['threadinfo'] = false;
 		}
+
+		($hook = vBulletinHook::fetch_hook('load_forum_show_variables')) ? eval($hook) : false;
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 26995 $
 || ####################################################################
 \*======================================================================*/

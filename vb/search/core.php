@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -97,9 +97,6 @@ class vB_Search_Core
 	 */
 	public function __construct()
 	{
-		//ensure that the framework is initialized.
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 	}
 
 	/**
@@ -108,7 +105,7 @@ class vB_Search_Core
 	public function get_contenttypeid($package, $class)
 	{
 		return vB_Types::instance()->getContentTypeID(array('package' => $package, 'class' => $class));
-		}
+	}
 
 	/**
 	*/
@@ -373,8 +370,6 @@ class vB_Search_Core
 
 	public function get_search_type_from_id($contenttypeid)
 	{
-		global $vbulletin;
-
 		list($package, $contenttype) = $this->get_contenttypestrings($contenttypeid);
 		if ($package)
 		{
@@ -550,23 +545,39 @@ class vB_Search_Core
 		else
 		{
 			$filter = "userid = " . intval($user->get_field('userid'));
-		}
-
-		$prevsearch = $db->query_first("
-			SELECT searchlogid, dateline
-			FROM " . TABLE_PREFIX . "searchlog AS searchlog
-			WHERE $filter
-			ORDER BY dateline DESC LIMIT 1
-		");
-		if ($prevsearch)
-		{
-			$timepassed = TIMENOW - $prevsearch['dateline'];
-			if ($timepassed < $vbulletin->options['searchfloodtime'])
-			{
-				return array('searchfloodcheck', $vbulletin->options['searchfloodtime'], ($vbulletin->options['searchfloodtime'] - $timepassed));
-			}
-		}
-
+		}     
+        
+		if(VB_API)
+        {
+            $cutoff = TIMENOW - $vbulletin->options['searchfloodtime'];
+            $prevsearches = $db->query_read_slave("
+                SELECT searchlogid, dateline
+                FROM " . TABLE_PREFIX . "searchlog AS searchlog
+                WHERE $filter AND dateline > $cutoff
+            ");
+            
+            if ($db->num_rows($prevsearches) >= $vbulletin->options['searchfloodtime']) 
+            {		
+                return array('searchfloodcheck');
+            }
+        } 
+        else
+        {
+            $prevsearch = $db->query_first("
+                SELECT searchlogid, dateline
+                FROM " . TABLE_PREFIX . "searchlog AS searchlog
+                WHERE $filter
+                ORDER BY dateline DESC LIMIT 1
+            ");
+            if ($prevsearch)
+            {
+                $timepassed = TIMENOW - $prevsearch['dateline'];
+                if ($timepassed < $vbulletin->options['searchfloodtime'])
+                {
+                    return array('searchfloodcheck', $vbulletin->options['searchfloodtime'], ($vbulletin->options['searchfloodtime'] - $timepassed));
+                }
+            }
+        }
 		return true;
 	}
 
@@ -585,7 +596,6 @@ class vB_Search_Core
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

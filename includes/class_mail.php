@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # All PHP code in this file is ©2000-2011 vBulletin Solutions Inc. # ||
+|| # All PHP code in this file is ©2000-2012 vBulletin Solutions Inc. # ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/liceNse.html # ||
@@ -38,8 +38,8 @@ if (!function_exists('xml_set_element_handler'))
 * This class sends email from vBulletin using the PHP mail() function
 *
 * @package 		vBulletin
-* @version		$Revision: 44840 $
-* @date 		$Date: 2011-06-21 13:03:13 -0700 (Tue, 21 Jun 2011) $
+* @version		$Revision: 62096 $
+* @date 		$Date: 2012-05-01 18:09:20 -0700 (Tue, 01 May 2012) $
 * @copyright 	http://www.vbulletin.com/license.html
 *
 */
@@ -250,7 +250,7 @@ class vB_Mail
 		{
 			if ($username)
 			{
-				$mailfromname = "$username @ " . $vbulletin->options['bbtitle'];
+				$mailfromname = $username . " - " . $vbulletin->options['bbtitle'];
 			}
 			else
 			{
@@ -345,7 +345,7 @@ class vB_Mail
 				if (strpos(DISABLE_MAIL, '@') !== false)
 				{
 					// check if the address is allowed
-					if (strpos($this->toemail, DISABLE_MAIL) === false)
+					if (strpos(DISABLE_MAIL, $this->toemail) === false)
 					{
 						return false;
 					}
@@ -389,6 +389,11 @@ class vB_Mail
 		@ini_set('sendmail_from', $this->fromemail);
 
 		($hook = vBulletinHook::fetch_hook('mail_internal_send_before')) ? eval($hook) : false;
+
+		if ($this->registry->options['mail_delay'])
+		{
+			@sleep($this->registry->options['mail_delay']);
+		}
 
 		if (!SAFEMODE AND $this->registry->options['needfromemail'])
 		{
@@ -567,8 +572,8 @@ class vB_Mail
 * This class sends email from vBulletin using an SMTP wrapper
 *
 * @package 		vBulletin
-* @version		$Revision: 44840 $
-* @date 		$Date: 2011-06-21 13:03:13 -0700 (Tue, 21 Jun 2011) $
+* @version		$Revision: 62096 $
+* @date 		$Date: 2012-05-01 18:09:20 -0700 (Tue, 01 May 2012) $
 * @copyright 	http://www.vbulletin.com/license.html
 *
 */
@@ -772,7 +777,7 @@ class vB_SmtpMail extends vB_Mail
 			{
 				if ($this->sendMessage('AUTH LOGIN', 334))
 				{
-					if (!$this->sendMessage(base64_encode($this->smtpUser), 334) OR !$this->sendMessage(base64_encode($this->smtpPass), 235))
+					if (!$this->sendMessage(vb_base64_encode($this->smtpUser), 334) OR !$this->sendMessage(vb_base64_encode($this->smtpPass), 235))
 					{
 						return $this->errorMessage($this->smtpReturn . ' Authorization to the SMTP server failed');
 					}
@@ -834,8 +839,8 @@ class vB_SmtpMail extends vB_Mail
 * This class does not actually send emails, but rather queues them to be sent later in a batch.
 *
 * @package 		vBulletin
-* @version		$Revision: 44840 $
-* @date 		$Date: 2011-06-21 13:03:13 -0700 (Tue, 21 Jun 2011) $
+* @version		$Revision: 62096 $
+* @date 		$Date: 2012-05-01 18:09:20 -0700 (Tue, 01 May 2012) $
 * @copyright 	http://www.vbulletin.com/license.html
 *
 */
@@ -1095,7 +1100,6 @@ class vB_QueueMail extends vB_Mail
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44840 $
+|| # CVS: $RCSfile$ - $Revision: 62096 $
 || ####################################################################
 \*======================================================================*/

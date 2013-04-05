@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -370,14 +370,18 @@ function construct_forum_bit($parentid, $depth = 0, $subsonly = 0)
 			// get moderators ( this is why we needed cache_moderators() )
 			if ($vbulletin->options['showmoderatorcolumn'])
 			{
+				$clc = 0;
 				$showmods = array();
+				$forum['moderators'] = array();
 				$listexploded = explode(',', $forum['parentlist']);
+
 				foreach ($listexploded AS $parentforumid)
 				{
 					if (!isset($imodcache["$parentforumid"]) OR $parentforumid == -1)
 					{
 						continue;
 					}
+
 					foreach($imodcache["$parentforumid"] AS $moderator)
 					{
 						if (isset($showmods["$moderator[userid]"]))
@@ -387,21 +391,17 @@ function construct_forum_bit($parentid, $depth = 0, $subsonly = 0)
 
 						($hook = vBulletinHook::fetch_hook('forumbit_moderator')) ? eval($hook) : false;
 
+						$clc++;
 						$showmods["$moderator[userid]"] = true;
-
-						if (!isset($forum['moderators']))
-						{
-							$forum['moderators'] = '';
-						}
-
-						$templater = vB_Template::create('forumhome_moderator');
-							$templater->register('moderator', $moderator);
-						$forum['moderators'] .= $templater->render();
+						$moderator['comma'] = $vbphrase['comma_space'];
+						$forum['moderators'][$clc] = $moderator;
 					}
 				}
-				if (!isset($forum['moderators']))
+
+				// Last element
+				if ($clc) 
 				{
-					$forum['moderators'] = '';
+					$forum['moderators'][$clc]['comma'] = '';
 				}
 			}
 
@@ -417,13 +417,15 @@ function construct_forum_bit($parentid, $depth = 0, $subsonly = 0)
 				$forum['threadcount'] = vb_number_format($forum['threadcount']);
 			}
 
+			$subforums = array();
 			if (($subsonly OR $depth == MAXFORUMDEPTH) AND $vbulletin->options['subforumdepth'] > 0)
 			{
-				$forum['subforums'] = construct_subforum_bit($forumid, ($forum['options'] & $vbulletin->bf_misc_forumoptions['cancontainthreads'] ) );
-			}
-			else
-			{
-				$forum['subforums'] = '';
+				$subforums = construct_subforum_bit($forumid);
+				$clc = sizeof($subforums); // Last element
+				if ($clc) 
+				{
+					$subforums[$clc-1]['comma'] = '';
+				}
 			}
 
 			$forum['browsers'] = 0;
@@ -445,13 +447,22 @@ function construct_forum_bit($parentid, $depth = 0, $subsonly = 0)
 				$show['collapsebutton'] = false;
 			}
 
-			$show['forumsubscription'] = ($subsonly ? true : false);
+			$show['forumsubscription'] = !empty($forum['subscribeforumid']);
 			$show['forumdescription'] = ($forum['description'] != '' ? true : false);
-			$show['subforums'] = ($forum['subforums'] != '' ? true : false);
+			$show['subforums'] = (!empty($subforums) ? true : false);
 			$show['browsers'] = ($vbulletin->options['displayloggedin'] AND !$forum['link'] AND $forum['browsers'] ? true : false);
 
-			// build the template for the current forum
+			if ($show['subforums'])
+			{
+				$templater = vB_Template::create("forumhome_subforums");
+					$templater->register('subforums', $subforums);
+				$forum['subforums'] = $templater->render();
+			}
 
+			$perms = fetch_permissions($forumid, 0, array('userid' => 0, 'usergroupid' => 1), false); // VBIV-14011, Always skip Calendar Permissions
+			$show['externalrss'] = ($vbulletin->options['externalrss'] AND $perms & $vbulletin->bf_ugp_forumpermissions['canviewthreads'] AND $perms & $vbulletin->bf_ugp_forumpermissions['canviewothers']);
+
+			// build the template for the current forum
 			($hook = vBulletinHook::fetch_hook('forumbit_display')) ? eval($hook) : false;
 			$templater = vB_Template::create("forumhome_forumbit_level$depth$tempext");
 				$templater->register('childforumbits', $childforumbits);
@@ -477,7 +488,6 @@ function construct_forum_bit($parentid, $depth = 0, $subsonly = 0)
 // returns 'on' or 'off' depending on last post info for a forum
 function fetch_forum_lightbulb(&$forumid, &$lastpostinfo, &$foruminfo)
 {
-
 	global $bb_view_cache, $vbulletin;
 
 	if (is_array($foruminfo) AND !empty($foruminfo['link']))
@@ -519,26 +529,10 @@ function fetch_forum_lightbulb(&$forumid, &$lastpostinfo, &$foruminfo)
 // ###################### Start makesubforumbit #######################
 // gets a list of a forum's children and returns it
 // based on the forumhome_subforumbit template
-function construct_subforum_bit($parentid, $cancontainthreads, $output = '', $depthmark = '--', $depth = 0)
+function construct_subforum_bit($parentid, $depth = 1, &$list = array())
 {
 	global $vbulletin, $vbphrase;
 	global $lastpostinfo, $lastpostarray;
-	static $splitter;
-
-	if ($cancontainthreads)
-	{
-		$canpost = 'post';
-	}
-	else
-	{
-		$canpost = 'nopost';
-	}
-
-	// get the splitter template
-	if (!isset($splitter["$canpost"]))
-	{
-		$splitter["$canpost"] = vB_Template::create("forumhome_subforumseparator_$canpost")->render();
-	}
 
 	if (!isset($vbulletin->iforumcache["$parentid"]))
 	{
@@ -566,27 +560,22 @@ function construct_subforum_bit($parentid, $cancontainthreads, $output = '', $de
 			$show['newposticon'] = ($forum['statusicon'] ? true : false);
 
 			($hook = vBulletinHook::fetch_hook('forumbit_subforumbit')) ? eval($hook) : false;
-			$templater = vB_Template::create("forumhome_subforumbit_$canpost");
-				$templater->register('forum', $forum);
-				//make the first child from the one we are displaying + 1
-				$templater->register('depth', $depth+1);
-			$subforum = $templater->render();
 
-			if (!empty($output))
-			{
-				$subforum = $splitter["$canpost"] . $subforum;
-			}
+			$forum['comma'] = $vbphrase['comma_space'];
+			$cancontainthreads = $forum['options'] & $vbulletin->bf_misc_forumoptions['cancontainthreads'];
+			$forum['canpost'] = $cancontainthreads ? true : false ;
+			$list[] = $forum;
+
 			if ($depth < $vbulletin->options['subforumdepth'])
 			{
-				$output .= construct_subforum_bit($forumid, $cancontainthreads, $subforum, $depthmark . '--', $depth + 1);
+				construct_subforum_bit($forumid, $depth+1, $list);
 			}
 
 			($hook = vBulletinHook::fetch_hook('forumbit_subforumbit2')) ? eval($hook) : false;
 		}
 	}
-
-	return $output;
-
+	
+	return $list;
 }
 
 // ###################### Start geticoninfo #######################
@@ -632,7 +621,6 @@ function fetch_iconinfo($iconid = 0)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44625 $
+|| # CVS: $RCSfile$ - $Revision: 58202 $
 || ####################################################################
 \*======================================================================*/

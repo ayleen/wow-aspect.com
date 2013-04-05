@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,8 +14,8 @@
 * Abstract class to do data save/delete operations for a particular data type (such as user, thread, post etc.)
 *
 * @package	vBulletin
-* @version	$Revision: 38992 $
-* @date		$Date: 2010-09-15 12:29:46 -0700 (Wed, 15 Sep 2010) $
+* @version	$Revision: 62098 $
+* @date		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 */
 class vB_DataManager
 {
@@ -1418,7 +1418,7 @@ class vB_DataManager
 	*/
 	function verify_email(&$email)
 	{
-		return is_valid_email($email);
+		return (is_valid_email($email) ? true : false);
 	}
 
 	/**
@@ -1468,7 +1468,7 @@ class vB_DataManager
 		$date['minute'] = intval($date['minute']);
 		$date['second'] = intval($date['second']);
 
-		if ($year < 1970)
+		if ($date['year'] < 1970)
 		{
 			return false;
 		}
@@ -1573,7 +1573,7 @@ class vB_DataManager
 	/**
 	* Verifies the number of images in the post text. Call it from pre_save() after pagetext/allowsmilie has been set
 	*
-	* @return	bool	Whether the post passes the image count check
+	* @return	bool	Whether the post passes the image/video count check
 	*/
 	function verify_image_count($pagetext = 'pagetext', $allowsmilie = 'allowsmilie', $parsetype = 'nonforum', $table = null)
 	{
@@ -1582,7 +1582,7 @@ class vB_DataManager
 		$_allowsmilie =& $this->fetch_field($allowsmilie, $table);
 		$_pagetext =& $this->fetch_field($pagetext, $table);
 
-		if ($_allowsmilie !== null AND $_pagetext !== null)
+		if ($_pagetext !== null)
 		{
 			// check max images
 			require_once(DIR . '/includes/functions_misc.php');
@@ -1590,14 +1590,21 @@ class vB_DataManager
 			$bbcode_parser = new vB_BbCodeParser_ImgCheck($this->registry, fetch_tag_list());
 			$bbcode_parser->set_parse_userinfo($vbulletin->userinfo);
 
-			if ($this->registry->options['maximages'] AND !$this->info['is_automated'])
+			if (($this->registry->options['maximages'] OR $this->registry->options['maxvideos']) AND !$this->info['is_automated'])
 			{
-				$imagecount = fetch_character_count($bbcode_parser->parse($_pagetext, $parsetype, $_allowsmilie, true), '<img');
-				if ($imagecount > $this->registry->options['maximages'])
+				$parsed = $bbcode_parser->parse($_pagetext, $parsetype, $_allowsmilie, true);
+				$imagecount = fetch_character_count($parsed, '<img');
+				$videocount = fetch_character_count($parsed, '<video />');
+				if ($_allowsmilie !== null AND $this->registry->options['maximages'] AND $imagecount > $this->registry->options['maximages'])
 				{
 					$this->error('toomanyimages', $imagecount, $this->registry->options['maximages']);
 					return false;
 				}
+				if ($this->registry->options['maxvideos'] AND $videocount > $this->registry->options['maxvideos'])
+				{
+					$this->error('toomanyvideos', $videocount, $this->registry->options['maxvideos']);
+					return false;
+				}				
 			}
 		}
 
@@ -1613,8 +1620,8 @@ class vB_DataManager
 * Works on multiple records simultaneously. Updates will occur on all records matching set_condition().
 *
 * @package	vBulletin
-* @version	$Revision: 38992 $
-* @date		$Date: 2010-09-15 12:29:46 -0700 (Wed, 15 Sep 2010) $
+* @version	$Revision: 62098 $
+* @date		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 */
 class vB_DataManager_Multiple
 {
@@ -2039,7 +2046,6 @@ class vB_DataManager_Multiple
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 38992 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/

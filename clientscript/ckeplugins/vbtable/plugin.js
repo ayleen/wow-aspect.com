@@ -10,7 +10,8 @@ CKEDITOR.plugins.add( 'vbtable',
 		var table = CKEDITOR.plugins.table,
 			lang = editor.lang.table;
 
-		editor.addCommand( 'table', new CKEDITOR.dialogCommand( 'table' ) );
+		var command = editor.addCommand( 'table', new CKEDITOR.dialogCommand( 'table' ) );
+		command.modes = { wysiwyg:1, enhancedsource:1 };
 		editor.addCommand( 'tableProperties', new CKEDITOR.dialogCommand( 'tableProperties' ) );
 
 		editor.ui.addButton( 'Table',

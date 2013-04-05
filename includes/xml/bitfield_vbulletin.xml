@@ -20,6 +20,7 @@
 				<bitfield name="cangetattachment"           group="forum_viewing_permissions"   phrase="can_download_attachments"      install="2,5,6,7"      >4096</bitfield>
 				<bitfield name="canpostattachment"          group="attachment_permissions"      phrase="can_upload_attachments"        install="2,5,6,7"      >8192</bitfield>
 				<bitfield name="attachlimit" intperm="true" group="attachment_permissions"      phrase="space_in_bytes_attachlimit"                           >1</bitfield>
+				<bitfield name="canattachmentcss"           group="attachment_permissions"      phrase="can_css_attachments"           install="5,6"          >16777216</bitfield>
 				<bitfield name="canpostpoll"                group="poll_permissions"            phrase="can_post_polls"                install="2,5,6,7"      >16384</bitfield>
 				<bitfield name="canvote"                    group="poll_permissions"            phrase="can_vote_on_polls"             install="2,5,6,7"      >32768</bitfield>
 				<bitfield name="canthreadrate"              group="post_thread_permissions"     phrase="can_rate_threads"              install="2,5,6,7"      >65536</bitfield>
@@ -29,6 +30,8 @@
 				<bitfield name="cantagothers"               group="post_thread_permissions"     phrase="can_tag_others_threads"        install="2,5,6,7"      >2097152</bitfield>
 				<bitfield name="candeletetagown"            group="post_thread_permissions"     phrase="can_delete_tags_own_threads"   install="5,6"          >4194304</bitfield>
 				<bitfield name="canseethumbnails"           group="forum_viewing_permissions"   phrase="can_see_thumbnails"            install="2,5,6,7"      >8388608</bitfield>
+				<bitfield name="bypassdoublepost" 			group="post_thread_permissions" 	phrase="bypass_double_post"            install="6"			  >33554432</bitfield>
+				<bitfield name="canwrtmembers" 				group="forum_viewing_permissions" 	phrase="can_wrt_members"               install="5,6,7"	      >67108864</bitfield>
 			</group>
 			<group name="pmpermissions">
 				<bitfield name="pmquota" intperm="true"   group="private_message_permissions" phrase="maximum_stored_messages"                         >0</bitfield>
@@ -119,6 +122,8 @@
 			</group>
 			<group name="genericpermissions2">
 				<bitfield name="canusefriends" group="general_permissions" phrase="can_use_friends" install="2,5,6,7">1</bitfield>
+				<bitfield name="canprofilerep" group="user_reputation_permissions" phrase="can_profile_rep" install="5,6,7">2</bitfield>
+				<bitfield name="canwgomembers" group="general_permissions" phrase="can_wgo_members" install="2,5,6,7">4</bitfield>
 			</group>
 			<group name="albumpermissions">
 				<bitfield name="canalbum"                      group="user_album_permissions"                phrase="can_have_album" install="2,5,6,7" >1</bitfield>
@@ -171,7 +176,9 @@
 				<bitfield group="signature_permissions" install="2,5,6,7" name="canbbcodehtml"  phrase="allow_bbcode_html">512</bitfield>
 				<bitfield group="signature_permissions" install="2,5,6,7" name="canbbcodequote" phrase="allow_bbcode_quote">1024</bitfield>
 				<bitfield group="signature_permissions" install="5,6,7" name="allowimg" phrase="allow_bbcode_img">2048</bitfield>
+				<bitfield group="signature_permissions" install="5,6,7" name="allowvideo" phrase="allow_bbcode_video">262144</bitfield>
 				<bitfield group="signature_permissions" intperm="true" name="sigmaximages" phrase="sig_max_images">1</bitfield>
+				<bitfield group="signature_permissions" intperm="true" name="sigmaxvideos" phrase="sig_max_videos">1</bitfield>
 				<bitfield group="signature_permissions" install="2,5,6,7" name="allowsmilies" phrase="allow_smilies">4096</bitfield>
 				<bitfield group="signature_permissions" name="allowhtml" phrase="allow_html">8192</bitfield>
 				<bitfield group="picture_uploading_permissions" install="5,6,7" name="cansigpic" phrase="can_upload_sig_img">32768</bitfield>
@@ -331,6 +338,10 @@
 				<bitfield name="styleoverride">32768</bitfield>
 				<bitfield name="showonforumjump">65536</bitfield>
 				<bitfield name="prefixrequired">131072</bitfield>
+				<bitfield name="allowvideos">262144</bitfield>
+				<bitfield name="bypassdp">524288</bitfield>
+				<bitfield name="displaywrt">1048576</bitfield>
+				<bitfield name="canreputation">2097152</bitfield>
 			</group>
 			<group name="regoptions">
 				<bitfield name="adminemail">1</bitfield>
@@ -388,6 +399,7 @@
 				<bitfield name="enable_visitor_tracking">8</bitfield>
 				<bitfield name="enable_visitor_messaging">16</bitfield>
 				<bitfield name="enable_profile_styling"  default="1">32</bitfield>
+				<bitfield name="enable_profile_reputation">64</bitfield>
 			</group>
 			<group name="socialgroupoptions">
 				<bitfield name="owner_mod_queue">1</bitfield>
@@ -467,6 +479,7 @@
 				<bitfield name="allow_bbcode_img"   >1024</bitfield>
 				<bitfield name="allow_bbcode_quote" >2048</bitfield>
 				<bitfield name="allow_bbcode_custom">4096</bitfield>
+				<bitfield name="allow_bbcode_video" >8192</bitfield>
 			</group>
 			<group name="sitemap_se_submit">
 				<bitfield name="search_engine_google"     >1</bitfield>
@@ -484,4 +497,4 @@
 	</ignoregroups>
 </bitfields>
 
-<!-- CVS: $RCSfile$ - $Revision: 40682 $ -->
+<!-- CVS: $RCSfile$ - $Revision: 62631 $ -->

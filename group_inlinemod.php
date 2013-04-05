@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -111,7 +111,7 @@ switch ($_POST['do'])
 
 if ($inline_mod_authenticate AND !inlinemod_authenticated())
 {
-	show_inline_mod_login();
+	show_inline_mod_login(false, true);
 }
 
 switch ($_POST['do'])
@@ -166,7 +166,7 @@ if ($_POST['do'] == 'clearmessage')
 {
 	setcookie($inline_cookie, '', TIMENOW - 3600, '/');
 
-	eval(print_standard_redirect('redirect_inline_messagelist_cleared', true, $forceredirect));
+	print_standard_redirect('redirect_inline_messagelist_cleared', true, $forceredirect);  
 }
 
 // #######################################################################
@@ -335,22 +335,22 @@ if ($_POST['do'] == 'inlineapprove' OR $_POST['do'] == 'inlineunapprove')
 	{
 		if ($approve)
 		{
-			eval(print_standard_redirect('redirect_inline_approveddiscussions', true, $forceredirect));
+			print_standard_redirect('redirect_inline_approveddiscussions', true, $forceredirect);  
 		}
 		else
 		{
-			eval(print_standard_redirect('redirect_inline_unapproveddiscussions', true, $forceredirect));
+			print_standard_redirect('redirect_inline_unapproveddiscussions', true, $forceredirect);  
 		}
 	}
 	else
 	{
 		if ($approve)
 		{
-			eval(print_standard_redirect('redirect_inline_approvedmessages', true, $forceredirect));
+			print_standard_redirect('redirect_inline_approvedmessages', true, $forceredirect);  
 		}
 		else
 		{
-			eval(print_standard_redirect('redirect_inline_unapprovedmessages', true, $forceredirect));
+			print_standard_redirect('redirect_inline_unapprovedmessages', true, $forceredirect);  
 		}
 	}
 }
@@ -593,6 +593,7 @@ if ($_POST['do'] == 'doinlinedelete')
 
 			$message['group_name'] = $group['name'];
 			$message['discussion_name'] = $discussion['title'];
+			$message['groupid'] = $discussion['groupid'];
 
 			$messagearray["$message[gmid]"] = $message;
 			$discussionlist["$message[discussionid]"] = true;
@@ -691,10 +692,30 @@ if ($_POST['do'] == 'doinlinedelete')
 	// empty cookie
 	setcookie($inline_cookie, '', TIMENOW - 3600, '/');
 
+	if ($physicaldel AND !$inline_discussion)
+	{
+		parse_str(@parse_url($vbulletin->url, PHP_URL_QUERY), $args);
+
+		if ($args['gmid'] AND isset($messagearray[$args['gmid']]))
+		{
+			// check if the discussion does still exist --- this read query must go to MASTER is we might have just deleted that discussion
+			if ($discussion = $db->query_first("SELECT discussionid FROM " . TABLE_PREFIX . "discussion WHERE discussionid = " . intval($messagearray[$args['gmid']]['discussionid'])))
+			{
+				// discussion does exist, redirect to discussion
+				$vbulletin->url = fetch_seo_url('groupdiscussion', $messagearray[$args['gmid']]);
+			}
+			else
+			{
+				// discussion does not exist any longer, redirect to group
+				$vbulletin->url = fetch_seo_url('group', $messagearray[$args['gmid']], 'groupid', 'group_name');
+			}
+		}
+	}
+ 
 	($hook = vBulletinHook::fetch_hook('group_inlinemod_dodelete')) ? eval($hook) : false;
 
 	$redirect_message = ($inline_discussion ? 'redirect_inline_deleteddiscussions' : 'redirect_inline_deletedmessages');
-	eval(print_standard_redirect($redirect_message, true, $forceredirect));
+	print_standard_redirect($redirect_message, true, $forceredirect);  
 }
 
 // #######################################################################
@@ -799,17 +820,16 @@ if ($_POST['do'] == 'inlineundelete')
 
 	if ($inline_discussion)
 	{
-		eval(print_standard_redirect('redirect_inline_undeleteddiscussions', true, $forceredirect));
+		print_standard_redirect('redirect_inline_undeleteddiscussions', true, $forceredirect);  
 	}
 	else
 	{
-		eval(print_standard_redirect('redirect_inline_undeletedmessages', true, $forceredirect));
+		print_standard_redirect('redirect_inline_undeletedmessages', true, $forceredirect);  
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 40911 $
+|| # SVN: $Revision: 62690 $
 || ####################################################################
 \*======================================================================*/

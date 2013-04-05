@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: myfriends.php 42666 2011-04-05 22:17:42Z michael.lavaveshkul $
+ * @version $Id: myfriends.php 58956 2012-02-11 01:31:19Z pmarsden $
  * @access public
  */
 class vBCms_Widget_myFriends extends vBCms_Widget
@@ -421,7 +421,7 @@ class vBCms_Widget_myFriends extends vBCms_Widget
 	 */
 	protected function getHash()
 	{
-		$context = new vB_Context('widget_data' , array('widgetid' => $this->widget->getId(),
+		$context = new vB_Context('widget_'.$this->widget->getId() , array('widgetid' => $this->widget->getId(),
 			'userid' => vB::$vbulletin->userinfo['userid']));
 		return strval($context);
 	}
@@ -429,7 +429,6 @@ class vBCms_Widget_myFriends extends vBCms_Widget
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 42666 $
+|| # SVN: $Revision: 58956 $
 || ####################################################################
 \*======================================================================*/

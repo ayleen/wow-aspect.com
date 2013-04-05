@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -160,6 +160,8 @@ abstract class vB_Controller
 	 */
 	public function getResponse()
 	{
+		global $bootstrap;
+
 		$method = 'action' . $this->action;
 
 		if (!$this->action)
@@ -181,6 +183,80 @@ abstract class vB_Controller
 
 		// Set Wolpath
 		$this->resolveWolPath();
+
+		// Site is closed.
+		if (defined('BB_CLOSED'))
+		{
+			eval('standard_error("' . make_string_interpolation_safe(str_replace("\\'", "'", addslashes(vB::$vbulletin->options['bbclosedreason']))) . '");');
+		}
+
+		// CMS Template Caching
+		if ($this->package == 'vBCms')
+		{
+			if ($this->class == 'List')
+			{
+				switch ($this->segments['type'])
+				{
+					case 'category':
+						$bootstrap->group_templates[] = 'vbcms.content';
+						break;	
+
+					default:
+						$bootstrap->group_templates[] = 'vbcms.custom';
+						break;
+				}
+			}
+
+			if ($this->class == 'Content')
+			{
+				switch ($this->content->getClass())
+				{
+					case 'Section':
+						$bootstrap->group_templates[] = 'vbcms.section';
+						break;	
+
+					case 'Article':
+						$bootstrap->group_templates[] = 'vbcms.article';
+						break;
+
+					case 'PhpEval':
+						$bootstrap->group_templates[] = 'vbcms.phpeval';
+						break;
+
+					case 'StaticPage':
+						$bootstrap->group_templates[] = 'vbcms.staticpage';
+						break;
+
+					default:
+						$bootstrap->group_templates[] = 'vbcms.custom';
+						break;
+				}
+
+				switch ($this->action)
+				{
+					case 'View':
+						$bootstrap->group_templates[] = 'vbcms.content';
+						break;
+
+					case 'AddNode':
+					case 'EditPage':
+					case 'EditContent':
+						$bootstrap->group_templates[] = 'vbcms.edit';
+						break;	
+
+					default:
+						$bootstrap->group_templates[] = 'vbcms.custom';
+						break;
+				}
+
+				if ($this->node->getPublished() OR $this->node->getNew()
+				AND $this->node->getComments_Enabled())
+				{
+					$bootstrap->group_templates[] = 'vbcms.edit';
+					$bootstrap->group_templates[] = 'vbcms.comments';
+				}
+			}
+		}
 
 		return call_user_func_array(array($this, $method), $this->parameters);
 	}
@@ -286,7 +362,6 @@ abstract class vB_Controller
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 29157 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -153,7 +153,7 @@ class vBBlog_TaggableContent_BlogEntry extends vB_Taggable_Content_Item
 
 	public function is_cloud_cachable()
 	{
-		return $vbulletin->options['vbblog_tagcloud_cachetype'] != 1;
+		return $this->registry->options['vbblog_tagcloud_cachetype'] != 1;
 	}
 
 	public function fetch_tag_cloud_query_bits()
@@ -197,8 +197,7 @@ class vBBlog_TaggableContent_BlogEntry extends vB_Taggable_Content_Item
 					AND ignored.type = 'ignore')";
 
 				//make sure that this gets initialized
-				global $vbulletin;
-				if (!$vbulletin->userinfo['blogcategorypermissions'])
+				if (!$this->registry->userinfo['blogcategorypermissions'])
 				{
 					require_once (DIR . '/includes/blog_functions_shared.php');
 					prepare_blog_category_permissions($this->registry->userinfo, true);
@@ -265,7 +264,6 @@ class vBBlog_TaggableContent_BlogEntry extends vB_Taggable_Content_Item
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

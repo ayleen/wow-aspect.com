@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -66,10 +66,11 @@ function construct_icons($seliconid = 0, $allowicons = true)
 	}
 
 	$icons = $vbulletin->db->query_read_slave("
-		SELECT iconid, iconpath, title
+		SELECT icon.iconid, icon.iconpath, icon.title
 		FROM " . TABLE_PREFIX . "icon AS icon
-		WHERE imagecategoryid NOT IN (0$badcategories)
-		ORDER BY imagecategoryid, displayorder
+		INNER JOIN " . TABLE_PREFIX . "imagecategory AS icat USING (imagecategoryid)
+		WHERE icat.imagecategoryid NOT IN (0$badcategories)
+		ORDER BY icat.displayorder, icat.imagecategoryid, icon.displayorder, icon.iconid
 	");
 
 	$totalicons=$vbulletin->db->num_rows($icons);
@@ -152,31 +153,6 @@ function construct_icons($seliconid = 0, $allowicons = true)
 
 	return $posticons;
 
-}
-
-/**
-* Converts the newpost_attachmentbit template for use with javascript/construct_phrase
-*
-* @return	string
-*/
-function prepare_newpost_attachmentbit()
-{
-	// do not globalize $session or $attach!
-
-	$attach = array(
-		'imgpath' => '%1$s',
-		'attachmentid' => '%3$s',
-		'dateline' => '%4$s',
-		'filename' => '%5$s',
-		'filesize' => '%6$s'
-	);
-	$session['sessionurl'] = '%2$s';
-
-	$templater = vB_Template::create('newpost_attachmentbit');
-		$templater->register('attach', $attach);
-	$template = $templater->render(true);
-
-	return addslashes_js($template, "'");
 }
 
 /**
@@ -338,16 +314,6 @@ function build_new_post($type = 'thread', $foruminfo, $threadinfo, $postinfo, &$
 	$post['emailupdate'] = intval($post['emailupdate']);
 	$post['rating'] = intval($post['rating']);
 	$post['podcastsize'] = intval($post['podcastsize']);
-	/*$post['parseurl'] = intval($post['parseurl']);
-	$post['email'] = intval($post['email']);
-	$post['signature'] = intval($post['signature']);
-	$post['preview'] = iif($post['preview'], 1, 0);
-	$post['iconid'] = intval($post['iconid']);
-	$post['message'] = trim($post['message']);
-	$post['title'] = trim(preg_replace('/&#0*32;/', ' ', $post['title']));
-	$post['username'] = trim($post['username']);
-	$post['posthash'] = trim($post['posthash']);
-	$post['poststarttime'] = trim($post['poststarttime']);*/
 
 	// Make sure the posthash is valid
 	if (md5($post['poststarttime'] . $vbulletin->userinfo['userid'] . $vbulletin->userinfo['salt']) != $post['posthash'])
@@ -358,6 +324,9 @@ function build_new_post($type = 'thread', $foruminfo, $threadinfo, $postinfo, &$
 	// OTHER SANITY CHECKS
 	$threadinfo['threadid'] = intval($threadinfo['threadid']);
 
+	// Doublepost //
+	$dp_flag = false;
+
 	// create data manager
 	if ($type == 'thread')
 	{
@@ -367,6 +336,103 @@ function build_new_post($type = 'thread', $foruminfo, $threadinfo, $postinfo, &$
 	else
 	{
 		$dataman =& datamanager_init('Post', $vbulletin, ERRTYPE_ARRAY, 'threadpost');
+
+		// Doublepost Check //
+		if ($vbulletin->options['dp_timespan'] AND VB_API !== true
+		AND ($cutoff = TIMENOW - $vbulletin->options['dp_timespan'] * 60)
+		AND $threadinfo['lastpost'] > $cutoff AND !$post['preview']
+		AND $threadinfo['lastposter'] == $vbulletin->userinfo['username']
+		AND !($foruminfo['options'] & $vbulletin->bf_misc_forumoptions['bypassdp'])
+		AND !($vbulletin->userinfo['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['bypassdoublepost'])
+		AND $doublepost = $vbulletin->db->query_first("
+				SELECT * 
+				FROM " . TABLE_PREFIX . "post
+				WHERE visible = 1 
+				AND postid = " . $threadinfo['lastpostid'] . "
+				AND threadid = " . $threadinfo['threadid'] . "
+				LIMIT 1	"
+			)
+		AND	$attach = $vbulletin->db->query_first("
+				SELECT count(attachmentid) AS attach
+				FROM " . TABLE_PREFIX . "attachment
+				WHERE state = 'visible' 
+				AND posthash = '" . $post['posthash'] . "'"
+			)
+		AND ($vbulletin->options['attachlimit'] == 0 
+		OR (($attach['attach'] + $doublepost['attach']) <= $vbulletin->options['attachlimit']))
+		)
+		{
+			$cstate = $vbulletin->options['dp_color'] ? 1 : 0;
+			$minchar = intval($vbulletin->options['postminchars']) <= 0 ? 1 : intval($vbulletin->options['postminchars']);
+
+			if (vbstrlen(strip_bbcode($post['message'], $vbulletin->options['ignorequotechars'])) < $minchar)
+			{
+				$errors[] = construct_phrase(fetch_phrase('tooshort','error'), $minchar);
+				return false;
+			}
+
+			switch ($vbulletin->options['dp_spacer'])
+			{
+				case 1; // None
+					$cstate = 2;
+					break;
+
+				case 2; // Custom
+					$spacer = $vbulletin->options['dp_text'];
+					break;
+
+				default;
+					$spacer = $vbphrase['dp_spacer_default'];
+					break;
+			}
+
+			switch ($cstate)
+			{
+				case 1; // Coloured spacer
+					$spacer = "\n\n".'[COLOR="'.$vbulletin->options['dp_color'].'"]'.$spacer.'[/COLOR]'."\n\n";
+					break;
+
+				case 2; // No spacer.
+					$spacer = "\n\n";
+					break;
+
+				default;
+					$spacer = "\n\n".$spacer."\n\n";
+					break;
+			}
+
+			$dp_flag = true;
+			$id = $doublepost['postid'];
+
+			// Need to set valid values for later //
+			$doublepost['signature'] = $doublepost['showsignature'];
+			$doublepost['disablesmilies'] = intval($doublepost['disablesmilies']);
+			$doublepost['enablesmilies'] = ($doublepost['disablesmilies'] ?  0 : 1);
+			$doublepost['folderid'] = intval($doublepost['folderid']);
+			$doublepost['emailupdate'] = intval($doublepost['emailupdate']);
+			$doublepost['rating'] = intval($doublepost['rating']);
+			$doublepost['podcastsize'] = intval($doublepost['podcastsize']);
+
+			$doublepost['doublepost'] = $dp_flag;
+			$doublepost['posthash'] = $post['posthash'];
+
+			$doublepost['oldmessage'] = $post['message'];
+			$doublepost['message'] = $doublepost['pagetext'] . $spacer  . $post['message'];
+
+			$post = $doublepost;
+			unset ($doublepost);
+			$dataman->set_existing($post);
+
+			if ($vbulletin->options['dp_bump'])
+			{
+				$post['dateline'] = TIMENOW;
+				$dataman->set('dateline', $post['dateline']);
+			}
+		}
+		else
+		{
+			$dp_flag = false;
+		}
 	}
 
 	// set info
@@ -519,6 +585,11 @@ function build_new_post($type = 'thread', $foruminfo, $threadinfo, $postinfo, &$
 		$dataman->setr('taglist', $post['taglist']);
 	}
 
+	if ($type == 'reply' AND $vbulletin->GPC['return_node'])
+	{
+		$dataman->set_info('nodeid', $vbulletin->GPC['return_node']);
+	}
+
 	$dataman->pre_save();
 	$errors = array_merge($errors, $dataman->errors);
 
@@ -554,7 +625,7 @@ function build_new_post($type = 'thread', $foruminfo, $threadinfo, $postinfo, &$
 		if ($type == 'thread')
 		{
 			$vbulletin->url = fetch_seo_url('forum', $foruminfo);
-			eval(print_standard_redirect('redirect_duplicatethread', true, true));
+			print_standard_redirect('redirect_duplicatethread', true, true);  
 		}
 		else
 		{
@@ -572,11 +643,11 @@ function build_new_post($type = 'thread', $foruminfo, $threadinfo, $postinfo, &$
 				{
 					// ajax qr failed. While this is a dupe, most likely the user didn't
 					// see the initial post, so act like it went through.
-					eval(print_standard_redirect('redirect_postthanks'));
+					print_standard_redirect('redirect_postthanks');  
 				}
 				else
 				{
-					eval(print_standard_redirect('redirect_duplicatepost', true, true));
+					print_standard_redirect('redirect_duplicatepost', true, true);  
 				}
 			}
 		}
@@ -587,7 +658,15 @@ function build_new_post($type = 'thread', $foruminfo, $threadinfo, $postinfo, &$
 		return;
 	}
 
-	$id = $dataman->save();
+	if ($post['doublepost'])
+	{
+		$dataman->save();
+	}
+	else
+	{
+		$id = $dataman->save();
+	}
+
 	if ($type == 'thread')
 	{
 		$post['threadid'] = $id;
@@ -801,15 +880,16 @@ function construct_errors($errors)
  * @return	string	The Generated Preview
  *
  */
-function process_post_preview(&$newpost, $postuserid = 0, $attachmentinfo = NULL)
+function process_post_preview(&$newpost, $postuserid = 0, $attachment_bycontent = NULL, $attachment_byattachment = NULL)
 {
 	global $vbphrase, $checked, $rate, $previewpost, $foruminfo, $threadinfo, $vbulletin, $show;
 
 	require_once(DIR . '/includes/class_bbcode.php');
 	$bbcode_parser = new vB_BbCodeParser($vbulletin, fetch_tag_list());
-	if ($attachmentinfo)
+	if ($attachment_byattachment)
 	{
-		$bbcode_parser->attachments =& $attachmentinfo;
+		$bbcode_parser->attachments =& $attachment_byattachment;
+		$bbcode_parser->containerid = ($newpost['postid'] ? $newpost['postid'] : 0);
 	}
 
 	$previewpost = 1;
@@ -829,10 +909,11 @@ function process_post_preview(&$newpost, $postuserid = 0, $attachmentinfo = NULL
 		'userid' => ($postuserid ? $postuserid : $vbulletin->userinfo['userid']),
 	);
 
-	if (!empty($attachmentinfo))
+	if (!empty($attachment_byattachment))
 	{
 		require_once(DIR . '/includes/class_postbit.php');
-		$post['attachments'] =& $attachmentinfo;
+		$post['attachments'] = $attachment_byattachment;
+		$post['allattachments'] = $attachment_bycontent;
 		$postbit_factory = new vB_Postbit_Factory();
 		$postbit_factory->registry =& $vbulletin;
 		$postbit_factory->thread =& $threadinfo;
@@ -1642,7 +1723,7 @@ function fetch_privatemessage_reply($pm)
 
 function fetch_keywords_list($threadinfo, $pagetext = '')
 {
-	global $vbphrase;
+	global $vbphrase, $vbulletin;
 
 	require_once(DIR . '/includes/functions_search.php');
 	require_once(DIR . '/includes/class_taggablecontent.php');
@@ -1671,7 +1752,12 @@ function fetch_keywords_list($threadinfo, $pagetext = '')
 		{
 			$word = trim($word);
 
-			if (in_array(strtolower($word), $badwords) OR strlen($word) <= 3)
+			if (in_array(vbstrtolower($word), $badwords))
+			{
+				continue;
+			}
+
+			if (vbstrlen($word) <= $vbulletin->options['minsearchlength'] AND !in_array(vbstrtolower($word), $goodwords))
 			{
 				continue;
 			}
@@ -1695,8 +1781,7 @@ function fetch_keywords_list($threadinfo, $pagetext = '')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45788 $
+|| # CVS: $RCSfile$ - $Revision: 62689 $
 || ####################################################################
 \*======================================================================*/
 ?>

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 40651 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62098 $');
 define('FORCE_HOOKS', true);
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
@@ -27,10 +27,6 @@ require_once(DIR . '/includes/class_hook.php');
 require_once(DIR . '/includes/class_block.php');
 require_once(DIR . '/includes/adminfunctions_plugin.php');
 require_once(DIR . '/includes/adminfunctions_template.php');
-
-//inits classloader -- required to make vB_Cache work
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // ######################## CHECK ADMIN PERMISSIONS #######################
 // don't allow demo version or admin with no permission to administer plugins
@@ -1025,7 +1021,8 @@ if ($_REQUEST['do'] == 'productdisable' OR $_REQUEST['do'] == 'productenable')
 	}
 	else
 	{
-		build_all_styles(false, false, 'plugin.php?do=product');
+		build_all_styles(0, 0, 'plugin.php?do=product', false, 'standard');
+		build_all_styles(0, 0, 'plugin.php?do=product', false, 'mobile');
 		print_stop_message('product_enabled_successfully');
 	}
 }
@@ -1316,6 +1313,8 @@ if ($_POST['do'] == 'productsave')
 			construct_hidden_code('description', $vbulletin->GPC['description']);
 			construct_hidden_code('version', $vbulletin->GPC['version']);
 			construct_hidden_code('confirm', 1);
+			construct_hidden_code('url', $vbulletin->GPC['url']);
+			construct_hidden_code('versioncheckurl', $vbulletin->GPC['versioncheckurl']);
 			print_submit_row();
 			print_cp_footer();
 
@@ -1560,17 +1559,32 @@ if ($_POST['do'] == 'productkill')
 		}
 	}
 
-	//remove some common resources that a product may have registered.
-	//tags
+	// Tags
 	$db->query_write("
 		DELETE tagcontent
-		FROM " . TABLE_PREFIX . "package AS package JOIN
-			" . TABLE_PREFIX . "contenttype AS contenttype ON
-				contenttype.packageid = package.packageid JOIN
-			" . TABLE_PREFIX . "tagcontent AS tagcontent ON
-				contenttype.contenttypeid = tagcontent.contenttypeid
+		FROM " . TABLE_PREFIX . "package AS package 
+		JOIN " . TABLE_PREFIX . "contenttype AS contenttype 
+			ON contenttype.packageid = package.packageid 
+		JOIN " . TABLE_PREFIX . "tagcontent AS tagcontent 
+			ON contenttype.contenttypeid = tagcontent.contenttypeid
 		WHERE productid = '$safe_productid'
 	");
+
+	// Widgets (will only exist if cms installed)
+	if (isset($vbulletin->products['vbcms']))
+	{
+		$vbulletin->db->query_write("
+			DELETE cms_widgettype, cms_widget, cms_widgetconfig
+			FROM " . TABLE_PREFIX . "package AS package
+			LEFT JOIN " . TABLE_PREFIX . "cms_widgettype AS cms_widgettype
+				ON cms_widgettype.packageid = package.packageid
+			LEFT JOIN " . TABLE_PREFIX . "cms_widget AS cms_widget
+				ON cms_widget.widgettypeid = cms_widgettype.widgettypeid
+			LEFT JOIN " . TABLE_PREFIX . "cms_widgetconfig AS cms_widgetconfig
+				ON cms_widgetconfig.widgetid = cms_widget.widgetid
+			WHERE package.productid = '$safe_productid'
+		");
+	}
 
 	// Packages, routes, actions, contenttypes
 	$db->query_write("
@@ -1588,19 +1602,19 @@ if ($_POST['do'] == 'productkill')
 	// Clear routes from datastore
 	build_datastore('routes', serialize(array()), 1);
 
-	//clear the type cache.
+	// Clear the type cache.
 	vB_Cache::instance()->purge('vb_types.types');
 
-	// need to remove the language columns for this product as well
+	// Remove the language columns for this product as well
 	require_once(DIR . '/includes/class_dbalter.php');
 
 	$db_alter = new vB_Database_Alter_MySQL($db);
 	if ($db_alter->fetch_table_info('language'))
 	{
-		$phrasetypes = $db->query_read("
+		$phrasetypes = $db->query_read_slave("
 			SELECT fieldname
 			FROM " . TABLE_PREFIX . "phrasetype
-			WHERE product = '" . $db->escape_string($vbulletin->GPC['productid']) . "'
+			WHERE product = '$safe_productid'
 		");
 		while ($phrasetype = $db->fetch_array($phrasetypes))
 		{
@@ -1610,7 +1624,8 @@ if ($_POST['do'] == 'productkill')
 
 	delete_product($vbulletin->GPC['productid']);
 
-	build_all_styles();
+	build_all_styles(0, 0, '', false, 'standard');
+	build_all_styles(0, 0, '', false, 'mobile');
 
 	vBulletinHook::build_datastore($db);
 
@@ -1818,7 +1833,6 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40651 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/

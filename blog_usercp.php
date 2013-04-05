@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -61,7 +61,6 @@ $globaltemplates = array(
 	'blog_sidebar_calendar',
 	'blog_sidebar_calendar_day',
 	'blog_tag_cloud_link',
-	'memberinfo_visitorbit',
 	'ad_blogsidebar_start',
 	'ad_blogsidebar_middle',
 	'ad_blogsidebar_end',
@@ -95,7 +94,6 @@ $actiontemplates = array(
 		'blog_cp_statbit',
 		'blog_cp_stats',
 		'forumdisplay_sortarrow',
-		'memberinfo_visitorbit',
 	),
 	'sidebar' => array(
 		'blog_cp_manage_sidebar',
@@ -144,10 +142,8 @@ require_once('./global.php');
 require_once(DIR . '/includes/blog_init.php');
 require_once(DIR . '/includes/blog_functions_usercp.php');
 require_once(DIR . '/includes/blog_functions_post.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
 
 verify_blog_url();
-vB_Bootstrap_Framework::init();
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -242,6 +238,7 @@ if ($_POST['do'] == 'updateprofile')
 	if (!empty($dataman->errors))
 	{	### DESCRIPTION HAS ERRORS ###
 		define('PREVIEW', 1);
+		$show['errors'] = true;
 		$postpreview = construct_errors($dataman->errors);
 		$_REQUEST['do'] = 'editprofile';
 	}
@@ -260,7 +257,7 @@ if ($_POST['do'] == 'updateprofile')
 
 		clear_autosave_text('vBBlog_BlogDescription', 0, 0, $vbulletin->userinfo['userid']);
 		$vbulletin->url = fetch_seo_url('blogusercp', array(), array('do' => 'editprofile'));
-		eval(print_standard_redirect('redirect_blog_profileupdate', true, true));
+		print_standard_redirect(array('redirect_blog_profileupdate',$vbulletin->userinfo['username']), true, true);  
 	}
 }
 
@@ -289,7 +286,7 @@ if ($_REQUEST['do'] == 'editprofile')
 		$checked['disablesmilies'] = $vbulletin->GPC['disablesmilies'] ? 'checked="checked"' : '';
 		$checked['parseurl'] = ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowbbcode'] AND $vbulletin->GPC['parseurl']) ? 'checked="checked"' : '';
 		$blogheader = parse_blog_description($vbulletin->userinfo);
-		$postpreview = $blogheader['description'];
+		$postpreview = ($postpreview) ? $postpreview : $blogheader['description'];
 	}
 	else
 	{
@@ -330,6 +327,7 @@ if ($_REQUEST['do'] == 'editprofile')
 	// build forum rules
 	$bbcodeon = ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowbbcode']) ? $vbphrase['on'] : $vbphrase['off'];
 	$imgcodeon = ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowimages']) ? $vbphrase['on'] : $vbphrase['off'];
+	$videocodeon = ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowvideos']) ? $vbphrase['on'] : $vbphrase['off'];
 	$htmlcodeon = ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowhtml']) ? $vbphrase['on'] : $vbphrase['off'];
 	$smilieson = ($vbulletin->userinfo['permissions']['vbblog_entry_permissions'] & $vbulletin->bf_ugp_vbblog_entry_permissions['blog_allowsmilies']) ? $vbphrase['on'] : $vbphrase['off'];
 
@@ -349,6 +347,7 @@ if ($_REQUEST['do'] == 'editprofile')
 		$templater->register('can', $can);
 		$templater->register('htmlcodeon', $htmlcodeon);
 		$templater->register('imgcodeon', $imgcodeon);
+		$templater->register('videocodeon', $videocodeon);
 		$templater->register('smilieson', $smilieson);
 	$forumrules = $templater->render();
 
@@ -510,7 +509,7 @@ if ($_POST['do'] == 'updateoptions')
 	build_blog_stats();
 
 	$vbulletin->url = fetch_seo_url('blogusercp', array());
-	eval(print_standard_redirect('redirect_blog_profileupdate'));
+	print_standard_redirect(array('redirect_blog_profileupdate',$vbulletin->userinfo['username']));  
 }
 
 // ############################################################################
@@ -658,7 +657,7 @@ if ($_POST['do'] == 'addcat')
 					}
 					
 					$vbulletin->url = fetch_seo_url('blogusercp', array(), $page_vars);
-					eval(print_standard_redirect('redirect_blog_profileupdate'));
+					print_standard_redirect(array('redirect_blog_profileupdate',$vbulletin->userinfo['username']));  
 				}
 				else
 				{
@@ -716,7 +715,7 @@ if ($_POST['do'] == 'addcat')
 			}
 			
 			$vbulletin->url = fetch_seo_url('blogusercp', array(), $page_vars);
-			eval(print_standard_redirect('redirect_blog_profileupdate'));
+			print_standard_redirect(array('redirect_blog_profileupdate',$vbulletin->userinfo['username']));  
 		}
 	}
 }
@@ -784,7 +783,7 @@ if ($_POST['do'] == 'updatecat')
 			$page_vars['userid'] = $userinfo['userid'];
 		}
 		$vbulletin->url = fetch_seo_url('blogusercp', array(), $page_vars);
-		eval(print_standard_redirect('redirect_blog_profileupdate'));
+		print_standard_redirect(array('redirect_blog_profileupdate',$vbulletin->userinfo['username']));  
 	}
 }
 
@@ -1596,7 +1595,7 @@ if ($_REQUEST['do'] == 'moveblock')
 	if (count($blockorder) <= 1)
 	{	// invalid choice
 		$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'sidebar'));
-		eval(print_standard_redirect('redirect_blog_profileupdate'));
+		print_standard_redirect(array('redirect_blog_profileupdate',$vbulletin->userinfo['username']));  
 	}
 
 	$output = array();
@@ -1628,7 +1627,7 @@ if ($_REQUEST['do'] == 'moveblock')
 			)
 			{ // invalid choice
 				$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'sidebar'));
-				eval(print_standard_redirect('redirect_blog_profileupdate'));
+				print_standard_redirect(array('redirect_blog_profileupdate',$vbulletin->userinfo['username']));  
 			}
 			if ($vbulletin->GPC['dir'] == 'up')
 			{
@@ -1680,7 +1679,7 @@ if ($_REQUEST['do'] == 'moveblock')
 	$dataman->save();
 
 	$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'sidebar'));
-	eval(print_standard_redirect('redirect_blog_profileupdate'));
+	print_standard_redirect(array('redirect_blog_profileupdate',$vbulletin->userinfo['username']));  
 }
 
 // ############################################################################
@@ -1764,7 +1763,7 @@ if ($_POST['do'] == 'updatesidebar')
 			}
 			
 			$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'custompage'));
-			eval(print_standard_redirect('redirect_blog_profileupdate'));
+			print_standard_redirect(array('redirect_blog_profileupdate',$vbulletin->userinfo['username']));  
 		}
 		else
 		{
@@ -1864,7 +1863,7 @@ if ($_POST['do'] == 'updatesidebar')
 			$dataman->save();
 
 			$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'sidebar'));
-			eval(print_standard_redirect('redirect_blog_profileupdate'));
+			print_standard_redirect(array('redirect_blog_profileupdate',$vbulletin->userinfo['username']));  
 		}
 	}
 	else
@@ -2043,7 +2042,7 @@ if ($_POST['do'] == 'updateblock')
 			{
 				$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'sidebar'));
 			}
-			eval(print_standard_redirect('redirect_blog_blockthanks'));
+			print_standard_redirect('redirect_blog_blockthanks');  
 		}
 		else
 		{
@@ -2051,7 +2050,7 @@ if ($_POST['do'] == 'updateblock')
 			{
 				$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'custompage'));
 			}
-			eval(print_standard_redirect('redirect_blog_pagethanks'));
+			print_standard_redirect('redirect_blog_pagethanks');  
 		}
 	}
 }
@@ -2105,11 +2104,11 @@ if ($_POST['do'] == 'deleteblock')
 		$dataman->set_existing($sidebarinfo);
 		$dataman->set_info('user', $userinfo);
 		$dataman->delete();
-		eval(print_standard_redirect('redirect_custom_block_delete'));
+		print_standard_redirect('redirect_custom_block_delete');  
 	}
 	else
 	{
-		eval(print_standard_redirect('redirect_custom_block_nodelete'));
+		print_standard_redirect('redirect_custom_block_nodelete');  
 	}
 }
 
@@ -2388,7 +2387,7 @@ if ($_POST['do'] == 'adduser')
 	build_blog_memberids($vbulletin->userinfo['userid']);
 
 	$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'groups')) . '#member' . $userinfo['userid'];
-	eval(print_standard_redirect('redirect_blog_groupupdate'));
+	print_standard_redirect('redirect_blog_groupupdate');  
 }
 
 // ############################################################################
@@ -2453,7 +2452,7 @@ if ($_POST['do'] == 'deleteuser')
 	}
 
 	$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'groups')) . '#member' . $userinfo['userid'];
-	eval(print_standard_redirect('redirect_blog_groupupdate'));
+	print_standard_redirect('redirect_blog_groupupdate');  
 }
 
 // ############################################################################
@@ -2529,7 +2528,7 @@ if ($_REQUEST['do'] == 'joinblog')
 	build_blog_memberids($inviteinfo['bloguserid']);
 
 	$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'groups'));
-	eval(print_standard_redirect('redirect_blog_joined_blog'));
+	print_standard_redirect('redirect_blog_joined_blog');  
 }
 
 // ############################################################################
@@ -2586,7 +2585,7 @@ if ($_POST['do'] == 'doleaveblog')
 		$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'groups'));
 		if ($inviteinfo['state'] == 'pending')
 		{
-			eval(print_standard_redirect('redirect_blog_declined_group_blog', true, true));
+			print_standard_redirect('redirect_blog_declined_group_blog', true, true);  
 		}
 		else
 		{
@@ -2601,7 +2600,7 @@ if ($_POST['do'] == 'doleaveblog')
 					postedby_userid = $inviteinfo[userid]
 			");
 
-			eval(print_standard_redirect('redirect_blog_left_group_blog', true, true));
+			print_standard_redirect('redirect_blog_left_group_blog', true, true);  
 		}
 	}
 }
@@ -2818,7 +2817,7 @@ if ($_POST['do'] == 'updateuserperm')
 	");
 
 	$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'groups'));
-	eval(print_standard_redirect('redirect_group_permissions_updated_successfully'));
+	print_standard_redirect('redirect_group_permissions_updated_successfully');  
 }
 
 if ($_REQUEST['do'] == 'customize' OR $_POST['do'] == 'docustomize')
@@ -2951,7 +2950,7 @@ if ($_POST['do'] == 'docustomize')
 	{
 		$usercss->save();
 		$vbulletin->url = fetch_seo_url('blogusercp',  array(), array('do' => 'customize'));
-		eval(print_standard_redirect('usercss_saved'));
+		print_standard_redirect('usercss_saved');  
 	}
 	else if (!empty($usercss->error))
 	{
@@ -3184,8 +3183,6 @@ if ($_REQUEST['do'] == 'customize')
 		print_no_permission();
 	}
 
-	require_once(DIR . '/includes/class_bootstrap_framework.php');
-	vB_Bootstrap_Framework::init();
 	$types = vB_Types::instance();
 	$contenttypeid = $types->getContentTypeID('vBForum_Album');
 
@@ -3338,8 +3335,7 @@ print_output($templater->render());
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 43599 $
+|| # SVN: $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

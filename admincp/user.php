@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright �2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright �2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 42666 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 58375 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('cpuser', 'forum', 'timezone', 'user', 'cprofilefield', 'subscription', 'banning', 'profilefield');
@@ -383,7 +383,7 @@ if ($_REQUEST['do'] == 'edit' OR $_REQUEST['do'] == 'add')
 				=> $vbphrase['delete_subscriptions'],
 			"usertools.php?" . $vbulletin->session->vars['sessionurl'] . "do=doips&amp;u=" . $vbulletin->GPC['userid'] . "&amp;hash=" . CP_SESSIONHASH
 				=> $vbphrase['view_ip_addresses'],
-			fetch_seo_url('member|bburl', $user)
+			"../member.php?" . $vbulletin->session->vars['sessionurl'] . "u=" .$user['userid']
 				=> $vbphrase['view_profile'],
 			"../search.php?" . $vbulletin->session->vars['sessionurl'] . "do=finduser&amp;u=" . $vbulletin->GPC['userid']. "&amp;contenttype=vBForum_Post&amp;showposts=1"				
 				=> $vbphrase['find_posts_by_user'],
@@ -552,6 +552,7 @@ if ($_REQUEST['do'] == 'edit' OR $_REQUEST['do'] == 'add')
 		function pick_a_window(url)
 		{
 			var modcpurl = "<?php echo(fetch_js_safe_string($vbulletin->config['Misc']['modcpdir'])); ?>";
+
 			if (url != '')
 			{
 				if (url.substr(0, 3) == '../' && url.substr(3, modcpurl.length) != modcpurl)
@@ -569,13 +570,29 @@ if ($_REQUEST['do'] == 'edit' OR $_REQUEST['do'] == 'add')
 		<?php
 	}
 
-	// start main table
-	print_form_header('user', 'update', 0, 0);
+	?>
+	<script type="text/javascript" src="../clientscript/vbulletin_md5.js"></script>
+	<script type="text/javascript">
+	// Encode password in j/s to be consistent with frontend.
+	function hash_password(currentpassword, currentpassword_md5)
+	{
+		var junk_output;
+		if (currentpassword.value != '')
+		{
+			md5hash(currentpassword, currentpassword_md5, junk_output, 0);
+		}
+	}
+	</script>
+	<?php
+
+	// start main table, fudge in the onsubmit command (a cheat, but it works).
+	print_form_header('user', 'update', false, false, 'cpform', '90%', '" onsubmit="hash_password(password, password_md5)');
 	?>
 	<table cellpadding="0" cellspacing="0" border="0" width="<?php echo $OUTERTABLEWIDTH; ?>" align="center"><tr valign="top"><td>
 	<table cellpadding="4" cellspacing="0" border="0" align="center" width="100%" class="tborder">
 	<?php
 
+	construct_hidden_code('password_md5', '');
 	construct_hidden_code('userid', $vbulletin->GPC['userid']);
 	construct_hidden_code('ousergroupid', $user['usergroupid']);
 	construct_hidden_code('odisplaygroupid', $user['displaygroupid']);
@@ -887,7 +904,7 @@ if ($_REQUEST['do'] == 'edit' OR $_REQUEST['do'] == 'add')
 	print_yes_no_row($vbphrase['pm_from_contacts_only'], 'options[receivepmbuddies]', $user['receivepmbuddies']);
 	print_yes_no_row($vbphrase['send_notification_email_when_a_private_message_is_received'], 'options[emailonpm]', $user['emailonpm']);
 	print_yes_no_row($vbphrase['pop_up_notification_box_when_a_private_message_is_received'], 'user[pmpopup]', $user['pmpopup']);
-	print_yes_no_row(construct_phrase($vbphrase['save_pm_copy_default'], '../private.php?folderid=-1'), 'options[pmdefaultsavecopy]', $user['pmdefaultsavecopy']);
+	print_yes_no_row($vbphrase['acp_save_pm_copy_default'], 'options[pmdefaultsavecopy]', $user['pmdefaultsavecopy']);
 	print_yes_no_row($vbphrase['enable_visitor_messaging'], 'options[vm_enable]', $user['vm_enable']);
 	print_yes_no_row($vbphrase['limit_vm_to_contacts_only'], 'options[vm_contactonly]', $user['vm_contactonly']);
 	print_yes_no_row($vbphrase['display_signatures'], 'options[showsignatures]', $user['showsignatures']);
@@ -943,7 +960,7 @@ if ($_REQUEST['do'] == 'edit' OR $_REQUEST['do'] == 'add')
 	// EXTERNAL CONNECTIONS SECTION
 	print_table_header($vbphrase['external_connections']);
 	print_label_row($vbphrase['facebook_connected'], (!empty($user['fbuserid']) ? $vbphrase['yes'] : $vbphrase['no']), '', 'top', 'facebookconnect');
-	print_table_break('', $INNERTABLEWIDTH);
+//	print_table_break('', $INNERTABLEWIDTH);
 
 	($hook = vBulletinHook::fetch_hook('useradmin_edit_column2')) ? eval($hook) : false;
 
@@ -965,6 +982,7 @@ if ($_POST['do'] == 'update')
 	$vbulletin->input->clean_array_gpc('p', array(
 		'userid'            => TYPE_UINT,
 		'password'          => TYPE_STR,
+		'password_md5'      => TYPE_STR,
 		'user'              => TYPE_ARRAY,
 		'options'           => TYPE_ARRAY_BOOL,
 		'adminoptions'      => TYPE_ARRAY_BOOL,
@@ -1036,6 +1054,8 @@ if ($_POST['do'] == 'update')
 	}
 
 	// password
+	$vbulletin->GPC['password'] = ($vbulletin->GPC['password_md5'] ? $vbulletin->GPC['password_md5'] : $vbulletin->GPC['password']);
+
 	if (!empty($vbulletin->GPC['password']))
 	{
 		$userdata->set('password', $vbulletin->GPC['password']);
@@ -1927,80 +1947,15 @@ if ($_POST['do'] == 'domoderate')
 	}
 }
 
-// ############################# do prune users (step 2) #########################
-if ($_REQUEST['do'] == 'prune_updateposts')
-{
-	$vbulletin->input->clean_array_gpc('r', array(
-		'startat' => TYPE_INT
-	));
-
-	$userids = fetch_adminutil_text('ids');
-	if (!$userids)
-	{
-		$userids = '0';
-	}
-
-	$users = $db->query_read("
-		SELECT userid, username
-		FROM " . TABLE_PREFIX . "user
-		WHERE userid IN ($userids)
-		LIMIT " . $vbulletin->GPC['startat'] . ", 50
-	");
-	if ($db->num_rows($users))
-	{
-		while ($user = $db->fetch_array($users))
-		{
-			echo '<p>' . construct_phrase($vbphrase['updating_threads_posts_for_x'], $user['username']) . "\n";
-			vbflush();
-
-			$db->query_write("
-				UPDATE " . TABLE_PREFIX . "thread SET
-					postuserid = 0,
-					postusername = '" . $db->escape_string($user['username']) . "'
-				WHERE postuserid = $user[userid]
-			");
-			$db->query_write("
-				UPDATE " . TABLE_PREFIX . "post SET
-					userid = 0,
-					username = '" . $db->escape_string($user['username']) . "'
-				WHERE userid = $user[userid]
-			");
-
-			echo '<b>' . $vbphrase['done'] . "</b></p>\n";
-			vbflush();
-		}
-
-		$vbulletin->GPC['startat'] += 50;
-
-		print_cp_redirect("user.php?" . $vbulletin->session->vars['sessionurl'] . "do=prune_updateposts&startat=" . $vbulletin->GPC['startat'], 0);
-		exit;
-	}
-	else
-	{
-		echo '<p>' . $vbphrase['deleting_users'] . '</p>';
-		$db->query_write("DELETE FROM " . TABLE_PREFIX . "usertextfield WHERE userid IN ($userids)");
-		$db->query_write("DELETE FROM " . TABLE_PREFIX . "userfield WHERE userid IN ($userids)");
-		$db->query_write("DELETE FROM " . TABLE_PREFIX . "user WHERE userid IN ($userids)");
-
-		($hook = vBulletinHook::fetch_hook('useradmin_prune')) ? eval($hook) : false;
-
-		require_once(DIR . '/includes/functions_databuild.php');
-		build_user_statistics();
-
-		define('CP_REDIRECT', "user.php?do=prune");
-		print_stop_message('updated_threads_posts_successfully');
-	}
-}
-
 // ############################# do prune/move users (step 1) #########################
 if ($_POST['do'] == 'dopruneusers')
 {
 	$vbulletin->input->clean_array_gpc('p', array(
 		'users'     => TYPE_ARRAY_INT,
 		'dowhat'    => TYPE_STR,
-		'movegroup' => TYPE_INT
+		'movegroup' => TYPE_INT,
 	));
-
+	
 	if (!empty($vbulletin->GPC['users']))
 	{
 		$userids = array();
@@ -2017,85 +1972,8 @@ if ($_POST['do'] == 'dopruneusers')
 
 		if ($vbulletin->GPC['dowhat'] == 'delete')
 		{
-			echo "<p>" . $vbphrase['deleting_subscriptions'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "subscribeforum WHERE userid IN($userids)");
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "subscribethread WHERE userid IN($userids)");
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "subscriptionlog WHERE userid IN($userids)");
-
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['deleting_events'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "event WHERE userid IN($userids)");
-
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['deleting_event_reminders'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "subscribeevent WHERE userid IN($userids)");
-
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['deleting_custom_avatars'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "customavatar WHERE userid IN($userids)");
-
-			if ($vbulletin->options['usefileavatar'])
-			{
-				$customavatars = $db->query_read("
-					SELECT userid, avatarrevision
-					FROM " . TABLE_PREFIX . "user WHERE
-					userid IN(" . $userids . ")
-				");
-				while ($customavatar = $db->fetch_array($customavatars))
-				{
-					@unlink($vbulletin->options['avatarpath'] . "/avatar$customavatar[userid]_$customavatar[avatarrevision].gif");
-				}
-			}
-
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['deleting_custom_profilepics'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "customprofilepic WHERE userid IN($userids)");
-
-			if ($vbulletin->options['usefileavatar'])
-			{
-				$customprofilepics = $db->query_read("
-					SELECT userid, profilepicrevision
-					FROM " . TABLE_PREFIX . "user WHERE
-					userid IN(" . $userids . ")
-				");
-				while ($customprofilepic = $db->fetch_array($customprofilepics))
-				{
-					@unlink($vbulletin->options['profilepicpath'] . "/profilepic$customprofilepic[userid]_$customprofilepic[profilepicrevision].gif");
-				}
-			}
-
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['deleting_user_forum_access'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "access WHERE userid IN($userids)");
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['deleting_moderators'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "moderator WHERE userid IN($userids)");
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['deleting_private_messages'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "pm WHERE userid IN($userids)");
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "pmreceipt WHERE userid IN($userids)");
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "session WHERE userid IN($userids)");
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['deleting_usergroup_join_requests'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "usergrouprequest WHERE userid IN($userids)");
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['deleting_bans'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "userban WHERE userid IN($userids)");
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['deleting_usernotes'] . "\n";
-			vbflush();
-			$db->query_write("DELETE FROM " . TABLE_PREFIX . "usernote WHERE userid IN($userids)");
-			echo $vbphrase['okay'] . '</p><p>' . $vbphrase['updating_threads_posts'] . "</p>\n";
-			vbflush();
+			$_REQUEST['do'] = 'dodeleteusers';
 			build_adminutil_text('ids', $userids);
-
-			require_once(DIR . '/includes/functions_databuild.php');
-			build_user_statistics();
-
-			print_cp_redirect("user.php?" . $vbulletin->session->vars['sessionurl'] . "do=prune_updateposts&startat=0",1);
-			exit;
-
 		}
 		else if ($vbulletin->GPC['dowhat'] == 'move')
 		{
@@ -2149,7 +2027,50 @@ if ($_POST['do'] == 'dopruneusers')
 	{
 		print_stop_message('please_complete_required_fields');
 	}
+}
 
+// ############################# do prune users #########################
+if ($_REQUEST['do'] == 'dodeleteusers')
+{
+	$userids = fetch_adminutil_text('ids');
+	if (!$userids)
+	{
+		$userids = '0';
+	}
+
+	$users = $db->query_read("
+		SELECT userid, username
+		FROM " . TABLE_PREFIX . "user
+		WHERE userid IN ($userids)
+		LIMIT 0, 50
+	");
+	if ($db->num_rows($users))
+	{
+		while ($user = $db->fetch_array($users))
+		{
+			echo '<p>' . construct_phrase($vbphrase['deleting_user_x'], $user['username']) . "\n";
+			vbflush();
+
+			$userdm =& datamanager_init('User', $vbulletin, ERRTYPE_CP);
+			$userdm->set_existing($user);
+			$userdm->delete();
+			unset($userdm);
+			
+			echo '<b>' . $vbphrase['done'] . "</b></p>\n";
+			vbflush();
+		}
+
+		print_cp_redirect("user.php?" . $vbulletin->session->vars['sessionurl'] . "do=dodeleteusers", 0);
+		exit;
+	}
+	else
+	{
+		build_adminutil_text('ids');
+		($hook = vBulletinHook::fetch_hook('useradmin_prune')) ? eval($hook) : false;
+
+		define('CP_REDIRECT', "user.php?do=prune");
+		print_stop_message('pruned_users_successfully');
+	}
 }
 
 // ############################# start list users for pruning #########################
@@ -2458,8 +2379,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 42666 $
+|| # CVS: $RCSfile$ - $Revision: 58375 $
 || ####################################################################
 \*======================================================================*/
 ?>

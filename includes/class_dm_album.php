@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,8 +19,8 @@ if (!class_exists('vB_DataManager', false))
 * Class to do data save/delete operations for albums
 *
 * @package	vBulletin
-* @version	$Revision: 32878 $
-* @date		$Date: 2009-10-28 11:38:49 -0700 (Wed, 28 Oct 2009) $
+* @version	$Revision: 62619 $
+* @date		$Date: 2012-05-15 16:54:47 -0700 (Tue, 15 May 2012) $
 */
 class vB_DataManager_Album extends vB_DataManager
 {
@@ -141,6 +141,16 @@ class vB_DataManager_Album extends vB_DataManager
 			$this->remove_usercss_background_image();
 		}
 
+		if (!$this->condition)
+		{
+			$activity = new vB_ActivityStream_Manage('album', 'album');
+			$activity->set('contentid', $this->fetch_field('albumid'));
+			$activity->set('userid', $this->fetch_field('userid'));
+			$activity->set('dateline', $this->fetch_field('createdate'));
+			$activity->set('action', 'create');
+			$activity->save();		
+		}
+		
 		($hook = vBulletinHook::fetch_hook('albumdata_postsave')) ? eval($hook) : false;
 
 		return true;
@@ -153,12 +163,10 @@ class vB_DataManager_Album extends vB_DataManager
 	*/
 	function post_delete($doquery = true)
 	{
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 		$types = vB_Types::instance();
 		$contenttypeid = intval($types->getContentTypeID('vBForum_Album'));
 
+		$attachmentids = array();
 		$attachdata =& datamanager_init('Attachment', $this->registry, ERRTYPE_STANDARD, 'attachment');
 		$picture_sql = $this->registry->db->query_read("
 			SELECT
@@ -172,7 +180,8 @@ class vB_DataManager_Album extends vB_DataManager
 		while ($picture = $this->registry->db->fetch_array($picture_sql))
 		{
 			$attachdata->set_existing($picture);
-			$attachdata->delete(true, false);
+			$attachdata->delete(true, false, 'album', 'photo');
+			$attachmentids[] = $picture['attachmentid'];
 		}
 		$this->registry->db->free_result($picture_sql);
 
@@ -180,6 +189,10 @@ class vB_DataManager_Album extends vB_DataManager
 
 		($hook = vBulletinHook::fetch_hook('albumdata_delete')) ? eval($hook) : false;
 
+		$activity = new vB_ActivityStream_Manage('album', 'album');
+		$activity->set('contentid', $this->fetch_field('albumid'));
+		$activity->delete();	
+		
 		return true;
 	}
 
@@ -218,9 +231,6 @@ class vB_DataManager_Album extends vB_DataManager
 			return;
 		}
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 		$types = vB_Types::instance();
 		$contenttypeid = intval($types->getContentTypeID('vBForum_Album'));
 
@@ -244,8 +254,7 @@ class vB_DataManager_Album extends vB_DataManager
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 62619 $
 || ####################################################################
 \*======================================================================*/
 ?>

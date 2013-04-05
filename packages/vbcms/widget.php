@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -398,7 +398,6 @@ abstract class vBCms_Widget
 	}
 
 
-
 	/**
 	 * Checks if a post request was intended for this item controller.
 	 *
@@ -406,6 +405,8 @@ abstract class vBCms_Widget
 	 */
 	public function verifyPostId()
 	{
+		define('ADMINHASH', md5(COOKIE_SALT . vB::$vbulletin->userinfo['userid'] . vB::$vbulletin->userinfo['salt']));
+
 		require_once(DIR . '/includes/adminfunctions.php');
 		assert_cp_sessionhash();
 
@@ -420,7 +421,7 @@ abstract class vBCms_Widget
 				AND (vB::$vbulletin->GPC['item_class'] == vBCms_Types::instance()->getTypeKey($this->widget->getPackage(), $this->widget->getClass()))
 				AND vB::$vbulletin->GPC['item_id'] == $this->widget->getId()
 				AND (!defined('ADMINHASH') OR ADMINHASH == vB::$vbulletin->GPC['adminhash'])
-				AND (CP_SESSIONHASH AND (!$vbulletin->options['timeoutcontrolpanel'] OR $vbulletin->session->vars['loggedin'])));
+				AND (CP_SESSIONHASH AND (!vB::$vbulletin->options['timeoutcontrolpanel'] OR vB::$vbulletin->session->vars['loggedin'])));
 	}
 
 
@@ -435,10 +436,9 @@ abstract class vBCms_Widget
 		$view->item_class = vBCms_Types::instance()->getTypeKey($this->widget->getPackage(), $this->widget->getClass());
 		$view->item_id = $this->widget->getId();
 
-		require_once(DIR . '/includes/adminfunctions.php');
+		define('ADMINHASH', md5(COOKIE_SALT . vB::$vbulletin->userinfo['userid'] . vB::$vbulletin->userinfo['salt']));
 		$view->adminhash = ADMINHASH;
 	}
-
 
 
 	/*Permissions===================================================================*/
@@ -542,11 +542,11 @@ abstract class vBCms_Widget
 	 ****/
 	protected function getHash($widgetid = false)
 	{
-		if (! $widgetid)
+		if (!$widgetid)
 		{
 			$widgetid = $this->widget->getId();
 		}
-		$context = new vB_Context('widget' , array('widgetid' => $widgetid));
+		$context = new vB_Context("widget_$widgetid" , array('widgetid' => $widgetid));
 		return strval($context);
 	}
 
@@ -557,14 +557,13 @@ abstract class vBCms_Widget
 	 ****/
 	protected function getCacheEvent()
 	{
-		$context =new vB_Context('widget' , array('widgetid' => $this->widget->getId()));
+		$context =new vB_Context('widget_' . $this->widget->getId() , array('widgetid' => $this->widget->getId()));
 		return strval($context);
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28996 $
 || ####################################################################
 \*======================================================================*/

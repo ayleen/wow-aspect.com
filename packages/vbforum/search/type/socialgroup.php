@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -39,7 +39,12 @@ class vBForum_Search_Type_SocialGroup extends vB_Search_Type
 				$list[$id] = $item;
 			}
 		}
-		return array('list' => $list, 'groups_rejected' => array());
+		
+		$retval = array('list' => $list, 'groups_rejected' => array());
+
+		($hook = vBulletinHook::fetch_hook('search_validated_list')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	public function create_item($id)
@@ -89,11 +94,9 @@ class vBForum_Search_Type_SocialGroup extends vB_Search_Type
 	 * 	grouping option(s).
 	 * @return $html: complete html for the search elements
 	 */
-	public function listUi($prefs = null, $contenttypeid = null, $registers = null,
-		$template_name = null)
+	public function listUi($prefs = null, $contenttypeid = null, $registers = null,	$template_name = null)
 	{
 		global $vbulletin, $vbphrase;
-
 
 		if (! isset($template_name))
 		{
@@ -143,13 +146,14 @@ class vBForum_Search_Type_SocialGroup extends vB_Search_Type
 				$template->register($key, htmlspecialchars_uni($value));
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_listui_complete')) ? eval($hook) : false;
+
 		return $template->render();
 	}
 
 	public function add_advanced_search_filters($criteria, $registry)
 	{
-		//print "REGISTRY";print_r($this->registry);
-		//die;
 		if ($registry->GPC['memberlimit'])
 		{
 			$criteria->add_display_strings('sgmemberlimit',
@@ -228,6 +232,8 @@ class vBForum_Search_Type_SocialGroup extends vB_Search_Type
 			$criteria->add_display_strings('sgdate_after', $vbphrase['after']
 				. ' ' . date($vbulletin->options['dateformat'], $gtdate));
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_advanced_filters')) ? eval($hook) : false;
 	}
 
 	public function get_db_query_info($fieldname)
@@ -262,8 +268,10 @@ class vBForum_Search_Type_SocialGroup extends vB_Search_Type
 		}
 		else
 		{
-			return false;
+			$result = false;
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_dbquery_info')) ? eval($hook) : false;
 
 		return $result;
 	}
@@ -313,30 +321,36 @@ class vBForum_Search_Type_SocialGroup extends vB_Search_Type
 */
 	public function additional_pref_defaults()
 	{
-		return array(
-			'query'         => '',
-			'titleonly'     => 0,
-			'nocache'    	 => '',
-			'messageless'   => 0,
-			'messagelimit'  => '',
-			'discussionless'    => 0,
-			'discussionlimit'   => '',
-			'pictureless'    => 0,
-			'picturelimit'   => '',
+		$retval = array(
+			'query'           => '',
+			'titleonly'       => 0,
+			'nocache'    	  => '',
+			'messageless'     => 0,
+			'messagelimit'    => '',
+			'discussionless'  => 0,
+			'discussionlimit' => '',
+			'pictureless'     => 0,
+			'picturelimit'    => '',
 			'group_filter_date_gteq_month' => 0,
-			'group_filter_date_gteq_day' => '1',
-			'group_filter_date_gteq_year' =>'',
+			'group_filter_date_gteq_day'   => '1',
+			'group_filter_date_gteq_year'  =>'',
 			'group_filter_date_lteq_month' => 0,
-			'group_filter_date_lteq_day' => '1',
-			'group_filter_date_lteq_year' =>'',
+			'group_filter_date_lteq_day'   => '1',
+			'group_filter_date_lteq_year'  =>'',
 			'memberless'    => 0,
 			'memberlimit'   => '',
-			'sortby'		=> 'dateline');
+			'sortby'		=> 'dateline'
+		);
+
+		($hook = vBulletinHook::fetch_hook('search_pref_defaults')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 
 	protected $package = "vBForum";
 	protected $class = "SocialGroup";
+
 	protected $type_globals = array (
 		'cat'			  => TYPE_ARRAY,
 		'memberless'     => TYPE_UINT,
@@ -347,7 +361,6 @@ class vBForum_Search_Type_SocialGroup extends vB_Search_Type
 		'picturelimit'   => TYPE_UINT,
 		'discussionless' => TYPE_UINT,
 		'discussionlimit' => TYPE_UINT,
-
 		'group_filter_date_gteq_year'  => TYPE_NOHTML,
 		'group_filter_date_gteq_month' => TYPE_UINT,
 		'group_filter_date_gteq_day'   => TYPE_NOHTML,
@@ -359,7 +372,6 @@ class vBForum_Search_Type_SocialGroup extends vB_Search_Type
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 30698 $
 || ####################################################################
 \*======================================================================*/

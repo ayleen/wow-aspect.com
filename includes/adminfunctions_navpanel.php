@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -220,13 +220,13 @@ function print_nav_panel()
 		{
 			curdiv.style.display = "";
 			curbtn.src = "../cpstyles/<?php echo $vbulletin->options['cpstylefolder']; ?>/cp_collapse.gif";
-			curbtn.title = "<?php echo $localphrase['collapse_group']; ?>";
+			curbtn.title = "<?php echo $vbphrase['collapse_group']; ?>";
 		}
 		else
 		{
 			curdiv.style.display = "none";
 			curbtn.src = "../cpstyles/<?php echo $vbulletin->options['cpstylefolder']; ?>/cp_expand.gif";
-			curbtn.title = "<?php echo $localphrase['expand_group']; ?>";
+			curbtn.title = "<?php echo $vbphrase['expand_group']; ?>";
 		}
 
 	}
@@ -306,13 +306,12 @@ function print_nav_panel()
 	</script>
 	<?php
 
-	echo $controls . $_NAV . $_controls;
+	echo $controls . $_NAV;
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 61069 $
 || ####################################################################
 \*======================================================================*/
 ?>

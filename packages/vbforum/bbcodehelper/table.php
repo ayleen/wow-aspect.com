@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -226,7 +226,7 @@ class vBForum_BBCodeHelper_Table
 	*/
 	protected function parseTableCells($content, array $row_classes)
 	{
-		if (!preg_match_all('#\[td(=(&quot;|"|\'|)(?P<params>.*)\\2)?\](?P<content>.*)\[/td]#siU', $content, $cells, PREG_SET_ORDER))
+		if (!preg_match_all('#\[(td|th)(=(&quot;|"|\'|)(?P<params>.*)\\3)?\](?P<content>.*)\[/\\1]#siU', $content, $cells, PREG_SET_ORDER))
 		{
 			return '';
 		}
@@ -235,19 +235,20 @@ class vBForum_BBCodeHelper_Table
 
 		foreach ($cells AS $cell)
 		{
-			$cell_params = $this->resolveNamedParams($cell['params'], $this->td_param_list, 'td');
-			$cell_params = $this->appendClassList($cell_params, $row_classes, 'td');
+			$celltype = strtolower($cell[1]);
+			$cell_params = $this->resolveNamedParams($cell['params'], $this->td_param_list, $celltype);
+			$cell_params = $this->appendClassList($cell_params, $row_classes, $celltype);
 
 			if (!$cell_params['attributes']['class'])
 			{
-				$cell_params['attributes']['class'] = $this->table_class_prefix . 'td';
+				$cell_params['attributes']['class'] = $this->table_class_prefix . $celltype;
 			}
 
 			$cell_params_html = $this->convertParamsToHtml($cell_params['css'], $cell_params['attributes']);
 
 			$content = $this->modifyCellContent($cell['content']);
 
-			$cell_output .= "<td$cell_params_html>$content</td>" . ($this->add_formatting_whitespace ? "\n" : '');
+			$cell_output .= "<{$cell[1]}{$cell_params_html}>{$content}</{$cell[1]}>" . ($this->add_formatting_whitespace ? "\n" : '');
 		}
 
 		return $cell_output;
@@ -510,7 +511,6 @@ class vBForum_BBCodeHelper_Table
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 29533 $
 || ####################################################################
 \*======================================================================*/

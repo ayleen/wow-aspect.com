@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -17,8 +17,8 @@
  *
  * @package vBulletin
  * @author Ed Brown, vBulletin Development Team
- * @version $Revision: 42666 $
- * @since $Date: 2011-04-05 15:17:42 -0700 (Tue, 05 Apr 2011) $
+ * @version $Revision: 62099 $
+ * @since $Date: 2012-05-01 18:24:20 -0700 (Tue, 01 May 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 
@@ -61,8 +61,6 @@
  	 ****/
  	public static function getUserPerms($userid = false)
 	{
-		bootstrap_framework();
-
 		// TODO: If we fetch another user's permissions they're going to overwrite the current user...
 		vB::$vbulletin->userinfo['permissions']['cms'] = self::getPerms($userid);
 	}
@@ -172,6 +170,7 @@
 				}
 			}
  		}
+
  		//when we use these in "where" clauses we'd better have at least one value.
  		if (empty($cmsperms['canview']))
  		{
@@ -203,12 +202,9 @@
  			$cmsperms['candownload'][] = -1;
  		}
 
+		$cmsperms['alledit'] = $cmsperms['canedit'];
 
- 		$cmsperms['alledit'] = $cmsperms['canedit'];
-
-	   $cmsperms['viewonly'] =
- 		   array_diff($cmsperms['canview'],
- 		   $cmsperms['alledit']);
+		$cmsperms['viewonly'] = array_diff($cmsperms['canview'], $cmsperms['alledit']);
 
  		$cmsperms['allview'] = $cmsperms['canview'];
 
@@ -259,9 +255,6 @@
 		//we start by generating a list of this node's parents. We go up the tree until
 		// either we find a node with assigned permissions, or we hit the top.
 		//If we hit the top, we use that node.
-		require_once DIR . '/includes/class_bootstrap_framework.php' ;
-		vB_Bootstrap_Framework::init();
-
 		$parents = array();
 		$rst = vB::$vbulletin->db->query_read("SELECT parent.nodeid,
 		parent.permissionsfrom FROM " . TABLE_PREFIX . "cms_node AS parent INNER JOIN
@@ -299,10 +292,6 @@
 	* ****/
  	public static function canView($nodeid)
 	{
-
- 		require_once DIR . '/includes/class_bootstrap_framework.php' ;
- 		vB_Bootstrap_Framework::init();
-
  		if (! isset(vB::$vbulletin->userinfo['permissions']['cms']) )
  		{
  			self::getUserPerms();
@@ -358,10 +347,6 @@
  	 * ****/
  	public static function canDownload($nodeid)
  	{
-
- 		require_once DIR . '/includes/class_bootstrap_framework.php' ;
- 		vB_Bootstrap_Framework::init();
-
  		if (! isset(vB::$vbulletin->userinfo['permissions']['cms']) )
  		{
  			self::getUserPerms();
@@ -491,27 +476,25 @@
 
  	/**** This gives us a string suitable for using in a "where" clause that
  	* limits results from the node table to those records this user can see
- 	* That means either: They have canedit, or it's theirs,
- 	* or they have canview and it's published
- 	 * @param string
- 	 *
- 	 * @return string
- 	 * ***/
- 	public static function getPermissionString($userid = false)
+ 	* That means either: They have canedit or canpublish and edit_view is allowed
+	* or it's theirs, or they have canview and it's published
+	* @param int : userid, false = current user.
+	* @param boolean : Use cached result, generally override this if using the setting below
+	* @param boolean : Allow viewing if they have canedit or canpublish, regardless of canview.
+	*
+	* @return string
+	* ***/
+ 	public static function getPermissionString($userid = false, $cache = true, $edit_view = false)
  	{
  		if (($userid === false) AND ($userid !== 0))
  		{
  			$userid = vB::$vbulletin->userinfo['userid'];
  		}
 
- 		if (($userid == vB::$vbulletin->userinfo['userid']) AND self::$permission_string)
+ 		if (($userid == vB::$vbulletin->userinfo['userid']) AND self::$permission_string AND $cache)
  		{
  			return self::$permission_string;
  		}
-
-
- 		require_once DIR . '/includes/class_bootstrap_framework.php' ;
- 		vB_Bootstrap_Framework::init();
 
  		$can_view = array();
  		$blocked = array();
@@ -519,27 +502,48 @@
 
  		//We need to block out unpublished sections.
 		$sections = vBCms_ContentManager::getSections();
- 		foreach($sections as $section)
- 		{
- 			$can_view_this = (intval($section['setpublish']) > 0) && ($section['publishdate'] < TIMENOW);
+
+		foreach($sections as $section)
+		{
+			$can_view_this = (intval($section['setpublish']) > 0) AND ($section['publishdate'] < TIMENOW);
+
+			if (!$edit_view)
+			{
+				$can_view_this = ($can_view_this AND in_array($section['permissionsfrom'],$perms['canview']));
+			}
+
  			if (!$can_view_this)
  			{
- 				$blocked[$section['nodeid']] = 1;
- 				if (isset($can_view[$section['nodeid']]))
- 				{
- 					unset($can_view[$section['nodeid']]);
- 				}
- 			}
- 			else if (!isset($can_view[$section['nodeid']]) AND ! isset($blocked[$section['nodeid']]))
- 			{
- 				$can_view[$section['nodeid']] = 1;
- 			}
+				$blocked[$section['nodeid']] = 1;
+				if (isset($can_view[$section['nodeid']]))
+				{
+					unset($can_view[$section['nodeid']]);
+				}
+			}
+			else if (!isset($can_view[$section['nodeid']]) AND !isset($blocked[$section['nodeid']]))
+			{
+				$can_view[$section['nodeid']] = $section['nodeid'];
+			}
+		}
+
+ 		if (empty($can_view))
+ 		{
+			$can_view[] = -1;
  		}
 
- 		$canedit = array_unique(array_merge($perms['canedit'],
- 				$perms['canpublish']));
- 		self::$permission_string = "( (node.permissionsfrom IN (" . implode(',', $canedit) .
-			"))";
+ 		$can_edit = array_unique(array_merge($perms['canedit'], $perms['canpublish']));
+
+		if (!$edit_view)
+		{
+			$can_edit = array_intersect($can_edit, $perms['canview']);
+		}
+
+		if (empty($can_edit))
+		{
+			$can_edit[] = -1;
+		}
+
+ 		self::$permission_string = "( (node.permissionsfrom IN (" . implode(',', $can_edit) . "))";
 
  		if (intval($userid))
  		{
@@ -550,12 +554,13 @@
  		{
  			self::$permission_string .= " OR ( node.permissionsfrom in (" .
 				implode(',', $perms['canview']) . ") AND (node.parentnode IN (" .
-				implode(',', array_keys($can_view)) . ")" .
+				implode(',', $can_view) . ")" .
 				(isset($can_view[1]) ? " OR node.nodeid = 1" : "") . ") AND
 				node.setpublish > 0 AND node.publishdate < " . TIMENOW . " )";
  		}
 
  		self::$permission_string .= ")";
+
  		return self::$permission_string;
  	}
 
@@ -644,7 +649,9 @@
 		{
 			$userid = vB::$vbulletin->userinfo['userid'];
 		}
-		$context = new vB_Context('cms_priv' , array('userid' => $userid));
+		/* Since its purely userid based, its visually 
+		   easier to track cache entries with this key. */
+		$context = "cms_priv_user_$userid"; 
 		return strval($context);
 
 	}

@@ -17,7 +17,7 @@
 			editor.addCommand(pluginName, new CKEDITOR.dialogCommand(pluginName));
 			editor.ui.addButton('Image',
 			{
-				label: editor.lang.common.image,
+				label: editor.lang.vbulletin.insert_image,
 				command: pluginName
 			});
 		}

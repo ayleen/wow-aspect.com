@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,7 +19,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 34034 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62562 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('notice');
@@ -91,7 +91,7 @@ if ($_POST['do'] == 'remove')
 
 	// rebuild languages
 	require_once(DIR . '/includes/adminfunctions_language.php');
-	build_language(-1);
+	build_language();
 
 	define('CP_REDIRECT', 'notice.php?do=modify');
 	print_stop_message('deleted_notice_successfully');
@@ -233,7 +233,7 @@ if ($_POST['do'] == 'update')
 
 	// rebuild languages
 	require_once(DIR . '/includes/adminfunctions_language.php');
-	build_language(-1);
+	build_language();
 
 	define('CP_REDIRECT', 'notice.php?do=modify');
 	print_stop_message('saved_notice_x_successfully', $vbulletin->GPC['title']);
@@ -322,8 +322,9 @@ if ($_REQUEST['do'] == 'edit' OR $_REQUEST['do'] == 'add')
 	$style_options = array();
 	foreach($stylecache AS $style)
 	{
-		$style_options["$style[styleid]"] = /*construct_depth_mark($style['depth'], '&nbsp; &nbsp; ') . ' ' .*/ $style['title'];
-		$style_options["$style[styleid]"] = construct_depth_mark($style['depth'], '--') . ' ' . $style['title'];
+		$masterset = $vbphrase[$style['type'] . '_styles'];
+		$style_options[$masterset]["$style[styleid]"] = /*construct_depth_mark($style['depth'], '&nbsp; &nbsp; ') . ' ' .*/ $style['title'];
+		$style_options[$masterset]["$style[styleid]"] = construct_depth_mark($style['depth'], '--') . ' ' . $style['title'];
 	}
 
 	// build the list of criteria options
@@ -794,8 +795,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 34034 $
+|| # CVS: $RCSfile$ - $Revision: 62562 $
 || ####################################################################
 \*======================================================================*/
 ?>

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: categorynavall.php 37602 2010-06-18 18:37:15Z ksours $
+ * @version $Id: categorynavall.php 59089 2012-02-14 21:50:40Z michael.lavaveshkul $
  * @access public
  */
 class vBCms_Widget_CategoryNavAll extends vBCms_Widget
@@ -72,9 +72,12 @@ class vBCms_Widget_CategoryNavAll extends vBCms_Widget
 		$this->assertWidget();
 
 		vB::$vbulletin->input->clean_array_gpc('r', array(
-			'do'      => vB_Input::TYPE_STR,
-			'template_name'    => vB_Input::TYPE_STR
-			));
+			'do'            => vB_Input::TYPE_STR,
+			'showparent'     => vB_Input::TYPE_INT,
+			'showsection'      => vB_Input::TYPE_INT,
+			'template_name' => vB_Input::TYPE_STR
+			)
+		);
 
 		$view = new vB_View_AJAXHTML('cms_widget_config');
 		$view->title = new vB_Phrase('vbcms', 'configuring_widget_x', $this->widget->getTitle());
@@ -87,6 +90,9 @@ class vBCms_Widget_CategoryNavAll extends vBCms_Widget
 			{
 				$config['template_name'] = vB::$vbulletin->GPC['template_name'];
 			}
+
+			$config['showparent'] = vB::$vbulletin->GPC_exists['showparent'] ? 1 : 0;
+			$config['showsection'] = vB::$vbulletin->GPC_exists['showsection'] ? 1 : 0;
 
 			if ($this->content)
 			{
@@ -118,24 +124,27 @@ class vBCms_Widget_CategoryNavAll extends vBCms_Widget
 				$view->setStatus(vB_View_AJAXHTML::STATUS_MESSAGE, new vB_Phrase('vbcms', 'configuration_failed'));
 			}
 		}
-		$configview = $this->createView('config');
-
-		if (!isset($config['template_name']) OR ($config['template_name'] == '') )
+		else
 		{
-			$config['template_name'] = 'vbcms_widget_categorynav_page';
+			$configview = $this->createView('config');
+
+			if (!isset($config['template_name']) OR ($config['template_name'] == '') )
+			{
+				$config['template_name'] = 'vbcms_widget_categorynav_page';
+			}
+			// add the config content
+			$configview->showparent = $config['showparent'];
+			$configview->showsection = $config['showsection'];
+			$configview->template_name = $config['template_name'];
+
+			// item id to ensure form is submitted to us
+			$this->addPostId($configview);
+
+			$view->setContent($configview);
+
+			// send the view
+			$view->setStatus(vB_View_AJAXHTML::STATUS_VIEW, new vB_Phrase('vbcms', 'configuring_widget'));
 		}
-		// add the config content
-		$configview->template_name = $config['template_name'];
-
-
-		// item id to ensure form is submitted to us
-		$this->addPostId($configview);
-
-		$view->setContent($configview);
-
-		// send the view
-		$view->setStatus(vB_View_AJAXHTML::STATUS_VIEW, new vB_Phrase('vbcms', 'configuring_widget'));
-
 		return $view;
 	}
 
@@ -149,8 +158,8 @@ class vBCms_Widget_CategoryNavAll extends vBCms_Widget
 	public function getPageView()
 	{
 		$this->assertWidget();
-
 		$config = $this->widget->getConfig();
+
 		if (!isset($config['template_name']) OR ($config['template_name'] == '') )
 		{
 			$config['template_name'] = 'vbcms_widget_categorynav_page';
@@ -158,7 +167,7 @@ class vBCms_Widget_CategoryNavAll extends vBCms_Widget
 
 		// Create view
 		$view = new vBCms_View_Widget($config['template_name']);
-		$this->sectionid = $this->content->getContentTypeId() == vb_Types::instance()->getContentTypeID("vBCms_Section") ?
+		$this->sectionid = $this->content->getContentTypeID() == vb_Types::instance()->getContentTypeID("vBCms_Section") ?
 			$this->content->getNodeId() : $this->content->getParentId();
 
 		try
@@ -170,17 +179,33 @@ class vBCms_Widget_CategoryNavAll extends vBCms_Widget
 			$categoryid = 0;
 		}
 
+		$names = array();
 		$nodes = vBCms_ContentManager::getAllCategories();
-		ksort($nodes);
 
 		foreach ($nodes as $nodeid => $record)
 		{
-			$route = vB_Route::create('vBCms_Route_List', "category/" . $record['route_info'] . "/1")->getCurrentURL();
-			$nodes[$nodeid]['view_url'] = $route;
+			$names[$nodes[$nodeid]['categoryid']] = $nodes[$nodeid]['category'];
+			$nodes[$nodeid]['view_url'] = vB_Route::create('vBCms_Route_List', "category/" . $record['route_info'] . "/1")->getCurrentURL();
 
+			// Expand children.
+			if ($nodes[$nodeid]['parentcatid'] AND $config['showparent'])
+			{
+				$names[$nodes[$nodeid]['categoryid']] = $names[$nodes[$nodeid]['parentcatid']] . ' &gt; ' . $names[$nodes[$nodeid]['categoryid']];
+			}
 		}
-		// Modify $nodes to add myself var (currently selected category)
 
+		// Add section title for duplicates.
+		foreach ($nodes as $nodeid => $record)
+		{
+			if ($nodes[$nodeid]['duplicate'] AND $config['showsection'])
+			{
+				$names[$nodes[$nodeid]['categoryid']] = $nodes[$nodeid]['title'] . '&nbsp;' . $names[$nodes[$nodeid]['categoryid']];
+			}
+
+			$nodes[$nodeid]['category'] = $names[$nodes[$nodeid]['categoryid']];
+		}
+
+		ksort($nodes);
 
 		$view->widget_title = $this->widget->getTitle();
 		$view->nodes = $nodes;
@@ -191,7 +216,6 @@ class vBCms_Widget_CategoryNavAll extends vBCms_Widget
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 37602 $
+|| # SVN: $Revision: 59089 $
 || ####################################################################
 \*======================================================================*/

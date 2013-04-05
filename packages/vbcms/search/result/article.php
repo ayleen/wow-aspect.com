@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -64,8 +64,8 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 	 */
 	public static function create_array($ids)
 	{
-		$contenttypeid = vb_Types::instance()->getContentTypeId('vBCms_Article');
-		$rst = vB::$vbulletin->db->query_read($sql = "
+		$contenttypeid = vb_Types::instance()->getContentTypeID('vBCms_Article');
+		$rst = vB::$vbulletin->db->query_read_slave($sql = "
 			SELECT a.contentid as itemid, a.htmlstate,
 				u.username, a.contentid, n.nodeid, u.userid, i.html_title, a.blogid, n.setpublish AS published,
 				n.url, n.showtitle, n.showuser, n.showpreviewonly, u.avatarrevision,
@@ -93,6 +93,17 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 		$id_list = array();
 		$items = array();
 
+		$nodelist = vB::$vbulletin->db->query_first_slave($sql = "
+			SELECT GROUP_CONCAT(nodeid) AS nodes
+			FROM " . TABLE_PREFIX . "cms_node
+			WHERE contenttypeid = $contenttypeid
+			AND contentid IN (" . implode(',',$ids) . ")
+		");
+
+		require_once(DIR . '/packages/vbattach/attach.php');
+		$attach = new vB_Attach_Display_Content(vB::$vbulletin, 'vBCms_Article');
+		$attachmentcache = $attach->fetch_postattach(0, array($nodelist['nodes']));
+
 		if ($rst)
 		{
 			$bbcode_parser = new vBCms_BBCode_HTML(vB::$vbulletin, vBCms_BBCode_HTML::fetchCmsTags());
@@ -109,6 +120,10 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 				$categories = array();
 				$tags = array();
 				$item->contenttypeid = $contenttypeid;
+				$nodeid = $search_result['nodeid'];
+				$search_result['attachments'] = $attachmentcache[$nodeid];
+				$bbcode_parser->unsetattach = true;
+				$bbcode_parser->attachments =& $search_result['attachments'];
 				$search_result['pagetext'] = $bbcode_parser->do_parse($search_result['pagetext'], true);
 				$search_result['categories'] = $categories;
 				$item->record = $search_result;
@@ -122,11 +137,11 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 				return array();
 			}
 
-			$ids = implode(', ', array_keys($id_list));
-			$rst1 = vB::$vbulletin->db->query_read(
+			$idlist = implode(', ', array_keys($id_list));
+			$rst1 = vB::$vbulletin->db->query_read_slave(
 				"SELECT cat.categoryid, cat.category, nc.nodeid FROM " .
 				TABLE_PREFIX . "cms_nodecategory AS nc INNER JOIN " .	TABLE_PREFIX .
-				"cms_category AS cat ON nc.categoryid = cat.categoryid WHERE nc.nodeid IN ($ids)"
+				"cms_category AS cat ON nc.categoryid = cat.categoryid WHERE nc.nodeid IN ($idlist)"
 			);
 
 			if ($rst1)
@@ -145,20 +160,32 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 				}
 			}
 
-			if ($rst1 = vB::$vbulletin->db->query_read("SELECT tag.tagid, tag.tagtext, node.contentid FROM " .
+			if ($rst1 = vB::$vbulletin->db->query_read_slave("SELECT tag.tagid, tag.tagtext, node.contentid FROM " .
 				TABLE_PREFIX . "cms_node AS node INNER JOIN " .	TABLE_PREFIX .
 				"tagcontent AS tc ON (tc.contentid = node.contentid AND  tc.contenttypeid = node.contenttypeid)
 				INNER JOIN " .	TABLE_PREFIX .
 				"tag AS tag ON tag.tagid = tc.tagid
-				 WHERE node.nodeid IN ($ids) " ))
+				 WHERE node.nodeid IN ($idlist) " ))
 			{
 				while($record = vB::$vbulletin->db->fetch_array($rst1))
 				{
 					$items[$record['contentid']]->addTag($record['tagid'], $record);
+				}
 			}
+			
+			$ordered_items = array();
+			foreach($ids AS $item_key)
+			{
+				if(isset($items[$item_key]))
+				{
+					$ordered_items[$item_key] = $items[$item_key];
+					unset($items[$item_key]);
+				}
 			}
-			return $items;
+
+			return $ordered_items;
 		}
+		
 		return false;
 	}
 
@@ -221,9 +248,9 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 		}
 		$template = vB_Template::create($template_name);
 
-		$template->register('title', vBCMS_Permissions::canUseHtml($this->record['nodeid'], vb_Types::instance()->getContentTypeId('vBCms_Article'),
+		$template->register('title', vBCMS_Permissions::canUseHtml($this->record['nodeid'], vb_Types::instance()->getContentTypeID('vBCms_Article'),
 			 $this->record['userid']) ? $this->record['title'] : htmlspecialchars_uni($this->record['title']));
-		$template->register('html_title', vBCMS_Permissions::canUseHtml($this->record['nodeid'], vb_Types::instance()->getContentTypeId('vBCms_Article'),
+		$template->register('html_title', vBCMS_Permissions::canUseHtml($this->record['nodeid'], vb_Types::instance()->getContentTypeID('vBCms_Article'),
 			 $this->record['userid']) ? $this->record['html_title'] : htmlspecialchars_uni($this->record['html_title']));
 
 		// Bug 35855: due to a different bug, 35413, users are able to save articles with
@@ -266,7 +293,7 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 		$template->register('postid' , $this->record['postid'] );
 		$template->register('post_started' , $this->record['post_started'] );
 		$template->register('post_posted' , $this->record['post_posted'] );
-		$can_use_html = vBCMS_Permissions::canUseHtml($this->record['nodeid'], vb_Types::instance()->getContentTypeId('vBCms_Article'),
+		$can_use_html = vBCMS_Permissions::canUseHtml($this->record['nodeid'], vb_Types::instance()->getContentTypeID('vBCms_Article'),
 			 $this->record['userid']) ;
 		$template->register('previewtext', $this->getPreviewText($this->record));
 		$template->register('pagetext',
@@ -291,13 +318,13 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 		$template->register('lastposter', $this->record['lastposter']);
 		$template->register('lastposterinfo', array('userid'=>$this->record['lastposterid'], 'username'=>$this->record['lastposter']));
 		$template->register('dateformat', $vbulletin->options['dateformat']);
-		$template->register('timeformat', $vbulletin->options['default_timeformat']);
+		$template->register('timeformat', $vbulletin->options['timeformat']);
 		$user = vB_Legacy_User::createFromId($this->record['userid']);
 
 		//get the avatar
 		if (intval($this->record['userid']) AND vB::$vbulletin->options['avatarenabled'])
 		{
-			$avatar = fetch_avatar_from_record($this->record);
+			$avatar = fetch_avatar_from_record($this->record, true);
 		}
 
 		if (!isset($avatar) )
@@ -357,15 +384,8 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 	 ***/
 	public function getPreviewText($article)
 	{
-		$context = new vB_Context('vbcms_article_previewtext_' . $article['nodeid']);
-		$hashkey = strval($context);
-		if ($rendered = vB_Cache::instance()->read($hashkey, true, true))
-		{
-			return $rendered;
-		}
-
 		$item =  new vBCms_Item_Content_Article($article['nodeid'], vBCms_Item_Content::INFO_CONTENT);
-		return fetch_censored_text($item->getPreviewText()) ;
+		return $item->getPreviewText();
 	}
 
 	/*** Returns the primary id. Allows us to cache a result item.
@@ -385,7 +405,6 @@ class vBCms_Search_Result_Article extends vB_Search_Result
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 30550 $
 || ####################################################################
 \*======================================================================*/

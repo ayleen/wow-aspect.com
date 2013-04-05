@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -17,9 +17,6 @@ if (!isset($GLOBALS['vbulletin']->db))
 
 require_once(DIR . "/includes/functions_bigthree.php");
 
-//force the autoloader init so we can use vB_Types.
-require_once(DIR . "/includes/class_bootstrap_framework.php");
-vB_Bootstrap_Framework::init();
 /**
 *	Base class for the taggable content items
 *
@@ -1076,7 +1073,6 @@ abstract class vB_Taggable_Content_Item
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 27657 $
 || ####################################################################
 \*======================================================================*/

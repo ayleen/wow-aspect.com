@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -399,10 +399,11 @@ function construct_forum_rules($foruminfo, $permissions)
 	// array of foruminfo and permissions for this forum
 	global $forumrules, $vbphrase, $vbcollapse, $show, $vbulletin;
 
-	$bbcodeon = iif($foruminfo['allowbbcode'], $vbphrase['on'], $vbphrase['off']);
-	$imgcodeon = iif($foruminfo['allowimages'], $vbphrase['on'], $vbphrase['off']);
-	$htmlcodeon = iif($foruminfo['allowhtml'], $vbphrase['on'], $vbphrase['off']);
-	$smilieson = iif($foruminfo['allowsmilies'], $vbphrase['on'], $vbphrase['off']);
+	$bbcodeon = ($foruminfo['allowbbcode'] ? $vbphrase['on'] : $vbphrase['off']);
+	$imgcodeon = ($foruminfo['allowimages'] ? $vbphrase['on'] : $vbphrase['off']);
+	$videocodeon = ($foruminfo['allowvideos'] ? $vbphrase['on'] : $vbphrase['off']);
+	$htmlcodeon = ($foruminfo['allowhtml'] ? $vbphrase['on'] : $vbphrase['off']);
+	$smilieson = ($foruminfo['allowsmilies'] ? $vbphrase['on'] : $vbphrase['off']);
 
 	$can['postnew'] = (($permissions & $vbulletin->bf_ugp_forumpermissions['canpostnew']) AND $foruminfo['allowposting']);
 	$can['replyown'] = (($permissions & $vbulletin->bf_ugp_forumpermissions['canreplyown']) AND $foruminfo['allowposting']);
@@ -419,6 +420,7 @@ function construct_forum_rules($foruminfo, $permissions)
 		$templater->register('can', $can);
 		$templater->register('htmlcodeon', $htmlcodeon);
 		$templater->register('imgcodeon', $imgcodeon);
+		$templater->register('videocodeon', $videocodeon);
 		$templater->register('smilieson', $smilieson);
 	$forumrules = $templater->render();
 }
@@ -434,34 +436,37 @@ function fetch_tagbits($tags)
 {
 	global $vbulletin, $vbphrase, $show, $template_hook;
 
+	$tagcount = 0;
+	$tag_list = array();
 
 	if ($tags)
 	{
 		$tag_array = explode(',', $tags);
 
-		$tag_list = '';
 		foreach ($tag_array AS $tag)
 		{
+			$row = array();
 			$tag = trim($tag);
 			if ($tag === '')
 			{
 				continue;
 			}
-			$tag_url = urlencode(unhtmlspecialchars($tag));
-			$tag = fetch_word_wrapped_string($tag);
+
+			$tagcount++;
+			$row['tag'] = fetch_word_wrapped_string($tag);
+			$row['url'] = urlencode(unhtmlspecialchars($tag));
+			$row['comma'] = $vbphrase['comma_space'];
 
 			($hook = vBulletinHook::fetch_hook('tag_fetchbit')) ? eval($hook) : false;
 
-//			$tag_list .= ($tag_list != '' ? ', ' : '');
-			$templater = vB_Template::create('tagbit');
-				$templater->register('tag', $tag);
-				$templater->register('tag_url', $tag_url);
-			$tag_list .= $templater->render();
+			$tag_list[$tagcount] = $row;
 		}
-	}
-	else
-	{
-		$tag_list = '';
+
+		// Last element
+		if ($tagcount) 
+		{
+			$tag_list[$tagcount]['comma'] = '';
+		}
 	}
 
 	($hook = vBulletinHook::fetch_hook('tag_fetchbit_complete')) ? eval($hook) : false;
@@ -474,8 +479,7 @@ function fetch_tagbits($tags)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 38280 $
+|| # CVS: $RCSfile$ - $Revision: 59389 $
 || ####################################################################
 \*======================================================================*/
 ?>

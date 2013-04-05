@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,8 +19,8 @@ if (!isset($GLOBALS['vbulletin']->db))
 * Postbit optimized for announcements
 *
 * @package 		vBulletin
-* @version		$Revision: 40911 $
-* @date 		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_Postbit_Announcement extends vB_Postbit
@@ -140,8 +140,8 @@ class vB_Postbit_Announcement extends vB_Postbit
 * Postbit optimized for private messages
 *
 * @package 		vBulletin
-* @version		$Revision: 40911 $
-* @date 		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_Postbit_Pm extends vB_Postbit
@@ -244,8 +244,8 @@ class vB_Postbit_Pm extends vB_Postbit
 * Postbit optimized for soft deleted posts
 *
 * @package 		vBulletin
-* @version		$Revision: 40911 $
-* @date 		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_Postbit_Post_Deleted extends vB_Postbit_Post
@@ -283,8 +283,8 @@ class vB_Postbit_Post_Deleted extends vB_Postbit_Post
 * Postbit optimized for global ignored (tachy'd) posts
 *
 * @package 		vBulletin
-* @version		$Revision: 40911 $
-* @date 		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_Postbit_Post_Global_Ignore extends vB_Postbit_Post
@@ -323,8 +323,8 @@ class vB_Postbit_Post_Global_Ignore extends vB_Postbit_Post
 * Postbit optimized for regular (ignore list) ignored posts
 *
 * @package 		vBulletin
-* @version		$Revision: 40911 $
-* @date 		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_Postbit_Post_Ignore extends vB_Postbit_Post
@@ -370,8 +370,8 @@ class vB_Postbit_Post_Ignore extends vB_Postbit_Post
 * Postbit optimized for user notes
 *
 * @package 		vBulletin
-* @version		$Revision: 40911 $
-* @date 		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_Postbit_Usernote extends vB_Postbit
@@ -412,8 +412,8 @@ class vB_Postbit_Usernote extends vB_Postbit
 * Postbit optimized for RSS
 *
 * @package 		vBulletin
-* @version		$Revision: 40911 $
-* @date 		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_Postbit_External extends vB_Postbit
@@ -508,6 +508,8 @@ class vB_Postbit_External extends vB_Postbit
 	*/
 	function parse_bbcode()
 	{
+		$this->bbcode_parser->unsetattach = true;
+		$this->bbcode_parser->attachments = $this->post['attachments'];
 		$this->post['message'] = $this->bbcode_parser->parse($this->post['message'], $this->post['forumid'], false);
 	}
 }
@@ -516,8 +518,8 @@ class vB_Postbit_External extends vB_Postbit
 * Postbit optimized for Auto-Moderated posts
 *
 * @package 		vBulletin
-* @version		$Revision: 40911 $
-* @date 		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_Postbit_Post_AutoModerated extends vB_Postbit_Post
@@ -555,8 +557,7 @@ class vB_Postbit_Post_AutoModerated extends vB_Postbit_Post
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40911 $
+|| # CVS: $RCSfile$ - $Revision: 57655 $
 || ####################################################################
 \*======================================================================*/
 ?>

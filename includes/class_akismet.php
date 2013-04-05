@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -13,7 +13,7 @@
 /*
 Example code
 $akismet = new vB_Akismet($vbulletin);
-$akismet->akismet_board = '<ENTER YOUR URL>';
+$akismet->akismet_board = '<ENTER YOUR OWN BOARD>';
 $akismet->akismet_key = '<ENTER YOUR OWN KEY>';
 
 var_dump($akismet->verify_text(array('user_ip' => IPADDRESS, 'user_agent' => USER_AGENT, 'comment_author' => 'viagra-test-123', 'comment_content' => 'This is a test')));
@@ -217,7 +217,6 @@ class vB_Akismet
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 32878 $
 || ####################################################################
 \*======================================================================*/

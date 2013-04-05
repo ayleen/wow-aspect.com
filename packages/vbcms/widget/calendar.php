@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright �2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright �2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 37230 $
- * @since $Date: 2010-05-28 11:50:59 -0700 (Fri, 28 May 2010) $
+ * @version $Revision: 60418 $
+ * @since $Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Widget_Calendar extends vBCms_Widget
@@ -131,7 +131,7 @@ class vBCms_Widget_Calendar extends vBCms_Widget
 	 */
 	public function getPageView()
 	{
-		global $vbphrase, $vbulletin;
+		global $vbphrase;
 
 		$this->assertWidget();
 		//get the template to be used.
@@ -295,8 +295,8 @@ class vBCms_Widget_Calendar extends vBCms_Widget
 		$nextmonth = ($month == 12 ? 1 : $month + 1);
 
 		//Get the links to next and previous months
-		$view->prev_month_link = vB::$vbulletin->options['bburl'] . "/ajax.php?do=calwidget&amp;month=$prevmonth&amp;year=$prevyear" ;
-		$view->next_month_link = vB::$vbulletin->options['bburl'] . "/ajax.php?do=calwidget&amp;month=$nextmonth&amp;year=$nextyear";
+		$view->prev_month_link = "ajax.php?do=calwidget&amp;month=$prevmonth&amp;year=$prevyear" ;
+		$view->next_month_link = "ajax.php?do=calwidget&amp;month=$nextmonth&amp;year=$nextyear";
 
 
 		return $view;
@@ -314,16 +314,17 @@ class vBCms_Widget_Calendar extends vBCms_Widget
 	****/
 	private static function getMyHash($year, $month)
 	{
-
-		$context = new vB_Context('widget' , array(
-			'year' => $year, 'month' =>$month, 'userid' =>vB::$vbulletin->userinfo['userid']));
+		$context = new vB_Context('widget_calendar' ,
+		array(
+			'year' => $year, 'month' =>$month, 'userid' =>vB::$vbulletin->userinfo['userid']
+			)
+		);
 		return strval($context);
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 37230 $
+|| # SVN: $Revision: 60418 $
 || ####################################################################
 \*======================================================================*/

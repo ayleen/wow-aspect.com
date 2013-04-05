@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -106,7 +106,12 @@ abstract class vB_Search_Type
 				$list[$id] = false;
 			}
 		}
-		return array('list' => $list, 'groups_rejected' => array());
+
+		$retval = array('list' => $list, 'groups_rejected' => array());
+
+		($hook = vBulletinHook::fetch_hook('search_validated_list')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 
@@ -131,7 +136,10 @@ abstract class vB_Search_Type
 	 *  will be same order that they appear in the result set.
 	 * @return nothing
 	 */
-	public function prepare_render($user, $results) {}
+	public function prepare_render($user, $results) 
+	{
+		($hook = vBulletinHook::fetch_hook('search_prepare_render')) ? eval($hook) : false;
+	}
 
 	/**
 	 * vB_Search_Type::additional_header_text()
@@ -154,7 +162,12 @@ abstract class vB_Search_Type
 	 */
 	public function additional_pref_defaults()
 	{
-		return array();
+
+		$retval = array();
+
+		($hook = vBulletinHook::fetch_hook('search_pref_defaults')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 
@@ -361,6 +374,9 @@ abstract class vB_Search_Type
 				$template->register($key, htmlspecialchars_uni($value));
 			}
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_listui_complete')) ? eval($hook) : false;
+
 		return $template->render();
 	}
 
@@ -416,7 +432,7 @@ abstract class vB_Search_Type
 	 */
 	public function get_contenttypeid()
 	{
-		return vB_Types::instance()->getContentTypeId($this->package . "_" . $this->class);
+		return vB_Types::instance()->getContentTypeID($this->package . "_" . $this->class);
 	}
 
 
@@ -430,7 +446,7 @@ abstract class vB_Search_Type
 	*/
 	public function get_groupcontenttypeid()
 	{
-		return vB_Types::instance()->getContentTypeId($this->group_package . "_" . $this->group_class);
+		return vB_Types::instance()->getContentTypeID($this->group_package . "_" . $this->group_class);
 	}
 
 	/**
@@ -445,6 +461,7 @@ abstract class vB_Search_Type
 	 */
 	public function add_advanced_search_filters($criteria, $registry)
 	{
+		($hook = vBulletinHook::fetch_hook('search_advanced_filters')) ? eval($hook) : false;
 	}
 
 	/**
@@ -464,7 +481,11 @@ abstract class vB_Search_Type
 	*/
 	public function get_db_query_info($fieldname)
 	{
-		return false;
+		$result = false;
+		
+		($hook = vBulletinHook::fetch_hook('search_dbquery_info')) ? eval($hook) : false;
+
+		return $result;
 	}
 
 	protected $package = "";
@@ -505,7 +526,6 @@ abstract class vB_Search_Type
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

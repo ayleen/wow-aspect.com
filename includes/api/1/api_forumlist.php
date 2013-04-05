@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -66,6 +66,7 @@ class vB_APIMethod_api_forumlist extends vBI_APIMethod
 				
 				$forum['threadcount'] = $counters["$forum[forumid]"]['threadcount'];
 				$forum['replycount'] = $counters["$forum[forumid]"]['replycount'];
+				$forum['statusicon'] = fetch_forum_lightbulb($forumid, $lastpostinfo, $forum);
 
 				$forum2 = array(
 					'forumid' => $forum['forumid'],
@@ -77,6 +78,7 @@ class vB_APIMethod_api_forumlist extends vBI_APIMethod
 					'threadcount' => $forum['threadcount'],
 					'replycount' => $forum['replycount'],
 					'is_category' => $is_category,
+					'is_link' => !empty($forum['link']),
 					'depth' => $forum['depth'],
 				);
 
@@ -99,7 +101,6 @@ class vB_APIMethod_api_forumlist extends vBI_APIMethod
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 26995 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,8 +14,8 @@
 * Client for Vertical Response© communication
 *
 * @package 		vBulletin
-* @version		$Revision: 41550 $
-* @date 		$Date: 2011-01-27 14:24:50 -0800 (Thu, 27 Jan 2011) $
+* @version		$Revision: 46625 $
+* @date 		$Date: 2011-07-28 14:07:49 -0700 (Thu, 28 Jul 2011) $
 *
 */
 class vB_VerticalResponse
@@ -234,7 +234,7 @@ class vB_VerticalResponse
 	        'file'       => array(
 	            'filename'  => 'vb_upload_tmp',
 	            'delimiter' => 'csv',
-	            'contents'  => base64_encode($members),
+	            'contents'  => vb_base64_encode($members),
 	        ),
 	        'fields' => $fields,
 	    	) );

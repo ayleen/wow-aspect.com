@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -25,60 +25,66 @@ print_label_row('<b>' . $vbphrase['software_developed_by'] . '</b>', '
 	Internet Brands, Inc.
 ', '', 'top', NULL, false);
 print_label_row('<b>' . $vbphrase['business_product_development'] . '</b>', '
-	Fabian Schonholz,
 	Alan Chiu,
-	Michael Anders,
-	Adrian Harris
+	Gary Carroll,
+	Lawrence Cole,
+	Mark Jean,
+	Neal Sainani,
+	Omid Majdi
 ', '', 'top', NULL, false);
 print_label_row('<b>' . $vbphrase['engineering'] . '</b>', '
-	Kevin Sours,
-	Freddie Bingham,
-	Edwin Brown,
-	Colin Frei,
-	David Grove,
-	Zoltan Szalay,
-	Jorge Tiznado,
-	Ivan Milanez,
 	Alan Orduno,
+	Brett Morriss,
+	Danco Dimovski,
+	David Grove,
+	Edwin Brown,
+	Fernando Varesi,
+	Freddie Bingham,
+	Glenn Vergara,
+	Jay Quiambao,
+	Jorge Tiznado,
+	Kevin Sours,
+	Kyle Furlong,
 	Michael Lavaveshkul,
-	Stefano Acerbetti,
+	Olga Mandrosov,
+	Paul Marsden,
 	Xiaoyu Huang,
-	Oscar Ulloa,
-	Kyle Furlong
-        Fernando Varesi
-        Glenn Vergara
+	Zoltan Szalay
 ', '', 'top', NULL, false);
 print_label_row('<b>' . $vbphrase['qa'] . '</b>', '
 	Allen Lin,
+	Fei Leung,
 	Meghan Sensenbach,
-	Joanna W.H.,
-	Priyanka Porwal,
-	Reshmi Rajesh,
-	Ruth Navaneetha
+	Michael Mendoza,
+	Sebastiano Vassellatti,
+	Yves Rigaud
 ', '', 'top', NULL, false);
 
 print_label_row('<b>' . $vbphrase['support'] . '</b>', '
-	Steve Machol,
-	Wayne Luke,
-	George Liu,
-	Jake Bunce,
-	Zachery Woods,
-	Carrie Anderson,
-	Lynne Sands,
-	Trevor Hannant,
-	Marlena Machol,
-	Kay Alley,
+	Christine Tran,
 	Danny Morlette,
-	Zuzanna Grande,
-	Jasper Aguila,
-	Dody
+	Dody,
+	George Liu,
+	Joe DiBiasi,
+	Lynne Sands,
+	Matthew Gordon,
+	Michael Miller,
+	Rene Jimenez,
+	Riasat Al Jamil,
+	Trevor Hannant,
+	Wayne Luke,
+	Yasser Hamde,
+	Zachery Woods,
+	Zuzanna Grande
 ', '', 'top', NULL, false);
 
 print_label_row('<b>' . $vbphrase['special_thanks_and_contributions'] . '</b>', '
 	Ace Shattock,
+	Adrian Harris,
 	Adrian Sacchi,
 	Ahmed,
 	Ajinkya Apte,
+	Anders Pettersson,
 	Andreas Kirbach,
 	Andrew Elkins,
 	Andy Huang,
@@ -89,11 +95,13 @@ print_label_row('<b>' . $vbphrase['special_thanks_and_contributions'] . '</b>', 
 	Brad Wright,
 	Brian Swearingen,
 	Brian Gunter,
+	Carrie Anderson,
 	Chen Avinadav,
 	Chevy Revata,
 	Chris Holland,
+	Christian Hoffmann,
 	Christopher Riley,
-        Colin Frei,
+	Colin Frei,
 	Daniel Clements,
 	Darren Gordon,
 	David Bonilla,
@@ -105,12 +113,13 @@ print_label_row('<b>' . $vbphrase['special_thanks_and_contributions'] . '</b>', 
 	Don T. Romrell,
 	Doron Rosenberg,
 	Elmer Hernandez,
+	Emon Khan,
+	Enrique Pascalin,
 	Eric Johney,
 	Eric Sizemore (SecondV),
-	Fei Leung,
+	Fabian Schonholz,
 	Fernando Munoz,
 	Floris Fiedeldij Dop,
-        Forum Scriptz Team
 	Harry Scanlan,
 	Gavin Robert Clarke,
 	Geoff Carew,
@@ -121,34 +130,48 @@ print_label_row('<b>' . $vbphrase['special_thanks_and_contributions'] . '</b>', 
 	Hanson Wong,
 	Hartmut Voss,
 	Ivan Anfimov,
+	Ivan Milanez,
 	Jacquii Cooke,
+	Jake Bunce,
 	Jan Allan Zischke,
+	Jasper Aguila,
 	Jaume L&oacute;pez,
 	Jelle Van Loo,
 	Jen Rundell,
 	Jeremy Dentel,
 	Jerry Hutchings,
 	Joan Gauna,
+	Joanna W.H.,
 	Joe Rosenblum,
 	Joe Velez,
 	Joel Young,
 	John Jakubowski,
+	John McGanty,
 	John Percival,
+	John Yao,
 	Jonathan Javier Coletta,
 	Joseph DeTomaso,
+	Justin Turner,
+	Kay Alley,
 	Kevin Connery,
 	Kevin Schumacher,
 	Kevin Wilkinson,
 	Kier Darby,
 	Kira Lerner,
 	Kolby Bothe,
+	Kym Farnik,
+	Lamonda Steele,
 	Lisa Swift,
 	Marco Mamdouh Fahem,
+	Mark Bowland,
+	Mark Hennyey,
 	Mark James,
+	Marlena Machol,
 	Martin Meredith,
-	Matthew Gordon,
+	Maurice De Stefano,
 	Merjawy,
 	Mert Gokceimam,
+	Michael Anders,
 	Michael Biddle,
 	Michael Fara,
 	Michael Henretty,
@@ -156,21 +179,28 @@ print_label_row('<b>' . $vbphrase['special_thanks_and_contributions'] . '</b>', 
 	Michael \'Mystics\' K&ouml;nig,
 	Michael Pierce,
 	Michlerish,
+	Miguel Montaño,
 	Mike Sullivan,
 	Milad Kawas Cale,
 	miner,
 	Nathan Wingate,
 	nickadeemus2002,
 	Ole Vik,
+	Oscar Ulloa,
 	Overgrow,
-	Paul Marsden,
 	Peggy Lynn Gurney,
 	Prince Shah,
 	Pritesh Shah,
+	Priyanka Porwal,
 	Pieter Verhaeghe,
-	Riasat Al Jamil,
+	Reenan Arbitrario,
+	Refael Iliaguyev,
+	Reshmi Rajesh,
+	Ricki Kean,
+	Rob (Boofo) Hindal,
 	Robert Beavan White,
 	Roms,
+	Ruth Navaneetha,
 	Ryan Ashbrook,
 	Ryan Royal,
 	Sal Colascione III,
@@ -180,7 +210,9 @@ print_label_row('<b>' . $vbphrase['special_thanks_and_contributions'] . '</b>', 
 	Scott Zachow,
 	Shawn Vowell,
 	Sophie Xie,
+	Stefano Acerbetti,
 	Stephan \'pogo\' Pogodalla,
+	Steve Machol,
 	Sven "cellarius" Keller,
 	Tariq Bafageer,
 	The Vegan Forum,
@@ -188,9 +220,9 @@ print_label_row('<b>' . $vbphrase['special_thanks_and_contributions'] . '</b>', 
 	Tom Murphy,
 	Tony Phoenix,
 	Torstein H&oslash;nsi,
+	Troy Roberts,
 	Tully Rankin,
-	Vinayak Gupta,
-	Yves Rigaud
+	Vinayak Gupta
 	', '', 'top', NULL, false);
 print_label_row('<b>' . $vbphrase['copyright_enforcement_by'] . '</b>', '
 	vBulletin Solutions, Inc.
@@ -199,8 +231,7 @@ print_table_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44909 $
+|| # CVS: $RCSfile$ - $Revision: 62696 $
 || ####################################################################
 \*======================================================================*/
 ?>

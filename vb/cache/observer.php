@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -120,6 +120,17 @@ abstract class vB_Cache_Observer
 
 
 	/**
+	 * Notifies observer of purged events.
+	 * The observer will tell the cache to purge any cache entries associated with
+	 * that event.  The cache will in turn notify the observer that the object was
+	 * removed/purged.
+	 *
+	 * @param string | array $events			- The id of the event
+	 */
+	abstract public function eventPurge($events);
+
+
+	/**
 	 * Notifies observer that a cache entry expired.
 	 * Most implementations will not need to do anything on an expiration.
 	 *
@@ -146,7 +157,6 @@ abstract class vB_Cache_Observer
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28694 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -20,8 +20,8 @@ require_once (DIR . '/vb/search/indexcontroller/queue.php');
 * Class to do data save/delete operations for profile messages
 *
 * @package	vBulletin
-* @version	$Revision: 32878 $
-* @date		$Date: 2009-10-28 11:38:49 -0700 (Wed, 28 Oct 2009) $
+* @version	$Revision: 62619 $
+* @date		$Date: 2012-05-15 16:54:47 -0700 (Tue, 15 May 2012) $
 *
 */
 class vB_DataManager_VisitorMessage extends vB_DataManager
@@ -206,17 +206,12 @@ class vB_DataManager_VisitorMessage extends vB_DataManager
 
 			if ($this->info['hard_delete'])
 			{
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "deletionlog WHERE primaryid = $vmid AND type = 'visitormessage'
-				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "visitormessage WHERE vmid = $vmid
-				");
-
-				$db->query_write("
-					DELETE FROM " . TABLE_PREFIX . "moderation WHERE primaryid = $vmid AND type = 'visitormessage'
-				");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "deletionlog WHERE primaryid = $vmid AND type = 'visitormessage'");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "visitormessage WHERE vmid = $vmid");
+				$db->query_write("DELETE FROM " . TABLE_PREFIX . "moderation WHERE primaryid = $vmid AND type = 'visitormessage'");
+				$activity = new vB_ActivityStream_Manage('forum', 'visitormessage');
+				$activity->set('contentid', $vmid);
+				$activity->delete();
 
 				// Logging?
 				//let's update the index
@@ -285,6 +280,13 @@ class vB_DataManager_VisitorMessage extends vB_DataManager
 			{
 				$this->insert_dupehash($this->fetch_field('userid'));
 			}
+
+			$activity = new vB_ActivityStream_Manage('forum', 'visitormessage');
+			$activity->set('contentid', $this->fetch_field('vmid'));
+			$activity->set('userid', $this->fetch_field('postuserid'));
+			$activity->set('dateline', $this->fetch_field('dateline'));
+			$activity->set('action', 'create');
+			$activity->save();
 		}
 
 		if (!$this->info['profileuser'])
@@ -548,8 +550,7 @@ class vB_DataManager_VisitorMessage extends vB_DataManager
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 62619 $
 || ####################################################################
 \*======================================================================*/
 ?>

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 44889 $
- * @since $Date: 2011-06-22 10:15:35 -0700 (Wed, 22 Jun 2011) $
+ * @version $Revision: 62467 $
+ * @since $Date: 2012-05-11 11:39:54 -0700 (Fri, 11 May 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Content_StaticPage extends vBCms_Content
@@ -145,6 +145,12 @@ class vBCms_Content_StaticPage extends vBCms_Content
 			throw (new vB_Exception_Content('Failed to create default content for contenttype ' . get_class($this)));
 		}
 
+		vB::$vbulletin->db->query_write("
+			UPDATE " . TABLE_PREFIX . "cms_node SET
+				contentid = $contentid
+			WHERE nodeid = " . $contentid
+		);
+
 		($hook = vBulletinHook::fetch_hook($this->content_end_hook)) ? eval($hook) : false;
 		return $contentid;
 	}
@@ -226,6 +232,7 @@ class vBCms_Content_StaticPage extends vBCms_Content
 				exec_header_redirect($target_url . $join_char . "commentid=" . $threadinfo['lastpostid'] . "#post$threadinfo[lastpostid]");
 			}
 		}
+
 		if ($_REQUEST['commentid'])
 		{
 			vB::$vbulletin->input->clean_array_gpc('r', array(
@@ -313,7 +320,7 @@ class vBCms_Content_StaticPage extends vBCms_Content
 			//tagging code
 			require_once DIR . '/includes/class_taggablecontent.php';
 
-			$taggable = vB_Taggable_Content_Item::create(vB::$vbulletin, $this->content->getContentTypeId(),
+			$taggable = vB_Taggable_Content_Item::create(vB::$vbulletin, $this->content->getContentTypeID(),
 				$this->content->getNodeId(), $this->content);
 
 			if ($taggable)
@@ -329,7 +336,7 @@ class vBCms_Content_StaticPage extends vBCms_Content
 
 			$view->comment_count = $this->content->getReplyCount();
 			$join_char = strpos($view->page_url,'?') ? '&amp;' : '?';
-			$view->newcomment_url = $view->page_url . "#new_comment";
+			$view->newcomment_url = $view->page_url . "#comments_start";
 			$view->authorid = ($this->content->getUserId());
 			$view->authorname = ($this->content->getUsername());
 			$view->viewcount = ($this->content->getViewCount());
@@ -371,7 +378,7 @@ class vBCms_Content_StaticPage extends vBCms_Content
 			$view->publishdate = $this->content->getPublishDateLocal();
 			$view->comment_count = $this->content->getReplyCount();
 			$join_char = strpos($view->page_url,'?') ? '&amp;' : '?';
-			$view->newcomment_url = $view->page_url . "#new_comment";
+			$view->newcomment_url = $view->page_url . "#comments_start";
 			$view->authorid = ($this->content->getUserId());
 			$view->authorname = ($this->content->getUsername());
 			$view->viewcount = ($this->content->getViewCount());
@@ -568,6 +575,15 @@ class vBCms_Content_StaticPage extends vBCms_Content
 				$dm->set('setpublish', vB::$vbulletin->GPC['setpublish']);
 			}
 		}
+		else
+		{
+			// No publish date exists, and we dont have publish
+			// permission, so we need to set a default date.
+			if (intval($this->content->getPublishDate()) == 0)
+			{
+				$dm->set('publishdate', TIMENOW);
+			}
+		}
 
 		if (vB::$vbulletin->GPC_exists['html_title'])
 		{
@@ -617,12 +633,16 @@ class vBCms_Content_StaticPage extends vBCms_Content
 		//Make sure comment count will be updated when a comment is posted
 		if ($threadid = $this->content->getAssociatedThreadId())
 		{
-			vB_Cache::instance()->event("cms_comments_thread_$threadid");
+			vB_Cache::instance()->eventPurge("cms_comments_change_$threadid");
 		}
 
+		vB_Cache::instance()->eventPurge('cms_comments_change');
+		vB_Cache::instance()->eventPurge('cms_comments_add_' . $this->content->getNodeId());
 		vB_Cache::instance()->cleanNow();
+
 		$view->html_title = $html_title;
 		$view->title = $title;
+
 		$this->content->reset();
 		$this->changed = true;
 
@@ -695,7 +715,7 @@ class vBCms_Content_StaticPage extends vBCms_Content
 
 		global $show;
 
-		$show['img_bbcode'] = true;
+		$show['img_bbcode'] = $show['video_bbcode'] = true;
 		// Create view
 
 		//make sure we have template names.

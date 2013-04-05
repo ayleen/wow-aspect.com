@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -63,7 +63,6 @@ class vB_Attachment_Display_Single_vBForum_Post extends vB_Attachment_Display_Si
 		);
 
 		$forumperms = fetch_permissions($postinfo['forumid']);
-
 		$this->browsinginfo = array(
 			'threadinfo' => array(
 				'threadid' => $postinfo['threadid'],
@@ -233,7 +232,7 @@ class vB_Attachment_Display_Multiple_vBForum_Post extends vB_Attachment_Display_
 			"LEFT JOIN " . TABLE_PREFIX . "thread AS thread ON (post.threadid = thread.threadid)",
 			"LEFT JOIN " . TABLE_PREFIX . "user AS user ON (a.userid = user.userid)",
 		);
-
+		
 		// This SQL can be condensed down in some fashion
 		// This is not optimized beyond the userid level
 		$subwheresql = array(
@@ -826,9 +825,6 @@ class vB_Attachment_Dm_vBForum_Post extends vB_Attachment_Dm
 		// Update attach in the post table
 		if (!empty($this->lists['postlist']))
 		{
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			require_once(DIR . '/vb/types.php');
-			vB_Bootstrap_Framework::init();
 			$types = vB_Types::instance();
 			$contenttypeid = intval($types->getContentTypeID('vBForum_Post'));
 
@@ -880,9 +876,9 @@ class vB_Attachment_Upload_Displaybit_vBForum_Post extends vB_Attachment_Upload_
 	public function process_display_template($attach, $values = array(), $disablecomment = true)
 	{
 		$attach['extension'] = strtolower(file_extension($attach['filename']));
-		$attach['filename']  = htmlspecialchars_uni($attach['filename']);
+		$attach['filename']  = fetch_censored_text(htmlspecialchars_uni($attach['filename'], false));
 		$attach['filesize']  = vb_number_format($attach['filesize'], 1, true);
-		$attach['imgpath']   = vB_Template_Runtime::fetchStyleVar('imgdir_attach') . "/$attach[extension].gif";
+		$attach['imgpath']   = $this->fetch_imgpath($attach['extension']);
 
 		$templater = vB_Template::create('newpost_attachmentbit');
 			$templater->register('attach', $attach);
@@ -892,7 +888,6 @@ class vB_Attachment_Upload_Displaybit_vBForum_Post extends vB_Attachment_Upload_
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 29983 $
 || ####################################################################
 \*======================================================================*/

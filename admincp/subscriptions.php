@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 33931 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 48073 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('subscription', 'cpuser', 'stats');
@@ -380,13 +380,13 @@ if ($_POST['do'] == 'update')
 
 	if ($insert_default_deny_perms)
 	{
-		// by default, deny buy permission to selected usergroups
+		// by default, deny buy permission to users awaiting moderation or email confirmation
 		$db->query_write($q="
 			REPLACE INTO " . TABLE_PREFIX . "subscriptionpermission
 			(usergroupid, subscriptionid)
 			VALUES
-			(3, " . $vbulletin->GPC['subscriptionid'] . "), # Users awaiting email confirmation
-			(4, " . $vbulletin->GPC['subscriptionid'] . ")  # (COPPA) Users Awaiting Moderation
+			(3, " . $vbulletin->GPC['subscriptionid'] . "),
+			(4, " . $vbulletin->GPC['subscriptionid'] . ")
 		");
 	}
 
@@ -1777,8 +1777,7 @@ function toggle_subs()
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 33931 $
+|| # CVS: $RCSfile$ - $Revision: 48073 $
 || ####################################################################
 \*======================================================================*/
 ?>

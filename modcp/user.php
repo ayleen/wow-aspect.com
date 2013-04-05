@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 42666 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 58375 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('banning', 'cpuser', 'forum', 'timezone', 'user', 'cprofilefield', 'profilefield');
@@ -563,7 +563,7 @@ if ($_REQUEST['do'] == 'viewuser')
 	print_yes_no_row($vbphrase['pm_from_contacts_only'], 'options[receivepmbuddies]', $user['receivepmbuddies']);
 	print_yes_no_row($vbphrase['send_notification_email_when_a_private_message_is_received'], 'options[emailonpm]', $user['emailonpm']);
 	print_yes_no_row($vbphrase['pop_up_notification_box_when_a_private_message_is_received'], 'user[pmpopup]', $user['pmpopup']);
-	print_yes_no_row(construct_phrase($vbphrase['save_pm_copy_default'], '../private.php?folderid=-1'), 'user[pmdefaultsavecopy]', $user['pmdefaultsavecopy']);
+	print_yes_no_row($vbphrase['acp_save_pm_copy_default'], 'user[pmdefaultsavecopy]', $user['pmdefaultsavecopy']);
 	print_yes_no_row($vbphrase['enable_visitor_messaging'], 'options[vm_enable]', $user['vm_enable']);
 	print_yes_no_row($vbphrase['limit_vm_to_contacts_only'], 'options[vm_contactonly]', $user['vm_contactonly']);
 	print_yes_no_row($vbphrase['display_signature'], 'options[showsignatures]', $user['showsignatures']);
@@ -1536,8 +1536,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 42666 $
+|| # CVS: $RCSfile$ - $Revision: 58375 $
 || ####################################################################
 \*======================================================================*/
 ?>

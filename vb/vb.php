@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright 2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright 2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -118,7 +118,6 @@ abstract class vB
 
 		// Legacy language
 		vB_Phrase::setLanguage((!empty(self::$vbulletin->session->vars['languageid']) ? self::$vbulletin->session->vars['languageid'] : intval(self::$vbulletin->options['languageid'])));
-		vB_Phrase::preCache($vbphrase, $GLOBALS['phrasegroups']);
 
 		// Ensure we have friendly url class
 		require_once (DIR . '/includes/class_friendly_url.php');
@@ -290,7 +289,6 @@ abstract class vB
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28823 $
 || ####################################################################
 \*======================================================================*/

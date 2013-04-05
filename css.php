@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -85,12 +85,17 @@ if (empty($matches[1]))
 }
 else
 {
-	//		Note that the css publishing mechanism relies on the fact that
-	//		there isn't any user specific data passed to the css templates.
-
-	//We have violated this for userprofile.css, because after all that's its
-	// reason for existing.
+/*
+	Note that the css publishing mechanism relies on the fact that
+	there isn't any user specific data passed to the css templates.
+	We have violated this for userprofile.css, because after all 
+	that's its reason for existing.
+*/
 	$templates = '';
+	$vbulletin->input->clean_array_gpc('r', array(
+		'cssuid'     => TYPE_INT,
+		'userid'     => TYPE_UINT,
+	));
 	$count = 0;
 	foreach ($matches[1] AS $template)
 	{
@@ -100,26 +105,38 @@ else
 		}
 
 		$templater = vB_Template::create($template);
+
 		//for user profile customization
-		if ($template == 'userprofile.css' AND isset($_REQUEST['userid']) AND intval($_REQUEST['userid']))
+		if ($template == 'userprofile.css' AND $vbulletin->GPC_exists['userid'] AND $vbulletin->GPC['userid'])
 		{
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			vB_Bootstrap_Framework::init();
 			//class db_Assertor needs to be initialized.
-			$userinfo = fetch_userinfo($_REQUEST['userid']);
+			$userinfo = fetch_userinfo($vbulletin->GPC['userid']);
 			$permissions = cache_permissions($userinfo, false);
 			vB_dB_Assertor::init(vB::$vbulletin->db, vB::$vbulletin->userinfo);
 			require_once './vb/profilecustomize.php';
-						
-			if ($vbulletin->options['socnet'] & $vbulletin->bf_misc_socnet['enable_profile_styling'])
+			/*				
+			cssuid = 0 if calling user has view others customisation enabled (so will see all customised profiles)
+			cssuid > 0 if calling user has view others customisation disabled (so will only see their own customised profile as cssuid = calling userid)
+			cssuid = -1 means if the calling user has view others customisation disabled, they will always see the style default, not any admin set default. 
+			The -1 option is mainly for testing. Its not a value current passed by default vbulletin, but plugins could make use of it if they wanted.
+			*/
+			if (($vbulletin->options['socnet'] & $vbulletin->bf_misc_socnet['enable_profile_styling']) 
+				AND ($vbulletin->GPC['cssuid'] == 0 OR $vbulletin->GPC['cssuid'] == $vbulletin->GPC['userid']))
 			{
 				vB_ProfileCustomize::setPermissions($permissions['usercsspermissions']);
 				vB_ProfileCustomize::setStylevars($vbulletin->stylevars);
-				$theme = vB_ProfileCustomize::getUserTheme($_REQUEST['userid']);
+				$theme = vB_ProfileCustomize::getUserTheme($vbulletin->GPC['userid']);
 			}
 			else
 			{
-				$theme = vB_ProfileCustomize::getSiteDefaultTheme();
+				if($vbulletin->GPC['cssuid'] != -1)
+				{
+					$theme = vB_ProfileCustomize::getSiteDefaultTheme();
+				}
+				else
+				{
+					$theme = vB_ProfileCustomize::getSiteDefaultTheme(false);
+				}
 			}
 
 			foreach ($theme as $varname => $setting)
@@ -167,25 +184,20 @@ else
 		}
 		$templates .= $template;
 		$count++;
-
-
 	}
 
-	// TODO - Remove this
-	//temporary -- allows me to fix the stylevars without destroying everybody else's work.
-	// commented-out by chris: 01/14/2010
-	//$templates = str_replace('pxpx', 'px', $templates);
-
+	header('Pragma:'); // VBIV-8269 
 	header('Cache-control: max-age=31536000');
 	header('Expires: ' . gmdate("D, d M Y H:i:s", TIMENOW + 31536000) . ' GMT');
 	header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $style['dateline']) . ' GMT');
+
+	($hook = vBulletinHook::fetch_hook('css_complete')) ? eval($hook) : false;
 
 	echo $templates;
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 30573 $
 || ####################################################################
 \*======================================================================*/

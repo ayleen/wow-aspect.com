@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -590,7 +590,7 @@ function fetch_socialgroup_category_options($docount = true, $add_empty = false,
 		FROM " . TABLE_PREFIX . "socialgroupcategory AS socialgroupcategory " .
 		($docount ? 'LEFT JOIN ' . TABLE_PREFIX . 'socialgroup AS socialgroup ON (socialgroup.socialgroupcategoryid = socialgroupcategory.socialgroupcategoryid)
 			GROUP BY socialgroupcategory.socialgroupcategoryid' : '') . "
-		ORDER BY socialgroupcategory.title
+		ORDER BY socialgroupcategory.displayorder, socialgroupcategory.title
 	");
 
 	$categories = array();
@@ -650,6 +650,7 @@ function prepare_socialgroup($group, $fetchmembers = false)
 	$group['visible'] = vb_number_format($group['visible']);
 	$group['moderation'] = vb_number_format($group['moderation']);
 
+	$group['members_number'] = $group['members'];
 	$group['members'] = vb_number_format($group['members']);
 	$group['moderatedmembers'] = vb_number_format($group['moderatedmembers']);
 
@@ -698,10 +699,8 @@ function prepare_socialgroup($group, $fetchmembers = false)
 				OR !$vbulletin->options['sg_allow_join_to_view']
 			) // The above means that you dont have to join to view
 			OR $group['membertype'] == 'member'
-			// Or can moderate comments
-			OR can_moderate(0, 'canmoderategroupmessages')
-			OR can_moderate(0, 'canremovegroupmessages')
-			OR can_moderate(0, 'candeletegroupmessages')
+			// Or can edit groups (See VBIV-12720)
+			OR can_moderate(0, 'caneditsocialgroups')
 			OR fetch_socialgroup_perm('canalwayspostmessage')
 			OR fetch_socialgroup_perm('canalwascreatediscussion')
 		)
@@ -731,8 +730,9 @@ function prepare_socialgroup($group, $fetchmembers = false)
  	// get thumb url
  	$group['iconurl'] = fetch_socialgroupicon_url($group, true);
 
- 	// check if social group is moderated to join
- 	$group['membermoderated'] = ('moderated' == $group['type']);
+ 	// check if moderated or invited
+	$group['memberinvite'] = ($group['type'] == 'inviteonly');
+ 	$group['membermoderated'] = ($group['type'] == 'moderated');
 
  	// posts older than markinglimit days won't be highlighted as new
 	$oldtime = (TIMENOW - ($vbulletin->options['markinglimit'] * 24 * 60 * 60));
@@ -1498,7 +1498,7 @@ function exec_send_sg_notification($discussionid, $gmid = false, $postusername =
 
 	// get message details
 	$gmessage = fetch_groupmessageinfo($gmid);
-	if (!$gmessage)
+	if (!$gmessage OR $gmessage['state'] != 'visible')
 	{
 		return;
 	}
@@ -1756,7 +1756,7 @@ function fetch_socialgroup_category_cloud($force_rebuild = false)
 				WHERE socialgroup.groupid IS NOT NULL
 				$hook_query_where
 				GROUP BY cat.socialgroupcategoryid
-				ORDER BY total
+				ORDER BY cat.displayorder, cat.title
 				LIMIT 0, " . intval($vbulletin->options['sg_category_cloud_size']);
 		$category_result = $vbulletin->db->query_read_slave($sql);
 
@@ -1778,9 +1778,6 @@ function fetch_socialgroup_category_cloud($force_rebuild = false)
 		{
 			$categories[$title]['level'] = $levels[$category['categoryid']];
 		}
-
-		// sort the categories by title
-		uksort($categories, 'strnatcasecmp');
 
 		// build the cache
 		build_datastore('sg_category_cloud', serialize($categories), 1);
@@ -1947,12 +1944,16 @@ function fetch_socialgroups_updatedgroups()
 {
 	global $vbulletin;
 
+	$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+	($hook = vBulletinHook::fetch_hook('group_updatedgroups_query')) ? eval($hook) : false;
+
 	$result = $vbulletin->db->query_read_slave("
 		SELECT socialgroup.*, socialgroup.dateline AS createdate,
 			socialgroupmember.type AS membertype, socialgroupmember.dateline AS joindate,
 			groupread.readtime
 			,sgicon.dateline AS icondateline, sgicon.thumbnail_width AS iconthumb_width, sgicon.thumbnail_height AS iconthumb_height
 			,sgc.title AS categoryname, sgc.socialgroupcategoryid AS categoryid
+		$hook_query_fields
 		FROM " . TABLE_PREFIX . "socialgroup AS socialgroup
 		LEFT JOIN " . TABLE_PREFIX ."socialgroupmember AS socialgroupmember
 			ON (socialgroup.groupid = socialgroupmember.groupid AND socialgroupmember.userid = " . $vbulletin->userinfo['userid'] . ")
@@ -1960,6 +1961,8 @@ function fetch_socialgroups_updatedgroups()
 										AND groupread.userid = " . $vbulletin->userinfo['userid'] . ")
 		LEFT JOIN " . TABLE_PREFIX . "socialgroupicon AS sgicon ON sgicon.groupid = socialgroup.groupid
 		INNER JOIN " . TABLE_PREFIX . "socialgroupcategory AS sgc ON (sgc.socialgroupcategoryid = socialgroup.socialgroupcategoryid)
+		$hook_query_joins
+		$hook_query_where
 		ORDER BY socialgroup.lastupdate DESC
 		LIMIT 0, 10
 	");
@@ -2025,7 +2028,6 @@ function cache_group_members($groupids = null, $force_rebuild = false)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44573 $
+|| # CVS: $RCSfile$ - $Revision: 61069 $
 || ####################################################################
 \*======================================================================*/

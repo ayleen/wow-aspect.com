@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -480,6 +480,11 @@ if ($do == 'thread')
 		$output .= "<div class=\"posttext\">" . nl2br(htmlspecialchars_uni($post['pagetext_simp'])) . "</div></div><hr />\n\n";
 	}
 
+	// Record thread as viewed.
+	if ($vbulletin->options['who_read'])
+	{
+		mark_content_read('vBForum_Thread', $thread['threadid'], 'view');
+	}
 }
 
 // ********************************************************************************************
@@ -546,6 +551,7 @@ $output .= "
 </body>
 </html>";
 
+$vbulletin->shutdown->shutdown();
 if (defined('NOSHUTDOWNFUNC'))
 {
 	exec_shut_down();
@@ -557,8 +563,7 @@ echo $output;
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40911 $
+|| # CVS: $RCSfile$ - $Revision: 62289 $
 || ####################################################################
 \*======================================================================*/
 ?>

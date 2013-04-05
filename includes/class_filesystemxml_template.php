@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,8 +16,8 @@ require_once(DIR . '/includes/class_xml.php');
 * Helper class to facilitate storing templates on the file system
 *
 * @package	vBulletin
-* @version	$Revision: 40911 $
-* @date		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version	$Revision: 54839 $
+* @date		$Date: 2011-11-08 15:15:21 -0800 (Tue, 08 Nov 2011) $
 */
 class vB_FilesystemXml_Template
 {
@@ -266,7 +266,7 @@ class vB_FilesystemXml_Template
 			//edited on two branches, while still preserving all of the legacy data
 			//on the templates.
 
-			$new_file = true;
+			$new_file = false;
 			if (file_exists($template_path))
 			{
 				$parsed = $this->parse_xml_from_file($template_path);
@@ -668,7 +668,7 @@ class vB_FilesystemXml_Template
 		return $template_names;
 	}
 
-	public function get_svn_data($template_filenames, $minsvnversion=1)
+	public function get_svn_data($template_filenames, $minsvnversion=1, $skip_revisions=array())
 	{
 		$template_dir = $this->get_svn_template_source();
 
@@ -689,6 +689,8 @@ class vB_FilesystemXml_Template
 		$data = array();
 		foreach ($logentries AS $logentry)
 		{
+			if (in_array($logentry['revision'], $skip_revisions))
+				continue;
 			$paths = $this->get_xml_list($logentry['paths']['path']);
 			foreach($paths AS $path)
 			{
@@ -726,8 +728,7 @@ class vB_FilesystemXml_Template
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40911 $
+|| # CVS: $RCSfile$ - $Revision: 54839 $
 || ####################################################################
 \*======================================================================*/
 ?>

@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -75,27 +75,9 @@ class vBForum_Search_Result_Post extends vB_Search_Result
 	//set reply data
 	private function set_replydata($threadid, $postid, $current_user)
 	{
-		global $vbulletin;
-
-		$readtime = $vbulletin->db->query_first("SELECT 
-			MAX(tr.readtime) AS readtime FROM " . TABLE_PREFIX . "threadread AS tr WHERE
-			tr.threadid = $threadid AND tr.userid = " . $current_user->get_field('userid'));
-		
-		if($vbulletin->options['showdots'])
-		{
-			$mylastpost = $vbulletin->db->query_first("SELECT
-				MAX(p.dateline) AS mylastpost FROM " . TABLE_PREFIX . "post AS p
-				WHERE p.parentid = $postid AND p.userid = " .
-				$current_user->get_field('userid') );
-		}
-		else
-		{
-			$mylastpost['mylastpost'] = 0;
-		}
-		
-		$this->replydata=array(
-			'readtime' => $readtime['readtime'],
-			'mylastpost' => $mylastpost['mylastpost']
+		$this->replydata = array(
+			'readtime' => $this->post->get_thread()->get_lastread($current_user),
+			'mylastpost' => $this->post->get_thread()->get_lastpost($current_user),
 		);
 	}
 
@@ -120,8 +102,8 @@ class vBForum_Search_Result_Post extends vB_Search_Result
 		*/
 		$post = array();
 		$thread = $this->post->get_thread();
-
 		$forum = $thread->get_forum();
+
 		$this->set_replydata($this->post->get_field('threadid'), $this->post->get_field('postid'), $current_user);
 
 		if ($this->replydata['mylastpost'] > 0)
@@ -155,24 +137,14 @@ class vBForum_Search_Result_Post extends vB_Search_Result
 		}
 		$post['visible'] = $this->post->get_field('visible');
 		$post['attach'] = $this->post->get_field('attach');
-
 		$post['highlight'] = $criteria->get_highlights();
 		$post['userid'] = $this->post->get_field('userid');
-		if ($post['userid'] == 0)
-		{
-			$post['username'] = $this->post->get_field('username');
-		}
-		//making sure the user exists in the database
-		elseif ($user = $this->post->get_user() AND $user->has_field('username'))
-		{
-			$post['username'] = $user->get_field('username');
-		}
+		$post['username'] = $this->post->get_field('username');
 		$post['threadid'] = $thread->get_field('threadid');
 		$post['threadtitle'] = $thread->get_field('title');
 		$post['threadiconid'] = $thread->get_field('iconid');
 		$post['replycount'] = $thread->get_field('replycount');
-		$post['views'] = $thread->get_field('views') > 0 ?
-			$thread->get_field('views') : $thread->get_field('replycount') + 1;
+		$post['views'] = $thread->get_field('views') > 0 ? $thread->get_field('views') : $thread->get_field('replycount') + 1;
 		$post['firstpostid'] = $thread->get_field('firstpostid');
 		$post['prefixid'] = $thread->get_field('prefixid');
 		$post['taglist'] = $thread->get_field('taglist');
@@ -182,9 +154,7 @@ class vBForum_Search_Result_Post extends vB_Search_Result
 		$post['lastpost'] = $thread->get_field('lastpost');
 		$post['forumid'] = $thread->get_field('forumid');
 		$post['thread_visible'] = $thread->get_field('visible');
-
 		$post['forumtitle'] = $forum->get_field('title');
-
 		$post['posticonid'] = $this->post->get_field('iconid');
 		$post['allowicons'] = $forum->allow_icons();
 		$post['posticonpath'] = $this->post->get_icon_path();
@@ -246,27 +216,21 @@ class vBForum_Search_Result_Post extends vB_Search_Result
 
 		$show['disabled'] = !$this->can_inline_mod($current_user);
 
+		$postuser = $this->post->get_record();
 		$post = process_thread_array($post, $lastread, $post['allowicons']);
+
 		($hook = vBulletinHook::fetch_hook('search_results_postbit')) ? eval($hook) : false;
 
 		$template = vB_Template::create($template_name);
 		$template->register('post', $post);
-		$template->register('userinfo', fetch_userinfo($this->post->get_field('userid')));
+		$template->register('userinfo', $postuser);
 		$template->register('threadinfo', $thread->get_record());
-		$template->register('lastpostdate', vbdate($vbulletin->options['dateformat'], $thread->get_field('lastpost'), true));
-		$template->register('lastpostdatetime', vbdate($vbulletin->options['timeformat'], $thread->get_field('lastpost')));
-		$template->register('dateformat', $vbulletin->options['dateformat']);
-		$template->register('timeformat',$vbulletin->options['default_timeformat']);
 		$template->register('dateline', $this->post->get_field('dateline'));
 
 		if ($vbulletin->options['avatarenabled'])
 		{
-			$template->register('avatar', fetch_avatar_url($this->post->get_field('userid')));
+			$template->register('avatar', fetch_avatar_from_record($this->post->get_record(), true));
 		}
-
-
-		$template->register('dateline', $this->post->get_field('dateline'));
-
 
 		$pageinfo_thread = array();
 		$pageinfo_post = array('p' => $post['postid']);
@@ -364,7 +328,6 @@ class vBForum_Search_Result_Post extends vB_Search_Result
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

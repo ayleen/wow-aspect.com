@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright �2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright �2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -47,19 +47,12 @@ $globaltemplates = array(
 	'block_html',
 	'FORUMHOME',
 	'forumhome_event',
+	'forumhome_subforums',
 	'forumhome_forumbit_level1_nopost',
 	'forumhome_forumbit_level1_post',
 	'forumhome_forumbit_level2_nopost',
 	'forumhome_forumbit_level2_post',
 	'forumhome_lastpostby',
-	'forumhome_loggedinuser',
-	'forumhome_moderator',
-	'forumhome_subforumbit_nopost',
-	'forumhome_subforumbit_post',
-	'forumhome_subforumseparator_nopost',
-	'forumhome_subforumseparator_post',
-	'forumhome_markread_script',
-	'forumhome_birthdaybit',
 	'tag_cloud_link',
 );
 
@@ -68,6 +61,18 @@ $actiontemplates = array();
 
 // ######################### REQUIRE BACK-END ############################
 require_once('./global.php');
+
+// Redirect if required
+if (VB_REDIRECT === true)
+{
+	$tabid = get_navigation_default(build_navigation_list(), false);
+
+	if ($url = get_navigation_url($tabid))
+	{
+		exec_header_redirect($url);
+	}
+}
+
 require_once(DIR . '/includes/functions_bigthree.php');
 require_once(DIR . '/includes/functions_forumlist.php');
 
@@ -78,7 +83,6 @@ require_once(DIR . '/includes/functions_forumlist.php');
 verify_forum_url($vbulletin->options['forumhome']);
 
 ($hook = vBulletinHook::fetch_hook('forumhome_start')) ? eval($hook) : false;
-
 
 // get permissions to view forumhome
 if (!($permissions['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview']))
@@ -127,6 +131,8 @@ else
 $today = vbdate('Y-m-d', TIMENOW, false, false);
 
 // ### TODAY'S BIRTHDAYS #################################################
+$birthdays = array();
+$show['birthdays'] = false;
 if ($vbulletin->options['showbirthdays'])
 {
 	if (!is_array($vbulletin->birthdaycache)
@@ -160,27 +166,20 @@ if ($vbulletin->options['showbirthdays'])
 	// memory saving
 	unset($birthdaystore);
 
-	$birthdaybits = array();
-
+	$clc = 0;
 	foreach ($birthdaysarray AS $birthday)
 	{
-		$templater = vB_Template::create('forumhome_birthdaybit');
-			$templater->register('birthday', $birthday);
-		$birthdaybits[] = $templater->render();
+		$clc++;
+		$show['birthdays'] = true;
+		$birthday['comma'] = $vbphrase['comma_space'];
+		$birthdays[$clc] = $birthday;
 	}
 
-	$birthdays = implode('', $birthdaybits);
-
-	if (vB_Template_Runtime::fetchStyleVar('dirmark'))
+	// Last element
+	if ($clc) 
 	{
-		$birthdays = str_replace('<!--rlm-->', vB_Template_Runtime::fetchStyleVar('dirmark'), $birthdays);
+		$birthdays[$clc]['comma'] = '';
 	}
-
-	$show['birthdays'] = iif ($birthdays, true, false);
-}
-else
-{
-	$show['birthdays'] = false;
 }
 
 // ### TODAY'S EVENTS #################################################
@@ -454,7 +453,6 @@ else
 }
 
 // ### LOGGED IN USERS #################################################
-$activeusers = '';
 if (($vbulletin->options['displayloggedin'] == 1 OR $vbulletin->options['displayloggedin'] == 2 OR ($vbulletin->options['displayloggedin'] > 2 AND $vbulletin->userinfo['userid'])) AND !$show['search_engine'])
 {
 	$datecut = TIMENOW - $vbulletin->options['cookietimeout'];
@@ -481,7 +479,7 @@ if (($vbulletin->options['displayloggedin'] == 1 OR $vbulletin->options['display
 
 	if ($vbulletin->userinfo['userid'])
 	{
-		// fakes the user being online for an initial page view of index.php
+		// fakes the user being online
 		$vbulletin->userinfo['joingroupid'] = iif($vbulletin->userinfo['displaygroupid'], $vbulletin->userinfo['displaygroupid'], $vbulletin->userinfo['usergroupid']);
 		$userinfos = array
 		(
@@ -503,8 +501,8 @@ if (($vbulletin->options['displayloggedin'] == 1 OR $vbulletin->options['display
 	{
 		$userinfos = array();
 	}
-	$inforum = array();
 
+	$inforum = array();
 	while ($loggedin = $db->fetch_array($forumusers))
 	{
 		$userid = $loggedin['userid'];
@@ -526,39 +524,43 @@ if (($vbulletin->options['displayloggedin'] == 1 OR $vbulletin->options['display
 		}
 	}
 
-	if (!$vbulletin->userinfo['userid'] AND $numberguest == 0)
+	// We are a guest and somehow got missed by the query. 
+	if (!$vbulletin->userinfo['userid'] AND !$numberguest)
 	{
 		$numberguest++;
 	}
 
-	$skipgroups = array(3,4);
+	$activeusers = array();
+/*	VBIV-12365 
+	Users who are moderated or awaiting e-mail confirmation were being counted as guests. 
+	This was causing online count discrepancies between this and online.php, removed code */
 	foreach ($userinfos AS $userid => $loggedin)
 	{
-		if (in_array($loggedin['usergroupid'], $skipgroups))
+		$numberregistered++;
+		if ($userid != $vbulletin->userinfo['userid'] AND !$loggedin['badlocation'])
 		{
-			$numberguest++;
+			if (!isset($inforum["$loggedin[inforum]"]))
+			{
+				$inforum["$loggedin[inforum]"] = 0;
+			}
+			$inforum["$loggedin[inforum]"]++;
 		}
-		else
+
+		fetch_musername($loggedin);
+		$loggedin['comma'] = $vbphrase['comma_space'];
+		($hook = vBulletinHook::fetch_hook('forumhome_loggedinuser')) ? eval($hook) : false;
+
+		if (fetch_online_status($loggedin))
 		{
-			$numberregistered++;
-			if ($userid != $vbulletin->userinfo['userid'] AND !$loggedin['badlocation'])
-			{
-				if (!isset($inforum["$loggedin[inforum]"]))
-				{
-					$inforum["$loggedin[inforum]"] = 0;
-				}
-				$inforum["$loggedin[inforum]"]++;
-			}
-			fetch_musername($loggedin);
-
-			($hook = vBulletinHook::fetch_hook('forumhome_loggedinuser')) ? eval($hook) : false;
-
-			if (fetch_online_status($loggedin))
-			{
-				$numbervisible++;
-				$activeusers[] = $loggedin;
-			}
+			$numbervisible++;
+			$activeusers[$numbervisible] = $loggedin;
 		}
+	}
+
+	// Last element
+	if ($numbervisible) 
+	{
+		$activeusers[$numbervisible]['comma'] = '';
 	}
 
 	// memory saving
@@ -589,7 +591,7 @@ else
 }
 
 // ### GET FORUMS & MODERATOR iCACHES ########################
-cache_ordered_forums(1, 1);
+cache_ordered_forums(1, 1, $vbulletin->userinfo['userid']);
 if ($vbulletin->options['showmoderatorcolumn'])
 {
 	cache_moderators();
@@ -603,7 +605,6 @@ else if ($vbulletin->userinfo['userid'])
 define('MAXFORUMDEPTH', $vbulletin->options['forumhomedepth']);
 
 $forumbits = construct_forum_bit($forumid);
-$forumhome_markread_script = vB_Template::create('forumhome_markread_script')->render();
 
 // ### BOARD STATISTICS #################################################
 
@@ -635,6 +636,7 @@ $ad_location['board_below_whats_going_on'] = vB_Template::create('ad_board_below
 
 // ### SIDEBAR #################################################
 $show['sidebar'] = false;
+$close_sidebar = false;
 // disable blocks for ie6
 if ($vbulletin->options['enablesidebar'] AND !(is_browser('ie') AND !is_browser('ie', 7)) AND !VB_API)
 {
@@ -646,13 +648,146 @@ if ($vbulletin->options['enablesidebar'] AND !(is_browser('ie') AND !is_browser(
 		$show['sidebar'] = true;
 	}
 
+	$vbulletin->input->clean_array_gpc('c', array(
+		'vbulletin_sidebar_collapse' => TYPE_INT
+	));
+
+	$close_sidebar = ($vbulletin->GPC['vbulletin_sidebar_collapse'] == 1 ? true : false);
 	$show['sidebarposition'] = vB_Template_Runtime::fetchStyleVar($vbulletin->options['sidebarposition'] == 0 ? 'left' : 'right');
+	$sidebar_class = ($close_sidebar ? 'sidebar_nomargin_' . $show['sidebarposition'] : '');
+}
+
+if ($vbulletin->options['wgo_members'] AND ($vbulletin->userinfo['permissions']['genericpermissions2'] & $vbulletin->bf_ugp_genericpermissions2['canwgomembers']))
+{
+	$show['wgo_members']= true;
+
+	if ($vbulletin->options['wgo_members_24'])
+	{
+		$cutoff = TIMENOW - 86400;
+		$description = $vbphrase['wgo_members_visited_today_24'];
+	}
+	else
+	{
+		$description = $vbphrase['wgo_members_visited_today'];
+		$tnow = date('YmdHis',TIMENOW - intval($vbulletin->options['hourdiff'])); 
+		$cutoff = TIMENOW - (substr($tnow,8,2)*3600 + substr($tnow,10,2)*60 + substr($tnow,12,2)); 
+	}
+
+	$wgo_members = array();
+	$wgo_members_list = array();
+
+	($hook = vBulletinHook::fetch_hook('forumhome_whovisited_prelist')) ? eval($hook) : false;
+
+	if ($vbulletin->options['wgo_members_names']) 
+	{
+		$todaysusers = $vbulletin->db->query_read_slave("
+			SELECT userid, options, usergroupid, 
+			displaygroupid, lastactivity, username
+			FROM " . TABLE_PREFIX . "user 
+			WHERE lastactivity > $cutoff 
+			ORDER BY username
+		"); 
+		
+		$count = 0;
+		$wgo_members['totaltoday'] = 0;
+
+		while ($today = $vbulletin->db->fetch_array($todaysusers))
+		{
+			$today['markinv'] = '';
+			$today[visible] = true ;
+			$wgo_members['totaltoday'] += 1;
+
+			if ($today['options'] & $vbulletin->bf_misc_useroptions['invisible']) 
+			{
+				$today['visible'] = false ;
+				if (($vbulletin->userinfo['permissions']['genericpermissions'] 
+				& $vbulletin->bf_ugp_genericpermissions['canseehidden']) 
+				OR $today['userid'] == $vbulletin->userinfo['userid'])
+				{
+					$today['markinv'] = '*';
+					$today['visible'] = true ;
+				}
+			}
+
+			if ($today['visible']) 
+			{
+				$count += 1;
+				fetch_musername($today);
+				$today['comma'] = $vbphrase['comma_space'];
+				$today['wrdate'] = vbdate($vbulletin->options['timeformat'], $today['lastactivity']);
+				$wgo_members_list[$count] = $today;
+			}
+		}
+
+		if ($count)
+		{
+			$wgo_members_list[$count]['comma'] = '';
+		}
+
+		($hook = vBulletinHook::fetch_hook('forumhome_whovisited_list')) ? eval($hook) : false;
+	}
+	else 
+	{
+		$todaysusers = $vbulletin->db->query_first_slave("
+			SELECT COUNT(userid) AS whotoday 
+			FROM " . TABLE_PREFIX . "user
+			WHERE lastactivity > $cutoff
+		"); 
+
+		($hook = vBulletinHook::fetch_hook('forumhome_whovisited_nonames')) ? eval($hook) : false;
+
+		$wgo_members['totaltoday'] = $todaysusers['whotoday'];
+	}
+
+	if ($vbulletin->options['wgo_members_most'] AND $vbulletin->options['wgo_members_24'])
+	{ 
+		if (!empty($vbulletin->maxloggedin))
+		{
+			if ($wgo_members['totaltoday'] > intval($vbulletin->maxloggedin['maxvisitors']))
+			{
+				$vbulletin->maxloggedin['maxvisitorsdate'] = TIMENOW;
+				$vbulletin->maxloggedin['maxvisitors'] = $wgo_members['totaltoday'];
+				build_datastore('maxloggedin', serialize($vbulletin->maxloggedin),1);
+			}
+			$wgo_members['visitors'] = construct_phrase( 
+				$vbphrase['wgo_members_members_day'], vb_number_format($vbulletin->maxloggedin['maxvisitors']),
+				vbdate( $vbulletin->options['dateformat'], $vbulletin->maxloggedin['maxvisitorsdate'], true ),
+				vbdate( $vbulletin->options['timeformat'], $vbulletin->maxloggedin['maxvisitorsdate'] ) 
+			);
+		}
+	}
+
+	$wgo_members['url'] = 'online.php?who=members';
+	$wgo_members['ftotaltoday'] = vb_number_format($wgo_members['totaltoday']);
+	$wgo_members['whotitle'] = construct_phrase($description,$wgo_members['ftotaltoday']);
+
+	if ($vbulletin->options['wgo_members_collapse'])
+	{
+		$keys = explode(chr(10),$_COOKIE['vbulletin_collapse']);
+		$collapse = array_fill_keys($keys,true);
+		$wgo_members['style'] = 'style="display: none"';
+		if (!array_key_exists('wgo_members_list',$collapse))
+		{
+			$wgo_members['collapse'] = '_collapsed';
+		}
+	}
+	else
+	{
+		$wgo_members['style'] = $wgo_members['collapse'] = '';
+	}
+
+	($hook = vBulletinHook::fetch_hook('forumhome_whovisited_postlist')) ? eval($hook) : false;
+}
+else
+{
+	$show['wgo_members']= false;
 }
 
 // ### ALL DONE! SPIT OUT THE HTML AND LET'S GET OUTTA HERE... ###
 ($hook = vBulletinHook::fetch_hook('forumhome_complete')) ? eval($hook) : false;
 
-$navbar = render_navbar_template(construct_navbits($navbits));
+$navbits = construct_navbits($navbits);
+$navbar = render_navbar_template($navbits);
 $templater = vB_Template::create('FORUMHOME');
 	$templater->register_page_templates();
 	$templater->register('activemembers', $activemembers);
@@ -660,7 +795,6 @@ $templater = vB_Template::create('FORUMHOME');
 	$templater->register('ad_location', $ad_location);
 	$templater->register('birthdays', $birthdays);
 	$templater->register('forumbits', $forumbits);
-	$templater->register('forumhome_markread_script', $forumhome_markread_script);
 	$templater->register('navbar', $navbar);
 	$templater->register('newuserinfo', $newuserinfo);
 	$templater->register('numberguest', $numberguest);
@@ -676,11 +810,14 @@ $templater = vB_Template::create('FORUMHOME');
 	$templater->register('totalthreads', $totalthreads);
 	$templater->register('upcomingevents', $upcomingevents);
 	$templater->register('sidebar', $sidebar);
+	$templater->register('close_sidebar', $close_sidebar);
+	$templater->register('sidebar_class', $sidebar_class);
+	$templater->register('wgo_members',$wgo_members);
+	$templater->register('wgo_members_list',$wgo_members_list);
 print_output($templater->render());
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 29446 $
 || ####################################################################
 \*======================================================================*/

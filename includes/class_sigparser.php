@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -21,8 +21,8 @@ require_once(DIR . '/includes/class_bbcode.php');
 * Stack based BB code parser.
 *
 * @package 		vBulletin
-* @version		$Revision: 36198 $
-* @date 		$Date: 2010-04-06 11:03:04 -0700 (Tue, 06 Apr 2010) $
+* @version		$Revision: 57655 $
+* @date 		$Date: 2012-01-09 12:08:39 -0800 (Mon, 09 Jan 2012) $
 *
 */
 class vB_SignatureParser extends vB_BbCodeParser
@@ -152,8 +152,9 @@ class vB_SignatureParser extends vB_BbCodeParser
 		$dosmilies = ($sig_perms & $global_sig_perms['allowsmilies']);
 		$dobbcode = ($sig_perms & $global_sig_perms['canbbcode']);
 		$dobbimagecode = ($sig_perms & $global_sig_perms['allowimg']);
+		$dobbvideocode = ($sig_perms & $global_sig_perms['allowvideo']);
 
-		return $this->do_parse($text, $dohtml, $dosmilies, $dobbcode, $dobbimagecode, false, false);
+		return $this->do_parse($text, $dohtml, $dosmilies, $dobbcode, $dobbimagecode, false, false, null, false, $dobbvideocode);
 	}
 
 	/**
@@ -271,8 +272,7 @@ class vB_SignatureParser extends vB_BbCodeParser
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 36198 $
+|| # CVS: $RCSfile$ - $Revision: 57655 $
 || ####################################################################
 \*======================================================================*/
 

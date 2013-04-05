@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -28,15 +28,9 @@ if (!isset($specialtemplates) OR !is_array($specialtemplates))
 $specialtemplates[] = 'mailqueue';
 $specialtemplates[] = 'pluginlistadmin';
 
-
-
 // ###################### Start functions #######################
 chdir('./../');
 define('CWD', (($getcwd = getcwd()) ? $getcwd : '.'));
-if (!defined('VB_API'))
-{
-	define('VB_API', false);
-}
 
 require_once(CWD . '/includes/init.php');
 require_once(DIR . '/includes/adminfunctions.php');
@@ -227,11 +221,20 @@ if (!CP_SESSIONHASH OR $checkpwd OR ($vbulletin->options['timeoutcontrolpanel'] 
 
 	// end auto-repair
 	// #############################################################################
-		print_cp_login();
+	print_cp_login();
 }
 else if ($_POST['do'] AND ADMINHASH != $vbulletin->GPC['adminhash'])
 {
-		print_cp_login(true);
+	if ($_POST['login_redirect'])
+	{
+		unset($_REQUEST['do']);
+		unset($_POST['do']);
+		unset($_GET['do']);
+	}
+	else
+	{
+		print_cp_login(true);	
+	}
 }
 
 if (file_exists(DIR . '/includes/version_vbulletin.php'))
@@ -251,8 +254,7 @@ else
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 43512 $
+|| # CVS: $RCSfile$ - $Revision: 62099 $
 || ####################################################################
 \*======================================================================*/
 ?>

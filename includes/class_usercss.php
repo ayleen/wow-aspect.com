@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,8 +14,8 @@
 * Abstracted class that handles User CSS
 *
 * @package	vBulletin
-* @version	$Revision: 32878 $
-* @date		$Date: 2009-10-28 11:38:49 -0700 (Wed, 28 Oct 2009) $
+* @version	$Revision: 62098 $
+* @date		$Date: 2012-05-01 18:21:26 -0700 (Tue, 01 May 2012) $
 */
 class vB_UserCSS
 {
@@ -977,9 +977,6 @@ class vB_UserCSS
 		$foundalbum = preg_match('#albumid=([0-9]+)#', $value, $albumid);
 		$foundpicture = preg_match('#attachmentid=([0-9]+)#', $value, $attachmentid);
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 		$types = vB_Types::instance();
 		$contenttypeid = intval($types->getContentTypeID('vBForum_Album'));
 
@@ -1071,8 +1068,7 @@ class vB_UserCSS
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

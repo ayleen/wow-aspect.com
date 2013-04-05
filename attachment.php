@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -192,6 +192,7 @@ if ($_REQUEST['do'] == 'lightbox')
 		$imagelink = 'attachment.php?' . $vbulletin->session->vars['sessionurl'] . 'attachmentid=' . $attachmentinfo['attachmentid'] . '&d=' . $attachmentinfo['dateline'];
 		$attachmentinfo['date_string'] = vbdate($vbulletin->options['dateformat'], $attachmentinfo['dateline']);
 		$attachmentinfo['time_string'] = vbdate($vbulletin->options['timeformat'], $attachmentinfo['dateline']);
+		$attachmentinfo['filename'] = fetch_censored_text(htmlspecialchars_uni($attachmentinfo['filename'], false));
 		$show['newwindow'] = ($attachmentinfo['newwindow'] ? true : false);
 
 		($hook = vBulletinHook::fetch_hook('attachment_lightbox')) ? eval($hook) : false;
@@ -256,7 +257,7 @@ if ($vbulletin->options['attachfile'])
 	}
 	else if (!($fp = @fopen($attachpath, 'rb')))
 	{
-		$filedata = base64_decode('R0lGODlhAQABAIAAAMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==');
+		$filedata = vb_base64_decode('R0lGODlhAQABAIAAAMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==');
 		$filesize = strlen($filedata);
 		header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');             // Date in the past
 		header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT'); // always modified
@@ -318,6 +319,9 @@ else
 	$mimetype = unserialize($attachmentinfo['mimetype']);
 }
 
+($hook = vBulletinHook::fetch_hook('attachment_process_start')) ? eval($hook) : false;
+
+header('Pragma:'); // VBIV-8269
 header('Cache-control: max-age=31536000, private');
 header('Expires: ' . gmdate("D, d M Y H:i:s", TIMENOW + 31536000) . ' GMT');
 header('Last-Modified: ' . gmdate('D, d M Y H:i:s', $attachmentinfo['dateline']) . ' GMT');
@@ -516,8 +520,7 @@ else
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44868 $
+|| # CVS: $RCSfile$ - $Revision: 62621 $
 || ####################################################################
 \*======================================================================*/
 ?>

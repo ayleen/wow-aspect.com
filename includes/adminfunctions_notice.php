@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -34,7 +34,7 @@ function save_notice (
 
 	// rebuild languages
 	require_once(DIR . '/includes/adminfunctions_language.php');
-	build_language(-1);
+	build_language();
 }
 
 function build_notice_datastore()
@@ -43,40 +43,49 @@ function build_notice_datastore()
 
 	$notice_cache = array();
 
-	$criteria_result = $vbulletin->db->query_read("
-		SELECT noticecriteria.*
-		FROM " . TABLE_PREFIX . "noticecriteria AS noticecriteria
-		INNER JOIN " . TABLE_PREFIX . "notice AS notice USING(noticeid)
+	$notice_result = $vbulletin->db->query_read("
+		SELECT notice.noticeid, notice.persistent, notice.dismissible,
+			   noticecriteria.criteriaid, noticecriteria.condition1, 
+			   noticecriteria.condition2, noticecriteria.condition3
+		FROM " . TABLE_PREFIX . "notice AS notice
+		LEFT JOIN " . TABLE_PREFIX . "noticecriteria AS noticecriteria USING(noticeid)
 		WHERE notice.active = 1
-		ORDER BY displayorder, title
+		ORDER BY notice.displayorder, notice.title
 	");
 
-	while ($criteria = $vbulletin->db->fetch_array($criteria_result))
-	{
-		$notice_cache["$criteria[noticeid]"]["$criteria[criteriaid]"] = array();
+	$tmp_notice = false;
+	$counter = 1;
+	$num_rows = $vbulletin->db->num_rows($notice_result);
 
-		foreach (array('condition1', 'condition2', 'condition3') AS $condition)
+	while ($notice = $vbulletin->db->fetch_array($notice_result))
+	{
+		if ($tmp_notice !== false AND $tmp_notice['noticeid'] != $notice['noticeid'])
 		{
-			$notice_cache["$criteria[noticeid]"]["$criteria[criteriaid]"][] = $criteria["$condition"];
+			$notice_cache["$tmp_notice[noticeid]"]['persistent'] = $tmp_notice['persistent'];
+			$notice_cache["$tmp_notice[noticeid]"]['dismissible'] = $tmp_notice['dismissible'];
+		}
+
+		if ($notice['criteriaid'])
+		{
+			foreach (array('condition1', 'condition2', 'condition3') AS $condition)
+			{
+				$notice_cache["$notice[noticeid]"]["$notice[criteriaid]"][] = $notice["$condition"];
+			}
+		}
+
+		if ($counter == $num_rows)
+		{
+			$notice_cache["$notice[noticeid]"]['persistent'] = $notice['persistent'];
+			$notice_cache["$notice[noticeid]"]['dismissible'] = $notice['dismissible'];
+		}
+		else
+		{
+			$tmp_notice = $notice;
+			++$counter;
 		}
 	}
 
-	$vbulletin->db->free_result($criteria_result);
-
-	$notices_result = $vbulletin->db->query_read("
-		SELECT noticeid, persistent, dismissible
-		FROM " . TABLE_PREFIX . "notice
-		WHERE active = 1
-		ORDER BY displayorder, title
-	");
-
-	while ($notice = $vbulletin->db->fetch_array($notices_result))
-	{
-		$notice_cache["$notice[noticeid]"]['persistent'] = $notice['persistent'];
-		$notice_cache["$notice[noticeid]"]['dismissible'] = $notice['dismissible'];
-	}
-
-	$vbulletin->db->free_result($notices_result);
+	$vbulletin->db->free_result($notice_result);
 
 	build_datastore('noticecache', serialize($notice_cache), 1);
 }
@@ -219,7 +228,6 @@ function save_notice_phrase($noticeid, $html, $username, $templateversion)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 15468 $
 || ####################################################################
 \*======================================================================*/

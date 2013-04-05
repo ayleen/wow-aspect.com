@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin Blog 4.1.5 Patch Level 1 
+|| # vBulletin Blog 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -19,8 +19,8 @@ if (!class_exists('vB_DataManager', false))
 * Class to do data save/delete operations for blog users
 *
 * @package	vBulletin
-* @version	$Revision: 40911 $
-* @date		$Date: 2010-12-02 14:38:25 -0800 (Thu, 02 Dec 2010) $
+* @version	$Revision: 56108 $
+* @date		$Date: 2011-12-02 13:17:10 -0800 (Fri, 02 Dec 2011) $
 */
 class vB_DataManager_Blog_TrackBack extends vB_DataManager
 {
@@ -162,6 +162,9 @@ class vB_DataManager_Blog_TrackBack extends vB_DataManager
 				$this->set('dateline', TIMENOW);
 			}
 
+			$checkurl = $this->registry->options['bburl'];
+			($hook = vBulletinHook::fetch_hook('blog_trackbackdata_presave_start')) ? eval($hook) : false;
+
 			if (!$this->fetch_field('title') OR !$this->fetch_field('snippet'))
 			{
 				require_once(DIR . '/includes/functions_file.php');
@@ -182,7 +185,7 @@ class vB_DataManager_Blog_TrackBack extends vB_DataManager
 
 						if (!$this->fetch_field('snippet'))
 						{
-							if (preg_match('#(<a[^>]+href=(\'|")' . preg_quote($this->registry->options['bburl'], '#') . '\/blog(?:_callback)?.php\?b(?:logid)?=' . $blogid . '\\2[^>]*>(.*)</a>)#siU', $body, $matches))
+							if (preg_match('#(<a[^>]+href=(\'|")' . preg_quote($checkurl, '#') . '\/blog(?:_callback)?.php\?b(?:logid)?=' . $blogid . '\\2[^>]*>(.*)</a>)#siU', $body, $matches))
 							{
 								$hash = md5(TIMENOW . SCRIPTPATH . SESSION_IDHASH . SESSION_HOST . vbrand(1, 1000000));
 								$body = str_replace($matches[1], "<$hash>" . $matches[3] . "</$hash>", $body);
@@ -309,8 +312,7 @@ class vB_DataManager_Blog_TrackBack extends vB_DataManager
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 40911 $
+|| # SVN: $Revision: 56108 $
 || ####################################################################
 \*======================================================================*/
 ?>

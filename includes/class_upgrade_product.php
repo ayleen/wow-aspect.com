@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -684,10 +684,75 @@ class vB_Upgrade_Product
 			$rebuild['templates'] = true;
 		}
 
+		if (is_array($this->productobj['templates_mobile']['template']))
+		{
+			$querybits = array();
+			$querytemplates = 0;
+
+			$templates =& $this->productobj['templates_mobile']['template'];
+			if (!isset($templates[0]))
+			{
+				$templates = array($templates);
+			}
+
+			foreach ($templates AS $template)
+			{
+				$title = $this->db->escape_string($template['name']);
+				$template['template'] = $this->db->escape_string($template['value']);
+				$template['username'] = $this->db->escape_string($template['username']);
+				$template['templatetype'] = $this->db->escape_string($template['templatetype']);
+				$template['date'] = intval($template['date']);
+
+				if ($template['templatetype'] != 'template')
+				{
+					// template is a special template
+					$querybits[] = "(-2, '$template[templatetype]', '$title', '$template[template]', '', $template[date], '$template[username]', '" . $this->db->escape_string($template['version']) . "', '" . $this->db->escape_string($this->productinfo['productid']) . "')";
+				}
+				else
+				{
+					// template is a standard template
+					$querybits[] = "(-2, '$template[templatetype]', '$title', '" . $this->db->escape_string(compile_template($template['value'])) . "', '$template[template]', $template[date], '$template[username]', '" . $this->db->escape_string($template['version']) . "', '" . $this->db->escape_string($this->productinfo['productid']) . "')";
+				}
+
+				if (++$querytemplates % 20 == 0)
+				{
+					/*insert query*/
+					$this->db->query_write("
+						REPLACE INTO " . TABLE_PREFIX . "template
+							(styleid, templatetype, title, template, template_un, dateline, username, version, product)
+						VALUES
+							" . implode(',', $querybits) . "
+					");
+					$querybits = array();
+				}
+
+				if (!defined('SUPPRESS_KEEPALIVE_ECHO'))
+				{
+					echo ' ';
+					vbflush();
+				}
+			}
+
+			// insert any remaining templates
+			if (!empty($querybits))
+			{
+				/*insert query*/
+				$this->db->query_write("
+					REPLACE INTO " . TABLE_PREFIX . "template
+						(styleid, templatetype, title, template, template_un, dateline, username, version, product)
+					VALUES
+						" . implode(',', $querybits) . "
+				");
+			}
+			unset($querybits);
+
+			$rebuild['templates'] = true;
+		}		
+		
 		// ############## import stylevars
 		if (is_array($this->productobj['stylevardfns']['stylevargroup']))
 		{
-			xml_import_stylevar_definitions($this->productobj['stylevardfns'], $this->productinfo['productid']);
+			xml_import_stylevar_definitions($this->productobj['stylevardfns'], $this->productinfo['productid'], -1);
 		}
 
 		if (is_array($this->productobj['stylevars']['stylevar']))
@@ -695,6 +760,16 @@ class vB_Upgrade_Product
 			xml_import_stylevars($this->productobj['stylevars'], -1);
 		}
 
+		if (is_array($this->productobj['stylevardfns_mobile']['stylevargroup']))
+		{
+			xml_import_stylevar_definitions($this->productobj['stylevardfns_mobile'], $this->productinfo['productid'], -2);
+		}
+
+		if (is_array($this->productobj['stylevars_mobile']['stylevar']))
+		{
+			xml_import_stylevars($this->productobj['stylevars_mobile'], -2);
+		}			
+		
 		// ############## import hooks/plugins
 		if (is_array($this->productobj['plugins']['plugin']))
 		{
@@ -1018,6 +1093,11 @@ class vB_Upgrade_Product
 			}
 		}
 
+		$this->productinfo['process'] = VB_AREA;
+		$this->productinfo['username'] = 'Product-' . VB_AREA;
+
+		import_navigation($this->productobj, $this->productinfo);
+
 		$products = fetch_product_list(true);
 		// Check if the plugin system is disabled. If it is, enable it if this product isn't installed.
 		if (!$this->registry->options['enablehooks'] AND !$products[$this->productinfo['productid']])
@@ -1069,10 +1149,14 @@ class vB_Upgrade_Product
 		}
 		if ($rebuild['templates'])
 		{
-			if ($error = build_all_styles(0, 0, ''))
+			if ($error = build_all_styles(0, 0, '', false, 'standard'))
 			{
 				return $error;
 			}
+			if ($error = build_all_styles(0, 0, '', false, 'mobile'))
+			{
+				return $error;
+			}			
 		}
 		if ($rebuild['phrases'])
 		{
@@ -1146,7 +1230,6 @@ class vB_Upgrade_Product
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

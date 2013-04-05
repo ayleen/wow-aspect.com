@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -200,8 +200,6 @@ if ($_POST['ajax'])
 		// if we are in the Forum Post context, use maximum post attach limit, otherwise disable js attachlimit check (0)
 		// TODO: add an attachlimit for each of the attachment types (like albums, articles, blog entries ect.)
 		/* Disabling this for now, because its too much overhead for added js validation for posts only
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 		$attachlimit = ($contenttypeid == vB_Types::instance()->getContentTypeID('vBForum_Post')) ? $vbulletin->options['attachlimit'] : 0;
 		*/
 		$attachlimit = 0; // disable js attachlimit validation for now
@@ -245,7 +243,7 @@ if ($_POST['ajax'])
 			$assetinfo['date_string'] = vbdate($vbulletin->options['dateformat'], $assetinfo['dateline']);
 			$assetinfo['time_string'] = vbdate($vbulletin->options['timeformat'], $assetinfo['dateline']);
 			$assetinfo['filesize_formatted'] = vb_number_format($assetinfo['filesize'], 1, true);
-			$assetinfo['filename'] = htmlspecialchars_uni($assetinfo['filename']);
+			$assetinfo['filename'] = fetch_censored_text(htmlspecialchars_uni($assetinfo['filename'], false));
 			$templater = vB_Template::create($template);
 				$templater->register('assetinfo', $assetinfo);
 			$xml->add_tag('asset', $templater->render());
@@ -401,7 +399,7 @@ if ($_POST['ajax'])
 
 		$db->query_write("
 			UPDATE " . TABLE_PREFIX . "attachmentcategory
-			SET title = '" . $db->escape_string($vbulletin->GPC['title']) . "'
+			SET title = '" . $db->escape_string(convert_urlencoded_unicode($vbulletin->GPC['title'])) . "'
 			WHERE
 				userid = {$userinfo['userid']}
 					AND
@@ -438,7 +436,7 @@ if ($_POST['ajax'])
 				(
 					{$vbulletin->GPC['parentid']},
 					{$userinfo['userid']},
-					'" . $db->escape_string($vbulletin->GPC['title']) . "',
+					'" . $db->escape_string(convert_urlencoded_unicode($vbulletin->GPC['title'])) . "',
 					" . ($maxdo['maxdo'] + 1) . "
 				)
 		");
@@ -671,8 +669,7 @@ function fetch_children($userid, $categoryid)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 37230 $
+|| # CVS: $RCSfile$ - $Revision: 62098 $
 || ####################################################################
 \*======================================================================*/
 ?>

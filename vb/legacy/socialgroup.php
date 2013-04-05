@@ -3,9 +3,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -86,7 +86,7 @@ class vB_Legacy_SocialGroup extends vB_Legacy_Dataobject
 
 	public function is_owner($user)
 	{
-		return ($this->get_field('creatoruserid') == $vbulletin->userinfo['userid']);
+		return ($this->get_field('creatoruserid') == vB::$vbulletin->userinfo['userid']);
 	}
 
 	//*********************************************************************************
@@ -117,7 +117,6 @@ class vB_Legacy_SocialGroup extends vB_Legacy_Dataobject
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

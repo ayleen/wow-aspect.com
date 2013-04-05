@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -25,8 +25,8 @@ define('SALT_LENGTH', 30);
 * $this->info['override_usergroupid'] - Prevent overwriting of usergroupid (for email validation)
 *
 * @package	vBulletin
-* @version	$Revision: 45207 $
-* @date		$Date: 2011-06-28 14:59:12 -0700 (Tue, 28 Jun 2011) $
+* @version	$Revision: 62705 $
+* @date		$Date: 2012-05-16 15:42:47 -0700 (Wed, 16 May 2012) $
 */
 class vB_DataManager_User extends vB_DataManager
 {
@@ -104,6 +104,8 @@ class vB_DataManager_User extends vB_DataManager
 		'pmpopup'            => array(TYPE_INT,        REQ_NO),
 		'pmtotal'            => array(TYPE_UINT,       REQ_NO),
 		'pmunread'           => array(TYPE_UINT,       REQ_NO),
+
+		'newrepcount'        => array(TYPE_UINT,       REQ_NO),
 
 		'assetposthash'      => array(TYPE_STR,        REQ_NO),
 
@@ -1336,7 +1338,7 @@ class vB_DataManager_User extends vB_DataManager
 			}
 
 			// check for regex compliance
-			if ($verify AND $profilefield['regex'] AND $regex_check)
+			if ($verify AND $profilefield['regex'] AND $regex_check AND $value)
 			{
 				if (!preg_match('#' . str_replace('#', '\#', $profilefield['regex']) . '#siU', $value))
 				{
@@ -1403,6 +1405,8 @@ class vB_DataManager_User extends vB_DataManager
 	{
 		// on/off fields
 		foreach (array(
+			'showemail'         => 'receiveemail',
+			'adminemail'        => 'adminemail',
 			'invisible'         => 'invisiblemode',
 			'receivepm'         => 'enablepm',
 			'emailonpm'         => 'emailonpm',
@@ -1912,6 +1916,14 @@ class vB_DataManager_User extends vB_DataManager
 					$this->registry->userinfo['membergroupids'] = $this->fetch_field('membergroupids');
 					cache_permissions($this->registry->userinfo);
 				}
+
+				// Expire the CMS cache if relevant
+				if ($this->registry->products['vbcms'])
+				{
+					$expire_cache = array("permissions_$userid");
+					vB_Cache::instance()->event($expire_cache);
+					vB_Cache::instance()->cleanNow();
+				}
 			}
 
 			// if the primary user group has been changed, we need to update any user activation records
@@ -1975,7 +1987,7 @@ class vB_DataManager_User extends vB_DataManager
 				eval(fetch_email_phrases('parentcoppa_profile'));
 			}
 
-			//$subject and $message are magic variables created by the code returned from fetch_email_phrase 
+			//$subject and $message are magic variables created by the code returned from fetch_email_phrase
 			//when it gets returned.
 			vbmail($parentemail, $subject, $message, true);
 		}
@@ -2163,6 +2175,14 @@ class vB_DataManager_User extends vB_DataManager
 			WHERE userid = " . $this->existing['userid'] . "
 		");
 
+		$this->dbobject->query_write("
+			UPDATE " . TABLE_PREFIX . "activitystream
+			SET
+				userid = 0
+			WHERE
+				userid = " . $this->existing['userid'] . "
+		");
+
 		$pendingfriends = array();
 		$currentfriends = array();
 
@@ -2259,9 +2279,6 @@ class vB_DataManager_User extends vB_DataManager
 			$socialgroups["$groupmembership[groupid]"] = $groupmembership;
 		}
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		require_once(DIR . '/vb/types.php');
-		vB_Bootstrap_Framework::init();
 		$types = vB_Types::instance();
 
 		$picture_sql = $this->registry->db->query_read("
@@ -2315,7 +2332,6 @@ class vB_DataManager_User extends vB_DataManager
 		);
 
 		$this->registry->db->query_write("DELETE FROM " . TABLE_PREFIX . "album WHERE userid = " . $this->existing['userid']);
-
 
 		$this->registry->db->query_write("
 			UPDATE " . TABLE_PREFIX . "picturecomment SET
@@ -2473,7 +2489,13 @@ class vB_DataManager_User extends vB_DataManager
 				UPDATE " . TABLE_PREFIX . "visitormessage
 				SET postusername = '" . $this->dbobject->escape_string($username) . "'
 				WHERE postuserid = $userid
+			");
 
+			// picturecomment 'postusername'
+			$this->dbobject->query_write("
+				UPDATE " . TABLE_PREFIX . "picturecomment
+				SET postusername = '" . $this->dbobject->escape_string($username) . "'
+				WHERE postuserid = $userid
 			");
 
 			//  Rebuild newest user information
@@ -2988,8 +3010,8 @@ class vB_DataManager_User extends vB_DataManager
 * Class to do data update operations for multiple USERS simultaneously
 *
 * @package	vBulletin
-* @version	$Revision: 45207 $
-* @date		$Date: 2011-06-28 14:59:12 -0700 (Tue, 28 Jun 2011) $
+* @version	$Revision: 62705 $
+* @date		$Date: 2012-05-16 15:42:47 -0700 (Wed, 16 May 2012) $
 */
 class vB_DataManager_User_Multiple extends vB_DataManager_Multiple
 {
@@ -3137,8 +3159,7 @@ class vB_DataManager_User_Multiple extends vB_DataManager_Multiple
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45207 $
+|| # CVS: $RCSfile$ - $Revision: 62705 $
 || ####################################################################
 \*======================================================================*/
 ?>

@@ -19,7 +19,7 @@
 				};
 
 				var responseXML = CKEDITOR.vbajax.open({
-					url: 'ajax.php',
+					url: fetch_ajax_url('ajax.php'),
 					type: 'POST',
 					data: postData,
 					async: false,
@@ -32,17 +32,42 @@
 					return;
 				}
 
+				var extension = fetch_tags(responseXML, 'extension')[0].firstChild.nodeValue;
+				
+				var sizeelement = dialog.getContentElement('attachmentConfig', 'size');
+				var linkelement = dialog.getContentElement('attachmentConfig', 'link');
+				if (extension == 'pdf')
+				{
+					linkelement.disable();
+					linkelement.getElement().addClass("hidden");
+					sizeelement.disable();	
+					sizeelement.getElement().addClass("hidden");
+				}
+				else
+				{
+					linkelement.enable();
+					linkelement.getElement().removeClass("hidden");
+					sizeelement.enable();	
+					sizeelement.getElement().removeClass("hidden");					
+				}
 				var alignment = fetch_tags(responseXML, 'alignment')[0];
+				var element = dialog.getContentElement('attachmentConfig', 'alignment');
 				if (alignment && alignment.firstChild)
 				{
-					var element = dialog.getContentElement('attachmentConfig', 'alignment');
 					element.setValue(alignment.firstChild.nodeValue);
+				}
+				else
+				{
+					element.setValue(0);
 				}
 				var size = fetch_tags(responseXML, 'size')[0];
 				if (size && size.firstChild)
 				{
-					var element = dialog.getContentElement('attachmentConfig', 'size');
-					element.setValue(size.firstChild.nodeValue);
+					sizeelement.setValue(size.firstChild.nodeValue);
+				}
+				else
+				{
+					sizeelement.setValue('thumbnail');
 				}
 				var title = fetch_tags(responseXML, 'title')[0];
 				if (title && title.firstChild)
@@ -56,12 +81,53 @@
 					var element = dialog.getContentElement('attachmentConfig', 'description');
 					element.setValue(description.firstChild.nodeValue);
 				}
+							
+				var canstyle = fetch_tags(responseXML, 'canstyle')[0].firstChild.nodeValue;
+				var styleelement = dialog.getContentElement('attachmentConfig', 'styles');
 				var styles = fetch_tags(responseXML, 'styles')[0];
-				if (styles && styles.firstChild)
+				if (canstyle == 1)
 				{
-					var element = dialog.getContentElement('attachmentConfig', 'styles');
-					element.setValue(styles.firstChild.nodeValue);
+					if (styles && styles.firstChild)
+					{
+						styleelement.setValue(styles.firstChild.nodeValue);
+					}
 				}
+				else
+				{
+					styleelement.disable();
+					styleelement.getElement().addClass("hidden");
+				}
+		
+				// 0 = default (lightbox) // 1 = url // 2 = none
+				var link = fetch_tags(responseXML, 'link')[0];
+				var linktargetelement = dialog.getContentElement('attachmentConfig', 'linktarget');
+				var linkvalue = 0;
+				var linktargetvalue = 0;
+				if (link && link.firstChild)
+				{
+					linkvalue = link.firstChild.nodeValue;
+					if (linkvalue == 1)
+					{
+						var linkurl = fetch_tags(responseXML, 'linkurl')[0];
+						if (linkurl && linkurl.firstChild)
+						{
+							var element2 = dialog.getContentElement('attachmentConfig', 'linkurl');
+							element2.setValue(PHP.unhtmlspecialchars(linkurl.firstChild.nodeValue));
+							
+							var linktarget = fetch_tags(responseXML, 'linktarget')[0];
+							if (linktarget && linktarget.firstChild)
+							{
+								linktargetvalue = linktarget.firstChild.nodeValue;
+							}
+						}
+						else
+						{
+							linkvalue = 0;
+						}
+					}
+				}
+				linkelement.setValue(linkvalue);
+				linktargetelement.setValue(linktargetvalue);
 			},
 			onOk: function()
 			{
@@ -102,7 +168,21 @@
 				{
 					data.styles = styles.getValue();
 				}
-
+				var link = dialog.getContentElement('attachmentConfig', 'link');
+				if (link.getValue())
+				{
+					data.link = link.getValue();
+				}
+				var linkurl = dialog.getContentElement('attachmentConfig', 'linkurl');
+				if (link.getValue() == 1 && linkurl.getValue())
+				{
+					data.linkurl = linkurl.getValue();
+				}
+				var linktarget = dialog.getContentElement('attachmentConfig', 'linktarget');
+				if (link.getValue() == 1 && linktarget.getValue())
+				{
+					data.linktarget = linktarget.getValue();
+				}
 				var attachment = editor.document.getById('vbattach_' + editor.current_attachmentid);
 				if (attachment)
 				{
@@ -154,14 +234,14 @@
 				}
 
 				CKEDITOR.vbajax.open({
-					url: 'ajax.php',
+					url: fetch_ajax_url('ajax.php'),
 					type: 'POST',
 					data: data,
 					dataType: 'xml'
 				})
 			},
 			minWidth: '600',
-			minHeight: '230',
+			minHeight: '290',
 			contents: [{
 				id: 'attachmentConfig',
         elements:[{
@@ -191,7 +271,41 @@
           id: 'styles',
           label: editor.lang.common.styles,
           labelLayout: 'horizontal'
-        }]
+        },
+		{
+        	type: 'radio',
+          id: 'link',
+          label: editor.lang.vbulletin.linkType,
+          labelLayout: 'horizontal',
+          items: [[editor.lang.vbulletin.default, '0'],[editor.lang.common.url, '1'], [editor.lang.vbulletin.none, '2']],
+		  onChange: function() {
+			var dialog = CKEDITOR.dialog.getCurrent();
+			var linkelement = dialog.getContentElement('attachmentConfig', 'link');
+			var linkurlelement = dialog.getContentElement('attachmentConfig', 'linkurl');
+			var linktargetelement = dialog.getContentElement('attachmentConfig', 'linktarget');
+			if (linkelement.isEnabled() && this.getValue() == 1)
+			{
+				linkurlelement.enable();
+				linktargetelement.enable();
+			}
+			else
+			{
+				linkurlelement.disable();
+				linktargetelement.disable();
+			}
+		  }
+        },{
+        	type: 'text',
+          id: 'linkurl',
+          label: editor.lang.vbulletin.linkURL,
+          labelLayout: 'horizontal'
+        }, {
+			type: 'select',
+			id: 'linktarget',
+			label: editor.lang.common.target,
+			labelLayout: 'horizontal',
+			items: [[editor.lang.common.targetSelf, '0'], [editor.lang.common.targetNew, '1']]
+		}]
 			}]
 		};
 	};

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -288,7 +288,6 @@ class vB_ProfileBlock
 		$block_data = $this->block_data;
 
 		($hook = vBulletinHook::fetch_hook('member_profileblock_fetch_unwrapped')) ? eval($hook) : false;
-
 		$templater = vB_Template::create($this->template_name);
 			$templater->register('block_data', $block_data);
 			$templater->register('id', $id);
@@ -1214,19 +1213,27 @@ class vB_ProfileBlock_RecentVisitors extends vB_ProfileBlock
 			}
 		}
 
-		$visitorbits = '';
+		$visitorcount = 0;
+		$visitorbits = array();
 		foreach ($visitors AS $user)
 		{
 			fetch_musername($user);
 			$user['invisiblemark'] = !$user['visible'] ? '*' : '';
 			$user['buddymark'] = in_array($user['userid'], $buddylist) ? '+' : '';
-			$templater = vB_Template::create('memberinfo_visitorbit');
-				$templater->register('user', $user);
-			$visitorbits .= $templater->render();
+
+			$visitorcount++;
+			$user['comma'] = $vbphrase['comma_space'];
+			$visitorbits[$visitorcount] = $user;
+		}
+
+		// Last element
+		if ($visitorcount) 
+		{
+			$visitorbits[$visitorcount]['comma'] = '';
 		}
 
 		$this->block_data['visitorbits'] = $visitorbits;
-		$this->block_data['visitorcount'] = vb_number_format($this->registry->db->num_rows($visitors_db));
+		$this->block_data['visitorcount'] = $visitorcount;
 	}
 }
 
@@ -2316,7 +2323,195 @@ class vB_ProfileBlock_ProfilePicture extends vB_ProfileBlock
 	*/
 	function block_is_enabled($id)
 	{
-		return $this->registry->userinfo['permissions']['genericpermissions'] & $this->registry->bf_ugp_genericpermissions['canseeprofilepic'];
+		return ($this->registry->options['profilepicenabled'] AND 
+		($this->registry->userinfo['permissions']['genericpermissions'] & $this->registry->bf_ugp_genericpermissions['canseeprofilepic']));
+	}
+}
+
+class vB_ProfileBlock_Reputation extends vB_ProfileBlock
+{
+	/**
+	* The name of the template to be used for the block
+	*
+	* @var string
+	*/
+	var $template_name = 'memberinfo_block_reputation';
+
+	/**
+	* Count the number of comments
+	*
+	* @var int
+	*/
+	var $count = 0;
+
+	/**
+	* Whether to return an empty wrapper if there is no content in the blocks
+	*
+	* @return bool
+	*/
+	function confirm_empty_wrap()
+	{
+		return false;
+	}
+
+	/**
+	* Whether or not the block is enabled
+	*
+	* @return bool
+	*/
+	function block_is_enabled($id)
+	{
+		global $vbulletin;
+
+		if ($this->registry->options['socnet'] & $this->registry->bf_misc_socnet['enable_profile_reputation']
+		AND	$this->registry->userinfo['permissions']['genericpermissions2'] & $this->registry->bf_ugp_genericpermissions2['canprofilerep'])
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	* Should we actually display anything?
+	*
+	* @return	bool
+	*/
+	function confirm_display()
+    {
+		return $this->count ? true : false;
+	}
+
+	/**
+	* Prepare any data needed for the output
+	*
+	* @param	string	The id of the block
+	* @param	array	Options specific to the block
+	*/
+	function prepare_output($id = '', $options = array())
+	{
+		global $show, $vbphrase, $vbulletin, $userperms, $permissions;
+    
+		if ($vbulletin->options['reputationenable'] AND ($this->profile->userinfo['showreputation'] 
+		OR !($userperms['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canhiderep'])))
+		{
+			$reputations = $vbulletin->db->query_read_slave("
+				SELECT user.username, reputation.whoadded, reputation.postid, thread.title, thread.forumid, post.threadid,
+				reputation.reputation, reputation.reason, reputation.dateline, thread.postuserid, reputation.reputationid
+				FROM " . TABLE_PREFIX . "reputation AS reputation
+				LEFT JOIN " . TABLE_PREFIX . "post AS post USING (postid)
+				LEFT JOIN " . TABLE_PREFIX . "thread AS thread USING (threadid)
+				LEFT JOIN " . TABLE_PREFIX . "user AS user ON (user.userid = reputation.whoadded)
+				WHERE reputation.userid = " . $this->profile->userinfo['userid'] . "
+				AND thread.visible = 1 AND post.visible = 1
+				ORDER BY reputation.dateline DESC
+			");
+	
+			$this->block_data['reputation'] = array();
+
+			if ($vbulletin->userinfo['userid'] == $this->profile->userinfo['userid']) 
+			{
+				$options['showraters']= true;
+			}		
+
+			require_once(DIR . '/includes/class_bbcode.php');
+			$bbcode_parser = new vB_BbCodeParser($vbulletin, fetch_tag_list());
+	
+			while ($reputation = $vbulletin->db->fetch_array($reputations) AND $this->count < $options['comments'])
+			{
+				$forumperms = fetch_permissions($reputation['forumid']);
+				if ((($forumperms & $vbulletin->bf_ugp_forumpermissions['canview']) AND ($forumperms & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
+				AND (($forumperms & $vbulletin->bf_ugp_forumpermissions['canviewothers']) OR ($reputation['postuserid'] == $vbulletin->userinfo['userid'])))
+				{
+					$this->count++;
+
+					if ($reputation['reputation'] > 0)
+					{
+						$reputation['posneg'] = 'pos';
+					}
+					else if ($reputation['reputation'] < 0)
+					{
+						$reputation['posneg'] = 'neg';
+					}
+					else
+					{
+						$reputation['posneg'] = 'balance';
+					}
+
+					$reputation['postinfo'] = array(
+						'p'    => $reputation['postid'],
+					);
+
+					$reputation['threadinfo'] = array(
+						'title'    => $reputation['title'],
+						'threadid' => $reputation['threadid'],
+					);
+
+					$reputation['timestamp'] = $reputation['dateline'];
+					$reputation['showraters'] = $options['showraters'];
+					$reputation['timeline'] = vbdate($vbulletin->options['timeformat'], $reputation['dateline']);
+					$reputation['dateline'] = vbdate($vbulletin->options['dateformat'], $reputation['dateline']);
+					$reputation['reason'] = $bbcode_parser->parse($reputation['reason']);
+					$reputation['username'] = $reputation['username'] ? $reputation['username'] : $vbphrase['n_a'];
+
+					if (empty($reputation['reason']))
+					{
+						$reputation['reason'] = $vbphrase['no_comment'];
+					}
+
+					($hook = vBulletinHook::fetch_hook('member_profileblock_reputationbit')) ? eval($hook) : false;
+
+					$this->block_data['reputation'][] = $reputation;
+				}
+			}
+		}
+    }
+}
+
+/**
+* Profile Block for the Activity Stream
+*
+* @package vBulletin
+*/
+class vB_ProfileBlock_ActivityStream extends vB_ProfileBlock
+{
+	/**
+	* The name of the template to be used for the block
+	*
+	* @var string
+	*/
+	var $template_name = 'memberinfo_block_activity';
+
+	/**
+	* Sets/Fetches the default options for the block
+	* 'all', 'me', 'friends', 'subscriptions', 'photos'
+	*
+	*/
+	function fetch_default_options()
+	{
+		$this->option_defaults = array(
+			'type' => ''
+		);
+	}
+
+	/**
+	* Whether to return an empty wrapper if there is no content in the blocks
+	*
+	* @return bool
+	*/
+	function confirm_empty_wrap()
+	{
+		return false;
+	}
+
+	/**
+	* Whether or not the block is enabled
+	*
+	* @return bool
+	*/
+	function block_is_enabled()
+	{
+		return true;
 	}
 
 	/**
@@ -2326,14 +2521,32 @@ class vB_ProfileBlock_ProfilePicture extends vB_ProfileBlock
 	*/
 	function confirm_display()
 	{
-		return ($this->profile->prepared['profilepicurl']);
+		return true;
+		return ($this->block_data['activitybits']);
+	}
+
+	/**
+	* Prepare any data needed for the output
+	*
+	* @param	string	The id of the block
+	* @param	array	Options specific to the block
+	*/
+	function prepare_output($id = '', $options = array())
+	{
+		global $show, $vbphrase;
+
+		($hook = vBulletinHook::fetch_hook('member_activity_start')) ? eval($hook) : false;
+
+		$activity = new vB_ActivityStream_View($vbphrase);
+		$activity->processMemberStream($this->profile->userinfo['userid'], $options, $this->block_data);
+
+		($hook = vBulletinHook::fetch_hook('member_activity_complete')) ? eval($hook) : false;
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 42552 $
+|| # CVS: $RCSfile$ - $Revision: 62619 $
 || ####################################################################
 \*======================================================================*/
 ?>

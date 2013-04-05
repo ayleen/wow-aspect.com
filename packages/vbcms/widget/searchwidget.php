@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: searchwidget.php 37901 2010-07-14 22:28:12Z ksours $
+ * @version $Id: searchwidget.php 59389 2012-02-21 01:11:26Z pmarsden $
  * @access public
  */
 class vBCms_Widget_Searchwidget extends vBCms_Widget
@@ -44,9 +44,6 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 	/** The list of template names by content type ***/
 	protected $template_names = array();
 
-	/*** cache lifetime, minutes ****/
-	protected $cache_ttl = 5;
-
 	/*Render========================================================================*/
 
 	/**
@@ -59,10 +56,12 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 		global $vbphrase;
 		$this->assertWidget();
 		require_once DIR . '/includes/functions_databuild.php';
+		fetch_phrase_group('cpcms');
 		fetch_phrase_group('contenttypes');
 
 		vB::$vbulletin->input->clean_array_gpc('r', array(
 			'do'      => vB_Input::TYPE_STR,
+			'cache_ttl' => vB_Input::TYPE_UINT,
 			'days' => vB_Input::TYPE_UINT,
 			'count' => vB_Input::TYPE_UINT,
 			'rb_type' => vB_Input::TYPE_UINT,
@@ -86,6 +85,11 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 
 		if ((vB::$vbulletin->GPC['do'] == 'config') AND $this->verifyPostId())
 		{
+			if (vB::$vbulletin->GPC_exists['cache_ttl'])
+			{
+				$config['cache_ttl'] = vB::$vbulletin->GPC['cache_ttl'];
+			}
+
 			if (vB::$vbulletin->GPC_exists['days'])
 			{
 				$config['days'] = vB::$vbulletin->GPC['days'];
@@ -199,6 +203,7 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 			}
 
 			$configview->contenttypes = $contenttypes;
+			$configview->cache_ttl = (isset($config['cache_ttl']) ? $config['cache_ttl'] : 5);
 			$configview->days = (isset($config['days']) ? $config['days'] : 14);
 			$configview->count = $config['count'];
 			$configview->username = $config['username'] ? $config['username'] : '';
@@ -210,7 +215,7 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 			$configview->tag = $config['tag'];
 			$configview->type_select = $select_types;
 			$configview->cat_select = $this->getGroupCategories($config);
-			$configview->prefixchoice_select = $this->getPrefixes($config) . '</select>';
+			$configview->prefixchoice_select = $this->getPrefixes($config);
 			$configview->forumchoice_select = $this->getForums($config);
 
 			// item id to ensure form is submitted to us
@@ -267,8 +272,7 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 			$optionvalue = $forumid;
 			$optiontitle = "$forum[depthmark] $forum[title_clean]";
 
-			if ($vbulletin->options['fulltextsearch'] AND
-				!($vbulletin->userinfo['forumpermissions'][$forumid] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
+			if (!($vbulletin->userinfo['forumpermissions'][$forumid] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
 			{
 				$optiontitle .= '*';
 				$show['cantsearchposts'] = true;
@@ -282,11 +286,11 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 				$haveforum = true;
 			}
 
-			$options .= render_option_template($optiontitle, $forumid, $optionselected,
-				'fjdpth' . min(4, $forum['depth']));
+			require_once DIR . '/includes/adminfunctions.php';
+			$options .= render_option_template(construct_depth_mark($forum['depth'], '--') . ' ' . $optiontitle, $forumid, $optionselected);
 		}
 
-		$select = "<select name=\"" .$name."[]\" multiple=\"multiple\" size=\"4\" $style_string>\n" .
+		$select = "<select name=\"" .$name."[]\" multiple=\"multiple\" size=\"6\" $style_string>\n" .
 					render_option_template($vbphrase['search_all_open_forums'], '',
 						$haveforum ? '' : 'selected="selected"') .
 					render_option_template($vbphrase['search_subscribed_forums'], 'subscribed') .
@@ -404,51 +408,34 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 		//first see if we can get cached results
 		$hashkey = $this->getHash();
 		$cache_data = vB_Cache::instance()->read($hashkey, false, false);
-		if ( $cache_data)
+		if ($cache_data)
 		{
-			//If there are no id's, we're done.
 			if (empty($cache_data['ids']))
 			{
 				return false;
 			}
-			//We have a content type and an array of id's. We need to build the result
-			//objects.
-			$controller = vB_Search_Core::get_instance()->get_search_type_from_id($cache_data['contenttypeid']);
-
-
-			if (method_exists($controller, 'create_array'))
-			{
-				$results = $controller->create_array($cache_data['ids']);
-			}
-			else if(method_exists($controller, 'create_item'))
-			{
-				$results = array();
-				foreach ($cache_data['ids'] as $resultid)
-				{
-					$result = $controller->create_item($resultid);
-					if ($result)
-					{
-						$results[] = $result;
-					}
-				}
-			}
 			else
 			{
-				return false;
+				return array('results' => $cache_data['results'], 'criteria' => $cache_data['criteria']);
 			}
-			return array('results' => $results, 'criteria' => $cache_data['criteria']);
 		}
 
 		//First set the contenttype, if appropriate.
-		if (! intval($config['days']))
+		if (!intval($config['days']))
 		{
 			$config['days'] = 7;
 		}
 
-		if (! intval($config['count']))
+		if (!intval($config['count']))
 		{
 			$config['count'] = 10;
 		}
+
+		// default ttl
+		$config['cache_ttl'] = isset($config['cache_ttl']) ? intval($config['cache_ttl']) : 5;
+
+		// constrain ttl to the range of 1 to 43200
+		$config['cache_ttl'] = min(max($config['cache_ttl'], 1), 43200);
 
 		if (isset($config['contenttypeid']) AND $config['contenttypeid'])
 		{
@@ -493,7 +480,6 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 			return $vbphrase['widget_needs_configuration'];
 		}
 
-
 		//tag applies to several types. Let's do that next.
 		if (isset($config['tag']) AND ($config['tag'] != '') )
 		{
@@ -508,7 +494,10 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 		}
 		else
 		{
-			$criteria->add_excludeforumid_filter(vB::$vbulletin->options['vbcmsforumid']);
+			if(vB::$vbulletin->options['vbcmsforumid'] > 0)
+			{
+				$criteria->add_excludeforumid_filter(vB::$vbulletin->options['vbcmsforumid']);
+			}
 		}
 
 		if ((isset($config['prefixchoice']) AND count($config['prefixchoice']) AND $config['prefixchoice'][0])
@@ -561,15 +550,8 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 			$criteria->add_keyword_filter($config['keywords'], false);
 		}
 
-
 		$criteria->set_sort('dateline', 'desc');
-
-		$results = vB_Search_Results::create_from_cache($current_user, $criteria);
-
-		if (!$results)
-		{
-			$results = vB_Search_Results::create_from_criteria($current_user, $criteria);
-		}
+		$results = vB_Search_Results::create_from_criteria($current_user, $criteria);
 
 		$page_results = $results->get_page(1, $config['count'], 1);
 		//prepare types for render
@@ -590,9 +572,13 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 			$type = vB_Search_Core::get_instance()->get_search_type_from_id($contenttype);
 			$type->prepare_render($results->get_user(), $items);
 		}
-		vB_Cache::instance()->write($hashkey,array('contenttypeid' => $contenttypeid,
-			'ids' => $ids, 'criteria' =>$criteria), $this->cache_ttl,
-			$this->getCacheEvent());
+
+		vB_Cache::instance()->write(
+			$hashkey,
+			array('contenttypeid' => $contenttypeid, 'ids' => $ids, 'criteria' =>$criteria, 'results' => $page_results), 
+			$config['cache_ttl'],
+			$this->getCacheEvent()
+		);
 
 		return array('results' => $page_results, 'criteria' => $criteria);
 
@@ -633,7 +619,7 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 	 */
 	protected function getHash()
 	{
-		$context = new vB_Context('widget' , array( 'widgetid' =>$this->widget->getId(),
+		$context = new vB_Context('widget_'.$this->widget->getId(), array( 'widgetid' =>$this->widget->getId(),
 			'usergroup' => vB::$vbulletin->userinfo['usergroupid'],
 			'membergroupids' => vB::$vbulletin->userinfo['membergroupids']));
 		return strval($context);
@@ -645,7 +631,6 @@ class vBCms_Widget_Searchwidget extends vBCms_Widget
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 37901 $
+|| # SVN: $Revision: 59389 $
 || ####################################################################
 \*======================================================================*/

@@ -17,7 +17,7 @@
 				};
 				
 				var responseXML = CKEDITOR.vbajax.open({
-					url: 'ajax.php',
+					url: fetch_ajax_url('ajax.php'),
 					type: 'POST',
 					data: postData,
 					async: false,

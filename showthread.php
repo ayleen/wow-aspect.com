@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -42,7 +42,6 @@ $globaltemplates = array(
 	'ad_showthread_firstpost_sig',
 	'ad_thread_first_post_content',
 	'ad_thread_last_post_content',
-	'forumdisplay_loggedinuser',
 	'forumrules',
 	'im_aim',
 	'im_icq',
@@ -60,7 +59,6 @@ $globaltemplates = array(
 	'postbit_ignore_global',
 	'postbit_ip',
 	'postbit_onlinestatus',
-	'postbit_reputation',
 	'bbcode_code',
 	'bbcode_html',
 	'bbcode_php',
@@ -71,7 +69,6 @@ $globaltemplates = array(
 	'showthread_similarthreadbit',
 	'showthread_similarthreads',
 	'showthread_bookmarksite',
-	'tagbit',
 	'tagbit_wrapper',
 	'polloptions_table',
 	'polloption',
@@ -111,8 +108,6 @@ require_once('./global.php');
 require_once(DIR . '/includes/functions_bigthree.php');
 require_once(DIR . '/includes/class_postbit.php');
 require_once(DIR . '/includes/class_friendly_url.php');
-require_once(DIR . '/includes/class_bootstrap_framework.php');
-vB_Bootstrap_Framework::init();
 
 // #######################################################################
 // ######################## START MAIN SCRIPT ############################
@@ -312,7 +307,7 @@ $threadinfo =& $thread;
 if ((!$thread['visible'] AND !can_moderate($thread['forumid'], 'canmoderateposts'))
 	OR ($thread['isdeleted'] AND !can_moderate($thread['forumid'])))
 {
-	eval(standard_error(fetch_error('invalidid', $vbphrase['forum'], $vbulletin->options['contactuslink'])));
+	eval(standard_error(fetch_error('invalidid', $vbphrase['thread'], $vbulletin->options['contactuslink'])));
 }
 
 // *********************************************************************************
@@ -784,7 +779,11 @@ else
 	$show['wysiwyg'] = 0;
 	$quickreply = '';
 }
+
+$show_reply_button = (($forumperms & $vbulletin->bf_ugp_forumpermissions['canreplyown'] AND $vbulletin->userinfo['userid'] == $threadinfo['postuserid']) OR ($forumperms & $vbulletin->bf_ugp_forumpermissions['canreplyothers'] AND $vbulletin->userinfo['userid'] != $threadinfo['postuserid']));
 $show['largereplybutton'] = (!$thread['isdeleted'] AND !$show['threadedmode'] AND $forum['allowposting'] AND !$show['search_engine']);
+$show['largereplybutton'] = ($show['largereplybutton'] AND $show_reply_button);
+
 if (!$forum['allowposting'])
 {
 	$show['quickreply'] = false;
@@ -828,7 +827,7 @@ if ($threadedmode == 0)
 {
 	// allow deleted posts to not be counted in number of posts displayed on the page;
 	// prevents issue with page count on forum display being incorrect
-	$ids = array();
+	$ids = $attachids = array();
 	$lastpostid = 0;
 
 	$hook_query_joins = $hook_query_where = '';
@@ -853,7 +852,7 @@ if ($threadedmode == 0)
 			$calc_found_rows = 'SQL_CALC_FOUND_ROWS';
 		}
 		$getpostids = $db->query_read("
-			SELECT $calc_found_rows post.postid
+			SELECT $calc_found_rows post.postid, post.attach
 			FROM " . TABLE_PREFIX . "post AS post
 			$hook_query_joins
 			WHERE post.threadid = $threadid
@@ -871,6 +870,10 @@ if ($threadedmode == 0)
 		}
 		while ($post = $db->fetch_array($getpostids))
 		{
+			if ($post['attach'])
+			{
+				$attachids[] = $post['postid'];
+			}
 			if (!isset($qrfirstpostid))
 			{
 				$qrfirstpostid = $post['postid'];
@@ -884,9 +887,8 @@ if ($threadedmode == 0)
 	}
 	else
 	{
-
 		$getpostids = $db->query_read("
-			SELECT post.postid, post.visible, post.userid
+			SELECT post.postid, post.visible, post.userid, post.attach
 			FROM " . TABLE_PREFIX . "post AS post
 			$hook_query_joins
 			WHERE post.threadid = $threadid
@@ -913,6 +915,12 @@ if ($threadedmode == 0)
 			{
 				$totalposts++;
 			}
+			
+			if ($post['attach'])
+			{
+				$attachids[] = $post['postid'];
+			}
+			
 			if ($totalposts < $limitlower OR $totalposts > $limitupper)
 			{
 				continue;
@@ -934,7 +942,7 @@ if ($threadedmode == 0)
 	{
 		require_once(DIR . '/packages/vbattach/attach.php');
 		$attach = new vB_Attach_Display_Content($vbulletin, 'vBForum_Post');
-		$postattach = $attach->fetch_postattach(0, $ids);
+		$postattach = $attach->fetch_postattach(0, $attachids, null, true);
 	}
 
 	$hook_query_fields = $hook_query_joins = '';
@@ -1061,7 +1069,8 @@ if ($threadedmode == 0)
 
 		$post['islastshown'] = ($post['postid'] == $lastpostid);
 		$post['isfirstshown'] = ($counter == 1 AND $fetchtype == 'post' AND $post['visible'] == 1);
-		$post['attachments'] = $postattach["$post[postid]"];
+		$post['attachments'] = $postattach['byattachment'];
+		$post['allattachments'] = $postattach['bycontent'][$post['postid']];
 
 		$parsed_postcache = array('text' => '', 'images' => 1, 'skip' => false);
 
@@ -1293,7 +1302,7 @@ else
 	{
 		require_once(DIR . '/packages/vbattach/attach.php');
 		$attach = new vB_Attach_Display_Content($vbulletin, 'vBForum_Post');
-		$postattach = $attach->fetch_postattach(0, $ids);
+		$postattach = $attach->fetch_postattach(0, $ids, null, true);
 	}
 
 	// get list of usernames from post list
@@ -1569,7 +1578,8 @@ else
 		$postbit_obj->cachable = $post_cachable;
 
 		$post['postcount'] = ++$postcount;
-		$post['attachments'] =& $postattach["$post[postid]"];
+		$post['attachments'] = $postattach['byattachment'];
+		$post['allattachments'] = $postattach['bycontent'][$post['postid']];
 
 		$parsed_postcache = array('text' => '', 'images' => 1);
 
@@ -1742,7 +1752,9 @@ if (($vbulletin->options['showthreadusers'] == 1 OR $vbulletin->options['showthr
 
 	$numberguest = 0;
 	$numberregistered = 0;
+	$numbervisible = 0;
 	$doneuser = array();
+	$activeusers = array();
 
 	if ($vbulletin->userinfo['userid']) // fakes the user being in this thread
 	{
@@ -1759,10 +1771,8 @@ if (($vbulletin->options['showthreadusers'] == 1 OR $vbulletin->options['showthr
 		$numbervisible = 1;
 		fetch_online_status($loggedin);
 
-		$show['comma_leader'] = false;
-		$templater = vB_Template::create('forumdisplay_loggedinuser');
-			$templater->register('loggedin', $loggedin);
-		$activeusers = $templater->render();
+		$loggedin['comma'] = $vbphrase['comma_space'];
+		$activeusers[$numberregistered] = $loggedin;
 		$doneuser["{$vbulletin->userinfo['userid']}"] = 1;
 	}
 
@@ -1784,17 +1794,16 @@ if (($vbulletin->options['showthreadusers'] == 1 OR $vbulletin->options['showthr
 				}
 				else
 				{
-					fetch_musername($loggedin);
 					$numberregistered++;
 
 					($hook = vBulletinHook::fetch_hook('showthread_loggedinuser')) ? eval($hook) : false;
 
 					if (fetch_online_status($loggedin))
 					{
-						$show['comma_leader'] = ($activeusers != '');
-						$templater = vB_Template::create('forumdisplay_loggedinuser');
-							$templater->register('loggedin', $loggedin);
-						$activeusers .= $templater->render();
+						$numbervisible++;
+						fetch_musername($loggedin);
+						$loggedin['comma'] = $vbphrase['comma_space'];
+						$activeusers[$numbervisible] = $loggedin;
 					}
 				}
 			}
@@ -1803,6 +1812,12 @@ if (($vbulletin->options['showthreadusers'] == 1 OR $vbulletin->options['showthr
 				$doneuser["$loggedin[userid]"] = 1;
 			}
 		}
+	}
+
+	// Last element
+	if ($numbervisible) 
+	{
+		$activeusers[$numbervisible]['comma'] = '';
 	}
 
 	if (!$vbulletin->userinfo['userid'] AND !VB_API)
@@ -1972,6 +1987,7 @@ if ($show['quickreply'])
 	require_once(DIR . '/includes/functions_editor.php');
 
 	$show['wysiwyg'] = ($forum['allowbbcode'] ? is_wysiwyg_compatible() : 0);
+	$show['signaturecheckbox'] = ($permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canusesignature'] AND $vbulletin->userinfo['signature']);
 
 	// set show signature hidden field
 	$showsig = iif($vbulletin->userinfo['signature'], 1, 0);
@@ -2106,7 +2122,9 @@ cache_permissions($guestuser);
 
 $bookmarksites = '';
 if (
-	$vbulletin->options['socialbookmarks'] AND is_array($vbulletin->bookmarksitecache) AND !empty($vbulletin->bookmarksitecache)
+	$thread['visible']
+		AND
+	!$thread['isdeleted']
 		AND
 	$guestuser['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview']
 		AND
@@ -2117,28 +2135,173 @@ if (
 	($guestuser['forumpermissions']["$foruminfo[forumid]"] & $vbulletin->bf_ugp_forumpermissions['canviewothers'] OR $threadinfo['postuserid'] == 0)
 )
 {
-	foreach($vbulletin->bookmarksitecache AS $bookmarksite)
+	if ($vbulletin->options['socialbookmarks'] AND is_array($vbulletin->bookmarksitecache) AND !empty($vbulletin->bookmarksitecache))
 	{
+		$raw_title = html_entity_decode($thread['title'], ENT_QUOTES);
+		foreach($vbulletin->bookmarksitecache AS $bookmarksite)
+		{
 
-		//this was done as a friendly url and then changed back as part of a bug ported from 3.8.x a while back.
-		//There appear to be some issues with UTF in titles and twitter (which was part of the bug fix from 3.8.x)
-		//This needs to be looked at in order to properly use the friendly urls, however I don't want to do it as part
-		//of this effort (making things available in subdirectories).  However I'm generating the url out of the 
-		//seo url framework to centralized some of the other url logic made available.
-		$threadlink = vB_Friendly_Url::fetchLibrary($vbulletin, 'thread|nosession|bburl', $thread)->get_url(FRIENDLY_URL_OFF);
-		$bookmarksite['link'] = str_replace(
-			array('{URL}', '{TITLE}'),
-			array(urlencode($threadlink), urlencode(($bookmarksite['utf8encode'])?utf8_encode($thread['title']):$thread['title'])),
-			$bookmarksite['url']
-		);
+			//this was done as a friendly url and then changed back as part of a bug ported from 3.8.x a while back.
+			//There appear to be some issues with UTF in titles and twitter (which was part of the bug fix from 3.8.x)
+			//This needs to be looked at in order to properly use the friendly urls, however I don't want to do it as part
+			//of this effort (making things available in subdirectories).  However I'm generating the url out of the
+			//seo url framework to centralized some of the other url logic made available.
+			$threadlink = vB_Friendly_Url::fetchLibrary($vbulletin, 'thread|nosession|bburl', $thread)->get_url(FRIENDLY_URL_OFF);
+			$bookmarksite['link'] = str_replace(
+				array('{URL}', '{TITLE}'),
+				array(urlencode($threadlink), urlencode($bookmarksite['utf8encode'] ? utf8_encode($raw_title) : $raw_title)),
+				$bookmarksite['url']
+			);
 
-		($hook = vBulletinHook::fetch_hook('showthread_bookmarkbit')) ? eval($hook) : false;
+			($hook = vBulletinHook::fetch_hook('showthread_bookmarkbit')) ? eval($hook) : false;
 
-		$templater = vB_Template::create('showthread_bookmarksite');
-			$templater->register('bookmarksite', $bookmarksite);
-		$bookmarksites .= $templater->render();
+			$templater = vB_Template::create('showthread_bookmarksite');
+				$templater->register('bookmarksite', $bookmarksite);
+			$bookmarksites .= $templater->render();
+		}
+	}
+	$show['guestview'] = true;
+}
+else
+{
+	$show['guestview'] = false;
+}
+
+// Who Read
+// #############################################################################
+
+$show['wrt']= false;
+if ($vbulletin->options['who_read'])
+{
+	// Forum Check
+	if ($foruminfo['options'] & $vbulletin->bf_misc_forumoptions['displaywrt'])
+	{
+		// Usergroup & Author Check
+		if (($vbulletin->userinfo['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canwrtmembers']) 
+		OR ($vbulletin->options['wrtauthor'] AND $threadinfo['postuserid'] == $vbulletin->userinfo['userid'])) 
+		{
+			$show['wrt'] = true;
+	 	}
 	}
 }
+
+if ($show['wrt'])
+{
+	$cutoff = $threadinfo['dateline'];
+	if ($vbulletin->options['wrtlimit']) 
+	{
+		$cutoff = TIMENOW - (86400 * $vbulletin->options['wrtlimit']);
+	}
+
+	$wrt = array();
+	$wrtlist = array();
+	$wrt['threadid'] = $threadinfo['threadid'];
+	$contenttypeid = vB_Types::instance()->getContentTypeID('vBForum_Thread');
+
+	($hook = vBulletinHook::fetch_hook('showthread_whoread_prelist')) ? eval($hook) : false;
+
+	if ($vbulletin->options['wrtreaders']) 
+	{
+		/* IP data isnt used in the display atm
+		but this is how you link to the new ip table */
+		$readlist = $vbulletin->db->query_read_slave("
+			SELECT user.userid, user.options, user.username, user.usergroupid,
+			user.displaygroupid, whoread.dateline #, ipdata.ip AS ipaddress, ipdata.altip
+			FROM " . TABLE_PREFIX . "contentread as whoread
+			INNER JOIN " . TABLE_PREFIX . "user as user USING (userid)
+#			LEFT JOIN " . TABLE_PREFIX . "ipdata as ipdata USING (ipid)
+			WHERE whoread.readtype = 'view'
+			AND whoread.contentid = $threadid
+			AND whoread.contenttypeid = $contenttypeid
+			AND whoread.dateline > $cutoff  
+		"); 
+
+		$count = 0;
+		$wrt['trtotal'] = 0;
+
+		while ($threadreader = $vbulletin->db->fetch_array($readlist))
+		{
+			if (intval($threadreader['userid']))
+			{
+				$wrt['trtotal'] += 1;
+				$threadreader['markinv'] = '';
+				$threadreader[visible] = true ;
+
+				if ($threadreader['options'] & $vbulletin->bf_misc_useroptions['invisible']) 
+				{
+					$threadreader['visible'] = false ;
+					if (($vbulletin->userinfo['permissions']['genericpermissions'] 
+					& $vbulletin->bf_ugp_genericpermissions['canseehidden']) 
+					OR $threadreader['userid'] == $vbulletin->userinfo['userid'])
+					{
+						$threadreader['markinv'] = '*';
+						$threadreader['visible'] = true ;
+					}
+				}
+
+				if ($threadreader['visible']) 
+				{
+					$count += 1;
+					fetch_musername($threadreader);
+					$threadreader['wrdate'] = $vbphrase['wrt_readtime'].' ';
+					$threadreader['comma'] = $vbphrase['comma_space'];
+					$threadreader['wrdate'] .= vbdate($vbulletin->options['dateformat'], $threadreader['dateline']).', ';
+					$threadreader['wrdate'] .= vbdate($vbulletin->options['timeformat'], $threadreader['dateline']);
+					$wrtlist[$count] = $threadreader;
+				}
+			}
+		}
+	
+		if ($count)
+		{
+			$wrtlist[$count]['comma'] = '';
+		}
+
+		($hook = vBulletinHook::fetch_hook('showthread_whoread_list')) ? eval($hook) : false;
+	}
+	else 
+	{
+		$readers = $vbulletin->db->query_first_slave("
+		SELECT COUNT(userid) AS whoread
+			FROM " . TABLE_PREFIX . "contentread as whoread
+			WHERE whoread.readtype = 'view'
+			AND whoread.contentid = $threadid
+			AND whoread.contenttypeid = $contenttypeid
+			AND whoread.dateline > $cutoff  
+		"); 
+
+		($hook = vBulletinHook::fetch_hook('showthread_whoread_nonames')) ? eval($hook) : false;
+
+		$wrt['trtotal'] = $readers['whoread'];
+	}
+
+	if (!$vbulletin->options['wrtlimit']) 
+	{
+		$wrt['trtitle'] = construct_phrase($vbphrase['who_read_thread'], $wrt['trtotal']);
+	}
+	else
+	{
+		$wrt['trtitle'] = construct_phrase($vbphrase['who_read_thread_days'], $vbulletin->options['wrtlimit'], $wrt['trtotal']);
+	}
+
+	if ($vbulletin->options['wrtcollapse'])
+	{
+		$keys = explode(chr(10),$_COOKIE['vbulletin_collapse']);
+		$collapse = array_fill_keys($keys,true);
+		$wrt['style'] = 'style="display: none"';
+		if (!array_key_exists('wrt_list', $collapse))
+		{
+			$wrt['collapse'] = '_collapsed';
+		}
+	}
+	else
+	{
+		$wrt['style'] = $wrt['collapse'] = '';
+	}
+
+	($hook = vBulletinHook::fetch_hook('showthread_whoread_postlist')) ? eval($hook) : false;
+}
+
 // #############################################################################
 // draw navbar
 $navbits = array();
@@ -2159,7 +2322,7 @@ $navbar = render_navbar_template($navbits);
 $show['lightbox'] = ($vbulletin->options['lightboxenabled'] AND $vbulletin->options['usepopups'] AND !empty($postattach) AND ($forumperms & $vbulletin->bf_ugp_forumpermissions['cangetattachment']));
 $show['search'] = (!$show['search_engine'] AND $forumperms & $vbulletin->bf_ugp_forumpermissions['cansearch'] AND $vbulletin->options['enablesearches'] AND (!fetch_require_hvcheck('search')));
 $show['subscribed'] = iif($threadinfo['issubscribed'], true, false);
-$show['threadrating'] = iif($forum['allowratings'] AND $forumperms & $vbulletin->bf_ugp_forumpermissions['canthreadrate'], true, false);
+$show['threadrating'] = iif($forum['allowratings'] AND ($threadinfo['open'] OR can_moderate($threadinfo['forumid'], 'canopenclose')) AND ($forumperms & $vbulletin->bf_ugp_forumpermissions['canthreadrate']), true, false);
 $show['ratethread'] = iif($show['threadrating'] AND (!$threadinfo['vote'] OR $vbulletin->options['votechange']), true, false);
 $show['closethread'] = iif($threadinfo['open'], true, false);
 $show['approvethread'] = ($threadinfo['visible'] == 0 ? true : false);
@@ -2203,15 +2366,23 @@ if ($vbulletin->GPC['highlight'])
 	$pageinfo_linear['highlight'] = $pageinfo_hybrid['highlight'] = $pageinfo_threaded['highlight'] = urlencode($vbulletin->GPC['highlight']);
 }
 
-// facebook options
-if (is_facebookenabled())
+if ($show['guestview'])
 {
-	// display publish to Facebook checkbox in quick editor?
-	$fbpublishcheckbox = construct_fbpublishcheckbox();
+	// facebook options
+	if (is_facebookenabled())
+	{
+		// display publish to Facebook checkbox in quick editor?
+		$fbpublishcheckbox = construct_fbpublishcheckbox();
+	}
+	// display the like button for this thread?
+	$fblikebutton = construct_fblikebutton();
 }
 
-// display the like button for this thread?
-$fblikebutton = construct_fblikebutton();
+// Record thread as viewed.
+if ($vbulletin->options['who_read'])
+{
+	mark_content_read('vBForum_Thread', $thread['threadid'], 'view');
+}
 
 ($hook = vBulletinHook::fetch_hook('showthread_complete')) ? eval($hook) : false;
 
@@ -2275,6 +2446,9 @@ $templater = vB_Template::create('SHOWTHREAD');
 		$templater->register('editor_clientscript', vB_Template::create('editor_clientscript')->render());
 		$templater->register('editor_js', vB_Ckeditor::getJsIncludes());
 	}
+	$templater->register('wrt',$wrt);
+	$templater->register('wrtlist',$wrtlist);
+
 print_output($templater->render());
 
 function goto_prevthread($threadid, $throwerror = true)
@@ -2411,7 +2585,6 @@ function goto_nextthread($threadid, $throwerror = true)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 45690 $
+|| # CVS: $RCSfile$ - $Revision: 62289 $
 || ####################################################################
 \*======================================================================*/

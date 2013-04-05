@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -78,6 +78,9 @@ function get_fbcanonicalurl()
 	global $vbulletin, $og_array;
 	static $fbcanonicalurl;
 
+	$retval = '';
+	$skipcache = false;
+
 	if (empty($fbcanonicalurl))
 	{
 		if (THIS_SCRIPT == 'showthread')
@@ -97,12 +100,21 @@ function get_fbcanonicalurl()
 		else
 		{
 			// do not cache canonical url in this case
-			global $vbulletin;
-			return $vbulletin->options['bburl'];
+			$skipcache = true;
+			$retval = $vbulletin->options['bburl'];
 		}
 	}
-
-	return $fbcanonicalurl;
+					
+	($hook = vBulletinHook::fetch_hook('fb_canonical_url')) ? eval($hook) : false;
+			
+	if ($skipcache)
+	{
+		return $retval;
+	}
+	else
+	{
+		return $fbcanonicalurl;
+	}
 }
 
 /**
@@ -139,6 +151,8 @@ function get_fbopengrapharray()
 		$og_array['og:type'] = 'article';
 		$og_array['og:url'] = get_fbcanonicalurl();
 	}
+
+	($hook = vBulletinHook::fetch_hook('fb_opengraph_array')) ? eval($hook) : false;
 
 	return $og_array;
 }
@@ -253,6 +267,8 @@ function save_fbautoregister($userdata)
 	$userdata->set('fbjoindate', time());
 	$userdata->set('logintype', 'fb');
 
+	($hook = vBulletinHook::fetch_hook('fb_auto_register')) ? eval($hook) : false;
+
 	// save the facebook usergroup
 	save_fbusergroup($userdata);
 
@@ -343,6 +359,8 @@ function get_vbprofileinfo()
 	$profilefields['avatarurl'] .= (!empty($fb_info['pic_big']) ? $fb_info['pic_big'] : '');
 	$profilefields['fallback_avatarurl'] .= (!empty($fb_info['pic']) ? $fb_info['pic'] : '');
 
+	($hook = vBulletinHook::fetch_hook('fb_profile_info')) ? eval($hook) : false;
+
 	return $profilefields;
 }
 
@@ -420,6 +438,8 @@ function construct_fbimportform($context = 'register', $skip_fields = array())
 	$templater->register('monthselected', $monthselected);
 	$templater->register('bd_year', $bd_year);
 
+	($hook = vBulletinHook::fetch_hook('fb_import_form')) ? eval($hook) : false;
+
 	return $templater->render();
 }
 
@@ -442,16 +462,24 @@ function construct_fbpublishcheckbox()
 	))
 	{
 		$show['fb_publishcheckbox'] = true;
-		// generate and return the template
 		$templater = vB_Template::create('facebook_publishcheckbox');
 		$templater->register('checked', check_fbpublishcheckbox());
-		return $templater->render();
 	}
-	// if checkbox does not apply, return an empty string
 	else
 	{
+		$retval = '';
 		$show['fb_publishcheckbox'] = false;
-		return '';
+	}
+
+	($hook = vBulletinHook::fetch_hook('fb_publish_checkbox')) ? eval($hook) : false;
+
+	if ($show['fb_publishcheckbox'])
+	{
+		return $templater->render();
+	}
+	else
+	{
+		return $retval;
 	}
 }
 
@@ -465,29 +493,43 @@ function construct_fblikebutton()
 	global $show, $vbulletin;
 
 	// make sure like button is enabled for the given page
-	if ((THIS_SCRIPT == 'showthread' AND $vbulletin->options['facebooklikethreads'])
-		OR (THIS_SCRIPT == 'entry' AND $vbulletin->options['facebooklikeblogentries'])
-		OR (THIS_SCRIPT == 'vbcms' AND isset($vbulletin->vbcms['content_type']) AND $vbulletin->vbcms['content_type']=='Article' AND $vbulletin->options['facebooklikecmsarticles'])
+	if (
+		(THIS_SCRIPT == 'showthread' AND $vbulletin->options['facebooklikethreads'])
+			OR
+		(THIS_SCRIPT == 'entry' AND $vbulletin->options['facebooklikeblogentries'])
+			OR
+		(THIS_SCRIPT == 'vbcms' AND isset($vbulletin->vbcms['content_type']) AND $vbulletin->vbcms['content_type']=='Article' AND $vbulletin->options['facebooklikecmsarticles'])
 	)
 	{
 		$show['fb_likebutton'] = true;
+		$show['loadfbroot'] = !is_facebookenabled();
 		$templater = vB_Template::create('facebook_likebutton');
 		$templater->register('appid', urlencode($vbulletin->options['facebookappid']));
 
-		if(is_browser('ie') || is_browser('opera')) {
-		 $templater->register('href', urlencode(get_fbcanonicalurl()));
+		if(is_browser('ie') || is_browser('opera'))
+		{
+			$templater->register('href', urlencode(get_fbcanonicalurl()));
 		}
-		else {
-		 $templater->register('href', get_fbcanonicalurl());
+		else
+		{
+			$templater->register('href', get_fbcanonicalurl());
 		}
-		return $templater->render();
 	}
-
-	// if like button is not enabled, return null data
 	else
 	{
+		$retval = '';
 		$show['fb_likebutton'] = false;
-		return '';
+	}
+
+	($hook = vBulletinHook::fetch_hook('fb_like_button')) ? eval($hook) : false;
+
+	if ($show['fb_likebutton'])
+	{
+		return $templater->render();
+	}
+	else
+	{
+		return $retval;
 	}
 }
 
@@ -586,6 +628,8 @@ function save_fbimportform_into_userdm($userdata, $skip_userfields = true)
 			));
 		}
 	}
+
+	($hook = vBulletinHook::fetch_hook('fb_import_form_data')) ? eval($hook) : false;
 }
 
 
@@ -701,28 +745,12 @@ function publishtofacebook($phrasename, $title, $body, $link)
 
 		// if phrasename is not in the phrase array, simply use phrasename as the message
 		$message = isset($vbphrase["$phrasename"]) ? construct_phrase($vbphrase["$phrasename"], $vbulletin->options['bbtitle']): "$phrasename";
-		$encoding = strtolower(vB_Template_Runtime::fetchStyleVar('charset'));
-		if ($encoding != 'utf-8')
-		{
-			if (function_exists('iconv'))
-			{
-				$message = @iconv($encoding, 'UTF-8//TRANSLIT', $message);
-				$title = @iconv($encoding, 'UTF-8//TRANSLIT', $title);
-				$body = @iconv($encoding, 'UTF-8//TRANSLIT', $body);
-			}
-			elseif (function_exists('mb_convert_encoding'))
-			{
-				$message = @mb_convert_encoding($message, 'UTF-8', $encoding);
-				$title = @mb_convert_encoding($title, 'UTF-8', $encoding);
-				$body = @mb_convert_encoding($body, 'UTF-8', $encoding);
-			}
-			else
-			{
-				$message = utf8_encode($message);
-				$title = utf8_encode($title);
-				$body = utf8_encode($body);
-			}
-		}
+
+		($hook = vBulletinHook::fetch_hook('fb_publish_message')) ? eval($hook) : false;
+
+		$message = to_utf8($message, vB_Template_Runtime::fetchStyleVar('charset'));
+		$title = to_utf8($title, vB_Template_Runtime::fetchStyleVar('charset'));
+		$body = to_utf8($body, vB_Template_Runtime::fetchStyleVar('charset'));
 		return vB_Facebook::instance()->publishFeed($message, $title, $link, $body);
 	}
 
@@ -884,7 +912,6 @@ function do_facebooklogout()
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 46027 $
+|| # CVS: $RCSfile$ - $Revision: 55885 $
 || ####################################################################
 \*======================================================================*/

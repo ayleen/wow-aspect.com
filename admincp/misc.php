@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@ error_reporting(E_ALL & ~E_NOTICE);
 ignore_user_abort(1);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 40911 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62690 $');
 define('NOZIP', 1);
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
@@ -31,6 +31,8 @@ $specialtemplates = array('ranks');
 require_once('./global.php');
 require_once(DIR . '/includes/functions_databuild.php');
 
+vB_Router::setRelativePath('../'); // Needed ?
+
 // ######################## CHECK ADMIN PERMISSIONS #######################
 if (!can_administer('canadminmaintain'))
 {
@@ -44,8 +46,6 @@ log_admin_action();
 // ######################### START MAIN SCRIPT ############################
 // ########################################################################
 
-print_cp_header($vbphrase['maintenance']);
-
 if (empty($_REQUEST['do']))
 {
 	$_REQUEST['do'] = 'chooser';
@@ -55,6 +55,54 @@ $vbulletin->input->clean_array_gpc('r', array(
 	'perpage' => TYPE_UINT,
 	'startat' => TYPE_UINT
 ));
+
+// ###################### Start clear cache ########################
+if ($_REQUEST['do'] == 'clear_cache')
+{
+	print_cp_header($vbphrase['clear_system_cache']);
+	vB_Cache::instance()->clean(false);
+	print_cp_message($vbphrase['cache_cleared']);
+}
+else
+{
+	print_cp_header($vbphrase['maintenance']);
+}
+
+// ###################### Clear Autosave option #######################
+if ($_REQUEST['do'] == 'clearauto')
+{
+	print_form_header('misc', 'doclearauto');
+	print_table_header($vbphrase['clear_autosave_title']);
+	print_description_row($vbphrase['clear_autosave_desc']);
+	print_input_row($vbphrase['clear_autosave_limit'], 'cleandays', 21);
+	print_submit_row($vbphrase['clear_autosave_run']);
+}
+
+if ($_POST['do'] == 'rebuildactivity')
+{
+	vB_ActivityStream_Manage::rebuild();
+	vB_ActivityStream_Manage::updateScores();
+
+	print_stop_message('rebuild_activity_stream_done');
+}
+
+if ($_POST['do'] == 'doclearauto')
+{
+	$vbulletin->input->clean_array_gpc('p', array(
+		'cleandays' => TYPE_UINT
+	));
+
+	if ($vbulletin->GPC['cleandays'] < 7)
+	{
+		print_stop_message('clear_autosave_toolow');
+	}
+
+	// Clear out the actual autosave entries
+	$cleandate = TIMENOW - ($vbulletin->GPC['cleandays'] * 86400);
+	$vbulletin->db->query_write("DELETE FROM " . TABLE_PREFIX . "autosave WHERE dateline < $cleandate");
+
+	print_stop_message('clear_autosave_done');
+}
 
 // ###################### Rebuild all style info #######################
 if ($_POST['do'] == 'rebuildstyles')
@@ -66,7 +114,8 @@ if ($_POST['do'] == 'rebuildstyles')
 		'install'  => TYPE_BOOL
 	));
 
-	build_all_styles($vbulletin->GPC['renumber'], $vbulletin->GPC['install'], 'misc.php?' . $vbulletin->session->vars['sessionurl'] . 'do=chooser#style');
+	build_all_styles($vbulletin->GPC['renumber'], $vbulletin->GPC['install'], 'misc.php?' . $vbulletin->session->vars['sessionurl'] . 'do=chooser#style', false, 'standard', false);
+	build_all_styles($vbulletin->GPC['renumber'], $vbulletin->GPC['install'], 'misc.php?' . $vbulletin->session->vars['sessionurl'] . 'do=chooser#style', false, 'mobile');
 
 	print_stop_message('updated_styles_successfully');
 }
@@ -839,6 +888,11 @@ if ($_REQUEST['do'] == 'rebuildavatars')
 	{
 		//define('CP_REDIRECT', 'misc.php');
 		print_stop_message('your_version_no_image_support');
+	}
+
+	if ($vbulletin->options['usefileavatar'] AND !is_writable($vbulletin->options['avatarpath']))
+	{
+		print_stop_message('custom_avatarpath_not_writable', $vbulletin->options['avatarpath']);
 	}
 
 	if (empty($vbulletin->GPC['perpage']))
@@ -1713,6 +1767,173 @@ if ($_REQUEST['do'] == 'removeorphanposts')
 	}
 }
 
+// ###################### Start remove orphaned stylevars #######################
+if ($_REQUEST['do'] == 'removeorphanstylevars')
+{
+	// Get installed products (includes any that are disabled)
+	$products = "'" . implode("','", array_keys($vbulletin->products)) . "'";
+
+	/* Mark any definitions that arent
+	   part of an installed product as old */
+	$vbulletin->db->query_write("
+		UPDATE " . TABLE_PREFIX . "stylevardfn
+		SET styleid = IF(styleid = -1, -10, -20)
+		WHERE product NOT IN ($products)
+	");
+
+	// Zap old definitions
+	$vbulletin->db->query_write("
+		DELETE FROM " . TABLE_PREFIX . "stylevardfn
+		WHERE styleid IN (-10, -20)
+	");
+
+	// Get master stylevars that dont have a definition
+	$svdata = $vbulletin->db->query_read("
+		SELECT stylevar.stylevarid, stylevar.styleid
+		FROM " . TABLE_PREFIX . "stylevar AS stylevar
+		LEFT JOIN " . TABLE_PREFIX . "stylevardfn AS stylevardfn ON (stylevar.stylevarid = stylevardfn.stylevarid AND stylevar.styleid = stylevardfn.styleid)
+		WHERE
+			stylevar.styleid IN(-1, -2)
+				AND
+			stylevardfn.product IS NULL
+	");
+
+	$orphans = array();
+	$deletelist = array();
+	$masterlist = array();
+
+	// Build list, phrases will be removed later
+	while ($stylevar = $vbulletin->db->fetch_array($svdata))
+	{
+		$deletelist[$stylevar['styleid']][$stylevar['stylevarid']][] = $stylevar['styleid'];
+		$orphans[$stylevar['styleid']][] =  "'" . $stylevar['stylevarid'] . "'";
+	}
+
+	// Zap em !
+	if (!empty($orphans))
+	{
+		foreach ($orphans AS $masterstyleid => $orphans2)
+		{
+			$vbulletin->db->query_write("
+				DELETE FROM " . TABLE_PREFIX . "stylevar
+				WHERE
+					stylevarid IN (" . implode(',', $orphans2) . ")
+						AND
+					styleid = {$masterstyleid}
+			");
+		}
+	}
+
+	// Get remaining stylevar data
+	$svdata = $db->query_read("
+		SELECT stylevar.stylevarid, stylevar.styleid, style.type
+		FROM " . TABLE_PREFIX . "stylevar AS stylevar
+		LEFT JOIN " . TABLE_PREFIX . "style AS style ON (style.styleid = stylevar.styleid)
+	");
+
+	// Generate master and delete lists
+	while ($svlist = $db->fetch_array($svdata))
+	{
+		$style = $svlist['styleid'];
+		$stylevar = $svlist['stylevarid'];
+
+		if ($style == -1 OR $style == -2)
+		{
+			$masterlist[$style][$stylevar] = true;
+		}
+		else
+		{
+			$masterstyleid = ($svlist['type'] == 'standard') ? -1 : -2;
+			$deletelist[$masterstyleid][$stylevar][] = $style;
+		}
+	}
+
+	// Clear valid stylevars from delete list
+	foreach ($deletelist AS $masterstyleid => $deletelist2)
+	{
+		foreach($deletelist2 AS $stylevar => $styles)
+		{
+			if ($masterlist[$masterstyleid][$stylevar])
+			{
+				unset($deletelist[$masterstyleid][$stylevar]);
+			}
+		}
+	}
+
+	require_once(DIR . '/includes/adminfunctions_template.php');
+	cache_styles();
+	$standardstyles = array(-1);
+	$mobilestyles = array(-2);
+	foreach ($stylecache AS $styleid => $style)
+	{
+		if ($style['type'] == 'mobile')
+		{
+			$mobilestyles[] = $styleid;
+		}
+		else
+		{
+			$standardstyles[] = $styleid;
+		}
+	}
+	$mobileids = implode(',', $mobilestyles);
+	$standardids = implode(',', $standardstyles);
+
+	foreach ($deletelist AS $masterstyleid => $deletelist2)
+	{
+		/* What we have left is orphaned stylevars,
+		   so now its time to get rid of them */
+		foreach($deletelist2 AS $stylevar => $styles)
+		{
+			foreach($styles AS $style)
+			{
+				$rundelete = false;
+
+				if ($style == -1)
+				{
+					echo construct_phrase($vbphrase['orphan_stylevar_deleted_master'], $stylevar);
+				}
+				else if ($style == -2)
+				{
+					echo construct_phrase($vbphrase['orphan_stylevar_deleted_mobile_master'], $stylevar);
+				}
+				else
+				{
+					$rundelete = true; // We only deleted the master version earlier
+					echo construct_phrase($vbphrase['orphan_stylevar_deleted'], $stylevar, $style);
+				}
+			}
+
+			// Zap stylevar
+			if ($rundelete)
+			{
+				$db->query_write("
+					DELETE FROM " . TABLE_PREFIX . "stylevar
+					WHERE
+						stylevarid = '$stylevar'
+							AND
+						styleid IN (" . ($masterstyleid == -1 ? $standardids : $mobileids) . ")
+				");
+			}
+
+			$name = "stylevar_{$stylevar}_name" . ($masterstyleid == -1) ? '' : '_mobile';
+			$desc = "stylevar_{$stylevar}_description" . ($masterstyleid == -1) ? '' : '_mobile';
+			// Zap phrases
+			$db->query_write("
+				DELETE FROM " . TABLE_PREFIX . "phrase
+				WHERE fieldname = 'style' AND varname
+				IN ('" . $db->escape_string($name) . "', '" . $db->escape_string($desc) . "')
+			");
+		}
+	}
+
+	// Rebuild languages
+	require_once(DIR . '/includes/adminfunctions_language.php');
+	build_language();
+
+//	define('CP_REDIRECT', 'misc.php'); // removed for now so the list stays visible.
+	print_stop_message('deleted_orphan_stylevars_successfully');
+}
+
 // ###################### Anonymous Survey Code #######################
 if ($_REQUEST['do'] == 'survey')
 {
@@ -2059,6 +2280,16 @@ if ($_REQUEST['do'] == 'chooser')
 	print_description_row($vbphrase['function_removes_orphan_posts']);
 	print_input_row($vbphrase['number_of_posts_to_process_per_cycle'], 'perpage', 50);
 	print_submit_row($vbphrase['remove_orphan_posts']);
+
+	print_form_header('misc', 'removeorphanstylevars');
+	print_table_header($vbphrase['remove_orphan_stylevars']);
+	print_description_row($vbphrase['function_removes_orphan_stylevars']);
+	print_submit_row($vbphrase['remove_orphan_stylevars'], 0);
+
+	print_form_header('misc', 'rebuildactivity');
+	print_table_header($vbphrase['rebuild_activity_stream']);
+	print_description_row(construct_phrase($vbphrase['rebuild_activity_stream_desc'], $vbulletin->options['as_expire']));
+	print_submit_row($vbphrase['rebuild_activity_stream'], 0);
 }
 
 ($hook = vBulletinHook::fetch_hook('admin_maintenance')) ? eval($hook) : false;
@@ -2067,7 +2298,6 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 40911 $
+|| # CVS: $RCSfile$ - $Revision: 62690 $
 || ####################################################################
 \*======================================================================*/

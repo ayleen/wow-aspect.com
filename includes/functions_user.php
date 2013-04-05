@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ï¿½2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -149,13 +149,29 @@ function construct_usercp_nav($selectedcell = 'usercp')
 		$subobj = new vB_PaidSubscription($vbulletin);
 		$subobj->cache_user_subscriptions();
 		$show['paidsubscriptions'] = false;
+
+		$membergroupids = fetch_membergroupids_array($vbulletin->userinfo);
+		$allow_secondary_groups = $vbulletin->bf_ugp_genericoptions['allowmembergroups'] & 
+		$vbulletin->usergroupcache[$vbulletin->userinfo['usergroupid']]['genericoptions'];
+
 		foreach ($subobj->subscriptioncache AS $subscription)
 		{
 			$subscriptionid =& $subscription['subscriptionid'];
-			if ($subscription['active'] AND (empty($subscription['deniedgroups']) OR count(array_diff(fetch_membergroupids_array($vbulletin->userinfo), $subscription['deniedgroups']))))
+			if ($subscription['active'])
 			{
-				$show['paidsubscriptions'] = true;
-				break;
+				if (
+					empty($subscription['deniedgroups'])
+					OR
+					(
+						($allow_secondary_groups AND count(array_diff($membergroupids, $subscription['deniedgroups'])))
+						OR
+						(!$allow_secondary_groups AND !in_array($vbulletin->userinfo['usergroupid'], $subscription['deniedgroups']))
+					)
+				)
+				{
+					$show['paidsubscriptions'] = true;
+					break;
+				}
 			}
 		}
 	}
@@ -370,48 +386,49 @@ function &fetch_avatar_categories(&$userinfo)
  *
  * @param	array		The database record
  * @param	boolean	Whether to get the Thumbnailed avatar or not
+ * @param       string is a param originally to add prefix to switch to starter user
  *
  * @return	array	Information regarding the avatar
  *
  */
-function fetch_avatar_from_record($avatarinfo, $thumb = false)
+function fetch_avatar_from_record($avatarinfo, $thumb = false, $user_id = 'userid', $prefix = '')
 {
-	if (!$avatarinfo['userid'])
+	if (!$avatarinfo[$user_id])
 	{
 		return false;
 	}
 
- 	$userid = $avatarinfo['userid'];
+ 	$userid = $avatarinfo[$user_id];
 
- 	if (!empty($avatarinfo['avatarpath']))
+ 	if (!empty($avatarinfo[$prefix.'avatarpath']))
  	{
- 		return array($avatarinfo['avatarpath']);
+ 		return array($avatarinfo[$prefix.'avatarpath']);
  	}
- 	else if ($avatarinfo['hascustomavatar'])
+ 	else if ($avatarinfo[$prefix.'hascustomavatar'])
  	{
  		$avatarurl = array('hascustomavatar' => 1);
 
  		if (vB::$vbulletin->options['usefileavatar'])
  		{
- 			$avatarurl[] = vB::$vbulletin->options['avatarurl'] . ($thumb ? '/thumbs' : '') . "/avatar{$userid}_{$avatarinfo['avatarrevision']}.gif";
+ 			$avatarurl[] = vB::$vbulletin->options['avatarurl'] . ($thumb ? '/thumbs' : '') . "/avatar{$userid}_{$avatarinfo[$prefix.'avatarrevision']}.gif";
  		}
  		else
  		{
- 			$avatarurl[] = "image.php?u=$userid&amp;dateline=$avatarinfo[dateline]" . ($thumb ? '&amp;type=thumb' : '') ;
+ 			$avatarurl[] = "image.php?u=$userid&amp;dateline=" . $avatarinfo[$prefix.'avatardateline'] . ($thumb ? '&amp;type=thumb' : '') ;
  		}
 
  		if ($thumb)
  		{
- 			if ($avatarinfo['width_thumb'] AND $avatarinfo['height_thumb'])
+ 			if ($avatarinfo[$prefix.'width_thumb'] AND $avatarinfo[$prefix.'height_thumb'])
  			{
- 				$avatarurl[] = " width=\"$avatarinfo[width_thumb]\" height=\"$avatarinfo[height_thumb]\" ";
+ 				$avatarurl[] = " width=\"" .$avatarinfo[$prefix . 'width_thumb'] . "\" height=\"" . $avatarinfo[$prefix . 'height_thumb'] . "\" ";
  			}
  		}
  		else
  		{
- 			if ($avatarinfo['width'] AND $avatarinfo['height'])
+ 			if ($avatarinfo[$prefix . 'width'] AND $avatarinfo[$prefix . 'height'])
  			{
- 				$avatarurl[] = " width=\"$avatarinfo[width]\" height=\"$avatarinfo[height]\" ";
+ 				$avatarurl[] = " width=\"" . $avatarinfo[$prefix . 'width'] . "\" height=\"" . $avatarinfo[$prefix . 'height'] . "\" ";
  			}
  		}
  		return $avatarurl;
@@ -435,18 +452,25 @@ function fetch_avatar_url($userid, $thumb = false)
 {
 	global $vbulletin, $show;
 	static $avatar_cache = array();
-
-	if (isset($avatar_cache["$userid"]))
+/*
+	Changed the code to only use the cache for $avatarinfo.
+	The problem with caching the url as well is that if you have already called 
+	this function with $thumb = false you cannot then call it with $thumb = true (or vice versa).
+*/
+	if (isset($avatar_cache[$userid]))
 	{
-		$avatarurl = $avatar_cache["$userid"]['avatarurl'];
-		$avatarinfo = $avatar_cache["$userid"]['avatarinfo'];
+		$avatarinfo = $avatar_cache[$userid];
 	}
 	else
 	{
-		if ($avatarinfo = fetch_userinfo($userid, 2, 0, 1))
-		{
-			$perms = cache_permissions($avatarinfo, false);
-			$avatarurl = array();
+		$avatarinfo = fetch_userinfo($userid, 2, 0, 1);
+	}
+	
+	if ($avatarinfo)
+	{
+		$avatarurl = array();
+		$avatar_cache[$userid] = $avatarinfo;
+		$perms = cache_permissions($avatarinfo, false);
 
 			if ($avatarinfo['hascustomavatar'])
 			{
@@ -491,10 +515,6 @@ function fetch_avatar_url($userid, $thumb = false)
 			$avatarurl = '';
 		}
 
-		$avatar_cache["$userid"]['avatarurl'] = $avatarurl;
-		$avatar_cache["$userid"]['avatarinfo'] = $avatarinfo;
-	}
-	
 	if ( // no avatar defined for this user
 		empty($avatarurl)
 		OR // visitor doesn't want to see avatars
@@ -662,10 +682,12 @@ function fetch_profilefields($formtype = 0) // 0 indicates a profile field, 1 in
 
 	// get extra profile fields
 	$profilefields = $vbulletin->db->query_read_slave("
-		SELECT * FROM " . TABLE_PREFIX . "profilefield
-		WHERE editable IN (1,2)
-			AND form " . iif($formtype, '>= 1', '= 0'). "
-		ORDER BY displayorder
+		SELECT profilefield.*, fieldcategory.displayorder AS category_order 
+		FROM " . TABLE_PREFIX . "profilefield AS profilefield
+		LEFT JOIN " . TABLE_PREFIX . "profilefieldcategory AS fieldcategory ON profilefield.profilefieldcategoryid = fieldcategory.profilefieldcategoryid
+		WHERE profilefield.editable IN (1,2)
+		   AND profilefield.form " . iif($formtype, '>= 1', '= 0'). "
+		ORDER BY category_order, profilefield.displayorder
 	");
 	while ($profilefield = $vbulletin->db->fetch_array($profilefields))
 	{
@@ -1301,8 +1323,7 @@ function can_view_profile_section($userid, $section, $privacy_requirement = null
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 44510 $
+|| # CVS: $RCSfile$ - $Revision: 61296 $
 || ####################################################################
 \*======================================================================*/
 ?>

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -44,25 +44,22 @@ class vB_Attachment_Display_Single_vBForum_SocialGroup extends vB_Attachment_Dis
 			return false;
 		}
 
-		$hook_query_fields = $hook_query_joins = $hook_query_where = '';
-		($hook = vBulletinHook::fetch_hook('attachment_start')) ? eval($hook) : false;
+//		Called in verify_attachment_specific().
+//		$hook_query_fields = $hook_query_joins = $hook_query_where = '';
+//		($hook = vBulletinHook::fetch_hook('attachment_start')) ? eval($hook) : false;
 
 		$selectsql = array(
 			"'public' AS albumstate",
 			"sg.options AS groupoptions",
 			"sgm.type AS ownermembertype",
+			"bm.type AS browsermembertype",
 		);
 
 		$joinsql = array(
 			"LEFT JOIN " . TABLE_PREFIX . "socialgroupmember AS sgm ON (sgm.userid = a.userid AND sgm.groupid = a.contentid AND sgm.type = 'member')",
 			"LEFT JOIN " . TABLE_PREFIX . "socialgroup AS sg ON (sg.groupid = a.contentid)",
+			"LEFT JOIN " . TABLE_PREFIX . "socialgroupmember AS bm ON (bm.userid = " . $this->registry->userinfo['userid'] . " AND bm.groupid = a.contentid)",
 		);
-		if (!$vbulletin->GPC['thumb'] AND !can_moderate(0, 'caneditgrouppicture'))
-		{
-			$selectsql[] = "bm.type AS browsermembertype";
-			$joinsql[] = "LEFT JOIN " . TABLE_PREFIX . "socialgroupmember AS bm ON
-				(bm.userid = " . $this->registry->userinfo['userid'] . " AND bm.groupid = a.contentid)";
-		}
 
 		if (!$this->verify_attachment_specific('vBForum_SocialGroup', $selectsql, $joinsql))
 		{
@@ -80,6 +77,24 @@ class vB_Attachment_Display_Single_vBForum_SocialGroup extends vB_Attachment_Dis
 		);
 */
 
+		$canviewcontent = (
+			(
+				(
+					!($this->attachmentinfo['groupoptions'] & $this->registry->bf_misc_socialgroupoptions['join_to_view'])
+					OR !$this->registry->options['sg_allow_join_to_view']
+				) // The above means that you dont have to join to view
+				OR $this->attachmentinfo['browsermembertype'] == 'member'
+				// Or can edit groups (See VBIV-12720)
+				OR can_moderate(0, 'caneditsocialgroups')
+				OR fetch_socialgroup_perm('canalwayspostmessage')
+				OR fetch_socialgroup_perm('canalwascreatediscussion')
+			)
+		);
+		if (!$canviewcontent)
+		{
+			return false;
+		}
+
 		if ($this->attachmentinfo['contentid'] == 0)
 		{
 			// there may be a condition where certain moderators could benefit by seeing these, I just don't know of any conditions at present
@@ -88,9 +103,7 @@ class vB_Attachment_Display_Single_vBForum_SocialGroup extends vB_Attachment_Dis
 				return false;
 			}
 		}
-		else
-		{
-			if (
+		else if (
 				(
 					isset($this->attachmentinfo['browsermembertype'])
 						AND
@@ -99,27 +112,35 @@ class vB_Attachment_Display_Single_vBForum_SocialGroup extends vB_Attachment_Dis
 					OR
 				$this->attachmentinfo['ownermembertype'] != 'member'
 			)
-			{
-				return false;
-			}
-
-			if (
+		{
+			return false;
+		}
+		else if (
 				$this->attachmentinfo['state'] == 'moderation'
 					AND
 				$this->attachmentinfo['userid'] != $this->registry->userinfo['userid']
 					AND
 				!can_moderate(0, 'canmoderategrouppicture')
 			)
-			{	// I am not aware of a need to ever return clear.gif for a picture viewed in the group setting.
-				return false;
-			}
-
-			if (!($this->attachmentinfo['groupoptions'] & $this->registry->bf_misc_socialgroupoptions['enable_group_albums']))
+		{	// I am not aware of a need to ever return clear.gif for a picture viewed in the group setting.
+			return false;
+		}
+		else if (!($this->attachmentinfo['groupoptions'] & $this->registry->bf_misc_socialgroupoptions['enable_group_albums']))
+		{
+			return false;
+		}
+		else if (!$this->registry->GPC['thumb'])
+		{
+			if ($this->attachmentinfo['browsermembertype'] != 'member' AND !can_moderate(0, 'caneditgrouppicture'))
 			{
-				return false;
+				return false;		
+			}
+			else 
+			{
+				return true;
 			}
 		}
-
+	
 		return true;
 	}
 }
@@ -190,13 +211,14 @@ class vB_Attachment_Display_Multiple_vBForum_SocialGroup extends vB_Attachment_D
 	* @return	string
 	*/
 	protected function fetch_sql_ids($criteria, $selectfields)
-	{
+	{	
 		$joinsql = array(
 			"INNER JOIN " . TABLE_PREFIX . "socialgroupmember AS sgm ON (sgm.userid = a.userid AND sgm.groupid = a.contentid AND sgm.type = 'member')",
+			"LEFT JOIN " . TABLE_PREFIX . "socialgroupmember AS bm ON (bm.userid = " . $this->registry->userinfo['userid'] . " AND bm.groupid = a.contentid)",	
 			"INNER JOIN " . TABLE_PREFIX . "socialgroup AS sg ON (sg.groupid = a.contentid)",
 			"LEFT JOIN " . TABLE_PREFIX . "user AS user ON (a.userid = user.userid)",
 		);
-
+	
 		$subwheresql = array(
 			"sg.options & {$this->registry->bf_misc_socialgroupoptions['enable_group_albums']}",
 		);
@@ -210,6 +232,13 @@ class vB_Attachment_Display_Multiple_vBForum_SocialGroup extends vB_Attachment_D
 			)";
 		}
 
+		if (!can_moderate(0, 'caneditgrouppicture'))
+		{
+			$subwheresql[] = "
+				bm.type = 'member'
+			";
+		}
+		
 		return $this->fetch_sql_ids_specific($this->contenttypeid, $criteria, $selectfields, $subwheresql, $joinsql);
 	}
 
@@ -648,7 +677,6 @@ class vB_Attachment_Upload_Displaybit_vBForum_SocialGroup extends vB_Attachment_
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 29983 $
 || ####################################################################
 \*======================================================================*/

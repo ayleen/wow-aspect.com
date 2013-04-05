@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,7 +15,7 @@ error_reporting(E_ALL & ~E_NOTICE);
 @set_time_limit(0);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 39236 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 62096 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('forum', 'cpuser', 'forumdisplay', 'prefix');
@@ -94,9 +94,13 @@ if ($_REQUEST['do'] == 'add' OR $_REQUEST['do'] == 'edit')
 			'active' => 1,
 			'allowposting' => 1,
 			'indexposts' => 1,
+			'bypassdp' => 0,
+			'displaywrt' => 1,
+			'canreputation' => 1,
 			'allowhtml' => 0,
 			'allowbbcode' => 1,
 			'allowimages' => 1,
+			'allowvideos'  => 1,
 			'allowsmilies' => 1,
 			'allowicons' => 1,
 			'allowratings' => 1,
@@ -199,7 +203,7 @@ if ($_REQUEST['do'] == 'add' OR $_REQUEST['do'] == 'edit')
 	{
 		$forum['styleid'] = -1; // to get the "use default style" option selected
 	}
-	print_style_chooser_row('forum[styleid]', $forum['styleid'], $vbphrase['use_default_style'], $vbphrase['custom_forum_style'], 1);
+	print_style_chooser_row('forum[styleid]', $forum['styleid'], array($vbphrase['use_default_style']), $vbphrase['custom_forum_style'], 1);
 	print_yes_no_row($vbphrase['override_style_choice'], 'forum[options][styleoverride]', $forum['styleoverride']);
 	print_input_row($vbphrase['prefix_for_forum_status_images'], 'forum[imageprefix]', $forum['imageprefix']);
 
@@ -218,12 +222,14 @@ if ($_REQUEST['do'] == 'add' OR $_REQUEST['do'] == 'edit')
 	print_yes_no_row($vbphrase['forum_is_active'], 'forum[options][active]', $forum['active']);
 	print_yes_no_row($vbphrase['forum_open'], 'forum[options][allowposting]', $forum['allowposting']);
 	print_yes_no_row($vbphrase['index_new_posts'], 'forum[options][indexposts]' , $forum['indexposts'] );
+	print_yes_no_row($vbphrase['bypass_double_posts'], 'forum[options][bypassdp]' , $forum['bypassdp'] );
 
 	print_table_header($vbphrase['enable_disable_features']);
 
 	print_yes_no_row($vbphrase['allow_html'], 'forum[options][allowhtml]', $forum['allowhtml']);
 	print_yes_no_row($vbphrase['allow_bbcode'], 'forum[options][allowbbcode]', $forum['allowbbcode']);
 	print_yes_no_row($vbphrase['allow_img_code'], 'forum[options][allowimages]', $forum['allowimages']);
+	print_yes_no_row($vbphrase['allow_video_code'], 'forum[options][allowvideos]', $forum['allowvideos']);
 	print_yes_no_row($vbphrase['allow_smilies'], 'forum[options][allowsmilies]', $forum['allowsmilies']);
 	print_yes_no_row($vbphrase['allow_icons'], 'forum[options][allowicons]', $forum['allowicons']);
 	print_yes_no_row($vbphrase['allow_thread_ratings_in_this_forum'], 'forum[options][allowratings]', $forum['allowratings']);
@@ -236,6 +242,8 @@ if ($_REQUEST['do'] == 'add' OR $_REQUEST['do'] == 'edit')
 		print_label_row($vbphrase['use_selected_prefix_sets'], $prefixsets, '', 'top', 'prefixset');
 	}
 	print_yes_no_row($vbphrase['require_threads_have_prefix'], 'forum[options][prefixrequired]', $forum['prefixrequired']);
+	print_yes_no_row($vbphrase['display_whoread'], 'forum[options][displaywrt]' , $forum['displaywrt'] );
+	print_yes_no_row($vbphrase['allow_reputation'], 'forum[options][canreputation]' , $forum['canreputation'] );
 
 	($hook = vBulletinHook::fetch_hook('forumadmin_edit_form')) ? eval($hook) : false;
 
@@ -382,11 +390,12 @@ if ($_POST['do'] == 'update')
 					username = '" . $db->escape_string($vbulletin->userinfo['username']) . "'
 				WHERE
 					title = 'ad_" . $db->escape_string($location) . "'
-					AND styleid IN (-1,0)
+					AND styleid IN (-2,-1,0)
 			");
 		}
 
-		build_all_styles();
+		build_all_styles(0, 0, '', false, 'standard');
+		build_all_styles(0, 0, '', false, 'mobile');
 	}
 
 	$db->free_result($ad_result);
@@ -824,8 +833,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 39236 $
+|| # CVS: $RCSfile$ - $Revision: 62096 $
 || ####################################################################
 \*======================================================================*/
 ?>

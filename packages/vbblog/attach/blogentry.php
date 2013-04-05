@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -34,7 +34,6 @@ class vB_Attachment_Display_Single_vBBlog_BlogEntry extends vB_Attachment_Displa
 	public function verify_attachment()
 	{
 		// Verification routines
-
 		$selectsql = array(
 			"blog.blogid, blog.pending, blog.postedby_userid, blog.state AS blog_state",
 			"bu.memberids, bu.memberblogids",
@@ -57,7 +56,7 @@ class vB_Attachment_Display_Single_vBBlog_BlogEntry extends vB_Attachment_Displa
 		if (!empty($this->registry->userinfo['blogcategorypermissions']['cantview']))
 		{
 			$joinsql[] = "LEFT JOIN " . TABLE_PREFIX . "blog_categoryuser AS cu ON (cu.blogid = blog.blogid AND cu.blogcategoryid IN (" . implode(", ", $this->registry->userinfo['blogcategorypermissions']['cantview']) . "))";
-			if ($vbulletin->userinfo['userid'])
+			if ($this->registry->userinfo['userid'])
 			{
 				$wheresql[] = "(cu.blogcategoryid IS NULL OR blog.userid = " . $this->registry->userinfo['userid'] . ")";
 			}
@@ -258,7 +257,7 @@ class vB_Attachment_Display_Multiple_vBBlog_BlogEntry extends vB_Attachment_Disp
 		if (!empty($this->registry->userinfo['blogcategorypermissions']['cantview']))
 		{
 			$joinsql[] = "LEFT JOIN " . TABLE_PREFIX . "blog_categoryuser AS cu ON (cu.blogid = blog.blogid AND cu.blogcategoryid IN (" . implode(", ", $this->registry->userinfo['blogcategorypermissions']['cantview']) . "))";
-			if ($vbulletin->userinfo['userid'])
+			if ($this->registry->userinfo['userid'])
 			{
 				$subwheresql[] = "(cu.blogcategoryid IS NULL OR blog.userid = " . $this->registry->userinfo['userid'] . ")";
 			}
@@ -691,9 +690,6 @@ class vB_Attachment_Dm_vBBlog_BlogEntry extends vB_Attachment_Dm
 		// Update attach in the blog table
 		if (!empty($this->lists['bloglist']))
 		{
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			require_once(DIR . '/vb/types.php');
-			vB_Bootstrap_Framework::init();
 			$contenttypeid = vB_Types::instance()->getContentTypeID('vBBlog_BlogEntry');
 
 			$this->registry->db->query_write("
@@ -727,9 +723,9 @@ class vB_Attachment_Upload_Displaybit_vBBlog_BlogEntry extends vB_Attachment_Upl
 	public function process_display_template($attach, $values = array(), $disablecomment = false)
 	{
 		$attach['extension'] = strtolower(file_extension($attach['filename']));
-		$attach['filename']  = htmlspecialchars_uni($attach['filename']);
+		$attach['filename']  = fetch_censored_text(htmlspecialchars_uni($attach['filename'], false));
 		$attach['filesize']  = vb_number_format($attach['filesize'], 1, true);
-		$attach['imgpath']   = vB_Template_Runtime::fetchStyleVar('imgdir_attach') . "/$attach[extension].gif";
+		$attach['imgpath']   = $this->fetch_imgpath($attach['extension']);
 
 		$templater = vB_Template::create('newpost_attachmentbit');
 			$templater->register('attach', $attach);
@@ -738,7 +734,6 @@ class vB_Attachment_Upload_Displaybit_vBBlog_BlogEntry extends vB_Attachment_Upl
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 29983 $
 || ####################################################################
 \*======================================================================*/

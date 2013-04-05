@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author Edwin Brown, vBulletin Development Team
- * @version $Revision: 35187 $
- * @since $Date: 2010-01-28 10:27:43 -0800 (Thu, 28 Jan 2010) $
+ * @version $Revision: 59089 $
+ * @since $Date: 2012-02-14 13:50:40 -0800 (Tue, 14 Feb 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Item_Widget_CategoryNavAll extends vBCms_Item_Widget
@@ -37,6 +37,8 @@ class vBCms_Item_Widget_CategoryNavAll extends vBCms_Item_Widget
 
 	/** The default configuration **/
 	protected $config = array(
+		'showparent' => 1,
+		'showsection' => 1,
 		'template_name' => 'vbcms_widget_categorynavall_page',
 	);
 
@@ -44,7 +46,6 @@ class vBCms_Item_Widget_CategoryNavAll extends vBCms_Item_Widget
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 35187 $
+|| # SVN: $Revision: 59089 $
 || ####################################################################
 \*======================================================================*/

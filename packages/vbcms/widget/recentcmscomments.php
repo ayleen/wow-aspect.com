@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: recentcmscomments.php 44856 2011-06-21 21:17:11Z michael.lavaveshkul $
+ * @version $Id: recentcmscomments.php 60418 2012-03-16 15:52:01Z pmarsden $
  * @access public
  */
 class vBCms_Widget_RecentCmsComments extends vBCms_Widget
@@ -240,7 +240,7 @@ class vBCms_Widget_RecentCmsComments extends vBCms_Widget
 		$sql = "SELECT post.postid, thread.threadid, node.nodeid, info.title,
 		  user.username as cms_author, node.userid AS cms_authorid,
 		  thread.replycount, node.url, post.userid, user.avatarrevision
-			" . (vB::$vbulletin->options['avatarenabled'] ? ", avatar.avatarpath,
+			" . (vB::$vbulletin->options['avatarenabled'] ? ", avatar.avatarpath, info.creationdate AS dateline,
 			NOT ISNULL(customavatar.userid) AS hascustomavatar, customavatar.dateline AS avatardateline,
 			customavatar.width AS avwidth,customavatar.height AS avheight" : "") . "
 			FROM " . TABLE_PREFIX . "cms_node AS node
@@ -347,7 +347,7 @@ class vBCms_Widget_RecentCmsComments extends vBCms_Widget
 
 					if (vB::$vbulletin->options['avatarenabled'])
 					{
-						$avatar = fetch_avatar_from_record($result);
+						$avatar = fetch_avatar_from_record($result, true);
 					}
 
 					$view->avatar = $avatar;
@@ -358,14 +358,14 @@ class vBCms_Widget_RecentCmsComments extends vBCms_Widget
 
 					// Comment url
 					$join_char = strpos($view->node_url,'?') ? '&amp;' : '?';
-					$view->comment_url = $view->node_url . $join_char . "commentid=" . $post->get_field('postid') . "#post" . $post->get_field('postid');
+					$view->comment_url = $view->node_url . $join_char . "postid=" . $post->get_field('postid') . "#comments_" . $post->get_field('postid');
 
 					$view->post = $this->addVariables($post);
 					$thread = $post->get_thread();
 					$view->threadinfo = array('threadid' => $thread->get_field('threadid'),
 						 'title' => $thread->get_field('title'));
-					$view->dateformat = $vbulletin->options['dateformat'];
-					$view->timeformat = $vbulletin->options['default_timeformat'];
+					$view->dateformat = vB::$vbulletin->options['dateformat'];
+					$view->timeformat = vB::$vbulletin->options['timeformat'];
 					$view->dateline =  $post->get_field('dateline');
 
 					$views .= $view->render();
@@ -390,17 +390,14 @@ class vBCms_Widget_RecentCmsComments extends vBCms_Widget
 	 */
 	protected function getHash($widgetid)
 	{
-		$context = new vB_Context('widget' , array( 'widgetid' =>$widgetid,
+		$context = new vB_Context("widget_$widgetid" , array( 'widgetid' =>$widgetid,
 			'userid' => vB::$vbulletin->userinfo['userid']));
 		return strval($context);
-
 	}
-
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 44856 $
+|| # SVN: $Revision: 60418 $
 || ####################################################################
 \*======================================================================*/

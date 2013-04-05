@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -18,8 +18,8 @@
 * This class only functions on integer values!
 *
 * @package	vBulletin
-* @version	$Revision: 32878 $
-* @date		$Date: 2009-10-28 11:38:49 -0700 (Wed, 28 Oct 2009) $
+* @version	$Revision: 63384 $
+* @date		$Date: 2012-06-06 15:39:33 -0700 (Wed, 06 Jun 2012) $
 */
 class vB_FloodCheck
 {
@@ -167,7 +167,36 @@ class vB_FloodCheck
 		");
 
 		// if we updated something, we're not flooding; otherwise, we have to wait
-		$this->flood_wait = ($db->affected_rows() > 0 ? 0 : ($this->read_value - $floodmin_value));
+		if ($db->affected_rows() > 0)
+		{
+			// we are not flooding
+			$this->flood_wait = 0;
+		}
+		else
+		{
+			// we are flooding and have to wait
+			$this->flood_wait = $this->read_value - $floodmin_value;
+
+			if ($this->flood_wait == 0)
+			{
+				$db->query_write("
+					UPDATE " . TABLE_PREFIX . $this->table . " AS " . $this->table . "
+					SET " . $this->read_column . " = " . $this->commit_value . "
+					WHERE " . $this->primary_key . " = " . intval($this->key_value) . "
+					AND " . $this->read_column . " = $floodmin_value
+				");
+				if ($db->affected_rows() == 0)
+				{
+					// flood wait time is zero and no updated has happened,
+					// this means another post has already been made in this second
+					$this->flood_wait = $this->commit_value - $floodmin_value;
+				}
+				else
+				{
+					$this->flood_wait = 0;
+				}
+			}
+		}
 
 		/*
 			If a negative value occurs then it really is flooding.
@@ -282,8 +311,7 @@ class vB_FloodCheck
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 63384 $
 || ####################################################################
 \*======================================================================*/
 ?>

@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -54,7 +54,17 @@ class vBForum_Search_Result_SocialGroup extends vB_Search_Result
 			$results[$group->get_field('groupid')] = $result;
 		}
 
-		return $results;
+		$ordered_items = array();
+		foreach($ids AS $item_key)
+		{
+			if(isset($results[$item_key]))
+			{
+				$ordered_items[$item_key] = $results[$item_key];
+				unset($results[$item_key]);
+			}
+		}
+
+		return $ordered_items;
 	}
 
 
@@ -81,7 +91,7 @@ class vBForum_Search_Result_SocialGroup extends vB_Search_Result
 		if (!strlen($template_name)) {
 			$template_name = 'search_results_socialgroup';
 		}
-		$group = prepare_socialgroup($this->group->get_record());
+		$group = $this->group->get_record();
 
 		//some aliasing to make the template happy
 		$group['categoryid'] = $group['socialgroupcategoryid'];
@@ -99,7 +109,7 @@ class vBForum_Search_Result_SocialGroup extends vB_Search_Result
 		$template->register('group', $group);
 		$template->register('show', $show);
 		$template->register('dateformat', $vbulletin->options['dateformat']);
-		$template->register('timeformat', $vbulletin->options['default_timeformat']);
+		$template->register('timeformat', $vbulletin->options['timeformat']);
 		return $template->render();
 	}
 
@@ -122,7 +132,6 @@ class vBForum_Search_Result_SocialGroup extends vB_Search_Result
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

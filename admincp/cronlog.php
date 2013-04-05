@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -14,7 +14,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 32878 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 52122 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('logging', 'cron');
@@ -80,15 +80,19 @@ if ($_REQUEST['do'] == 'view')
 
 	switch ($vbulletin->GPC['orderby'])
 	{
-		case 'action':
-			$order = 'cronlog.varname ASC, cronlog.dateline DESC';
+		case 'date':
+			$order = 'cronlog.dateline DESC, cronlog.cronlogid DESC';
 			break;
 
-		case 'date':
-		default:
-			$order = 'cronlog.dateline DESC';
-	}
+		case 'action':
+			$order = 'cronlog.varname ASC, cronlog.cronlogid DESC';
+			break;
 
+		case 'cronid':
+		default:
+			$order = 'cronlog.cronlogid DESC';
+	}
+	
 	$logs = $db->query_read("
 		SELECT cronlog.*
 		FROM " . TABLE_PREFIX . "cronlog AS cronlog
@@ -269,7 +273,7 @@ if ($_REQUEST['do'] == 'choose')
 	}
 
 	$perpage = array(5 => 5, 10 => 10, 15 => 15, 20 => 20, 25 => 25, 30 => 30, 40 => 40, 50 => 50, 100 => 100);
-	$orderby = array('date' => $vbphrase['date'], 'action' => $vbphrase['action']);
+	$orderby = array('cronid' => $vbphrase['cronid'], 'action' => $vbphrase['action'], 'date' => $vbphrase['date'], );
 
 	print_form_header('cronlog', 'view');
 	print_table_header($vbphrase['scheduled_task_log_viewer']);
@@ -291,8 +295,7 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 52122 $
 || ####################################################################
 \*======================================================================*/
 ?>

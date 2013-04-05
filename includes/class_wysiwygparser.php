@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -127,6 +127,7 @@ class vB_WysiwygHtmlParser
 			'table' => array('$this', 'parse_tag_table'),
 			'tr'    => array('$this', 'parse_tag_tr'),
 			'td'    => array('$this', 'parse_tag_td'),
+			'th'    => array('$this', 'parse_tag_th'),
 
 			'ol'   => array('$this', 'parse_tag_list'),
 			'ul'   => array('$this', 'parse_tag_list'),
@@ -542,16 +543,6 @@ class vB_WysiwygHtmlParser
 	*/
 	protected function parse_matched_tags($text)
 	{
-		$pregfind = array
-		(
-			'#<a name=[^>]*>(.*)</a>#siU',                         // kill named anchors
-		);
-		$pregreplace = array
-		(
-			'\1',                                                  // kill named anchors
-		);
-		$text = preg_replace($pregfind, $pregreplace, $text);
-
 		foreach (array_keys($this->tags) AS $tag_name)
 		{
 			$text = $this->parse_tag_by_name($tag_name, $text);
@@ -739,12 +730,12 @@ class vB_WysiwygHtmlParser
 	*/
 	protected function cleanup_bbcode($text)
 	{
-		if (is_browser('mozilla'))
-		{
-			// mozilla treats line breaks before/after lists a little differently from IE (see #5774)
+		//if (is_browser('mozilla'))
+		//{
+		// mozilla treats line breaks before/after lists a little differently from IE (see #5774)
 			$text = preg_replace('#\[(list)#i', "\n[\\1", $text);
 			$text = preg_replace('#\[(/list)\]#i', "[\\1]\n", $text);
-		}
+		//}
 
 		$text = preg_replace('#(?<!\r|\n|^)\[(/list|list|\*)\]#i', "\n[\\1]", $text);
 
@@ -832,7 +823,14 @@ class vB_WysiwygHtmlParser
 
 		if ($this->is_bbcode_tag_allowed($tag))
 		{
-			return "[$tag=\"$href\"]" . $this->parse_tag_by_name('a', $text) . "[/$tag]";
+			if ($inner = $this->parse_tag_by_name('a', $text))
+			{
+				return "[$tag=\"$href\"]" . $inner . "[/$tag]";
+			}
+			else
+			{
+				return '';
+			}
 		}
 		else
 		{
@@ -1023,11 +1021,17 @@ class vB_WysiwygHtmlParser
 	*/
 	protected function parse_tag_li($listoptions, $text, $tag_name, $args)
 	{
-		$indent = '';
+		$options = '';
 		$dir = $this->registry->stylevars['textdirection']['string'] == 'rtl' ? 'right' : 'left';
 		if ($indentcount = intval(intval($this->parse_wysiwyg_style_attribute('margin-' . $dir . ':', $listoptions)) / EDITOR_INDENT))
 		{
-			$indent = '=' . $indentcount;
+			$options = '=' . $indentcount;
+		}
+
+		if ($align = $this->parse_wysiwyg_style_attribute('text-align:', $listoptions) AND in_array(strtolower($align), array('right', 'center', 'left')))
+		{
+			$align = strtolower($align);
+			$options .= $options ? "|{$align}" : "={$align}"; 
 		}
 
 		if (!$this->is_bbcode_tag_allowed('list') OR !$this->in_state('list'))
@@ -1035,7 +1039,7 @@ class vB_WysiwygHtmlParser
 			return "$text\n";
 		}
 
-		return "[*{$indent}]" . rtrim($text);
+		return  "\n[*{$options}]" . rtrim($text);
 	}
 
 	/**
@@ -1063,7 +1067,7 @@ class vB_WysiwygHtmlParser
 		}
 
 		$this->push_state('list');
-		$text = preg_replace('#<li(\s+style="[^"]*)?>((?'.'>[^[<]+?|(?!</li).)*)(?=</?ol|</?ul|<li|\[list|\[/list)#siU', '<li\\1>\\2</li>', $text);
+		$text = preg_replace('#<li([^>]*)>((?'.'>[^[<]+?|(?!</li).)*)(?=</?ol|</?ul|<li|\[list|\[/list)#siU', '<li\\1>\\2</li>', $text);
 		$text = $this->parse_tag_by_name('li', $text);
 
 		if (!$this->is_bbcode_tag_allowed('list'))
@@ -1236,6 +1240,7 @@ class vB_WysiwygHtmlParser
 		}
 
 		$output = array();
+		
 		foreach ($classes AS $class)
 		{
 			$class = trim($class);
@@ -1282,6 +1287,11 @@ class vB_WysiwygHtmlParser
 			$options['class'] = $this->get_effective_class_list($class);
 		}
 
+		//if ($border = $this->parse_wysiwyg_tag_attribute('border=', $attributes))
+		//{
+		//	$options['class'] .= ($options['class'] ? ' grid' : 'grid');
+		//}		
+		
 		if ($style = $this->parse_wysiwyg_tag_attribute('style=', $attributes)
 				AND
 			$width = $this->parse_wysiwyg_style_attribute('width:', $style)
@@ -1367,12 +1377,13 @@ class vB_WysiwygHtmlParser
 		$args['tr_options'] = $options;
 
 		$text = $this->parse_tag_by_name('td', $text, $args);
-
+		$text = $this->parse_tag_by_name('th', $text, $args);
+		
 		return "[TR{$bbcode_param}]\n" . $text . "[/TR]\n";
 	}
 
 	/**
-	* Parses <tr> tags. Supports various options. Arguments passed in are
+	* Parses <td> tags. Supports various options. Arguments passed in are
 	* usually the options applied to the parent table and tr tags.
 	*
 	* @param	string	String containing tag attributes
@@ -1382,6 +1393,7 @@ class vB_WysiwygHtmlParser
 	*/
 	protected function parse_tag_td($attributes, $text, $tag_name, $args)
 	{
+		$tagname = strtolower($tag_name);
 		$options = array();
 
 		$style = $this->parse_wysiwyg_tag_attribute('style=', $attributes);
@@ -1405,7 +1417,7 @@ class vB_WysiwygHtmlParser
 				$parent_classes .= ' ' . $args['tr_options']['class'];
 			}
 
-			$options['class'] = $this->get_effective_class_list($class, trim($parent_classes), '_td');
+			$options['class'] = $this->get_effective_class_list($class, trim($parent_classes), "_{$tagname}");
 		}
 
 		if ($width = $this->parse_wysiwyg_tag_attribute('width=', $attributes))
@@ -1443,6 +1455,12 @@ class vB_WysiwygHtmlParser
 			}
 		}
 
+		$textalign = $this->parse_wysiwyg_style_attribute('text-align:', $style);
+		if ($textalign)
+		{
+			$options['align'] = $textalign;
+		}
+		
 		$bbcode_param = $this->build_table_bbcode_param($options);
 
 		if ($text == "\n")
@@ -1450,9 +1468,24 @@ class vB_WysiwygHtmlParser
 			$text = '';
 		}
 
-		return "[TD{$bbcode_param}]" . $text . "[/TD]\n";
+		$tagname = strtoupper($tagname);
+		return "[{$tagname}{$bbcode_param}]" . $text . "[/{$tagname}]\n";
 	}
 
+	/**
+	* Parses <th> tags. Supports various options. Arguments passed in are
+	* usually the options applied to the parent table and tr tags.
+	*
+	* @param	string	String containing tag attributes
+	* @param	string	Text within tag
+	* @param	string	Name of HTML tag. Used if one function parses multiple tags
+	* @param	mixed	Extra arguments passed in to parsing call or tag rules
+	*/
+	protected function parse_tag_th($attributes, $text, $tag_name, $args)
+	{
+		return $this->parse_tag_td($attributes, $text, $tag_name, $args);
+	}
+	
 	/**
 	* General matched tag HTML parser. Finds matched pairs of tags (outside pairs
 	* first) and calls the specified call back.
@@ -1714,7 +1747,6 @@ class vB_WysiwygHtmlParser
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 29480 $
 || ####################################################################
 \*======================================================================*/

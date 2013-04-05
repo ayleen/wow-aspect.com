@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -31,8 +31,8 @@ require_once(DIR . '/includes/adminfunctions.php');
 * $f->save();
 *
 * @package	vBulletin
-* @version	$Revision: 32878 $
-* @date		$Date: 2009-10-28 11:38:49 -0700 (Wed, 28 Oct 2009) $
+* @version	$Revision: 62096 $
+* @date		$Date: 2012-05-01 18:09:20 -0700 (Tue, 01 May 2012) $
 */
 class vB_DataManager_Forum extends vB_DataManager
 {
@@ -43,14 +43,14 @@ class vB_DataManager_Forum extends vB_DataManager
 	*/
 	var $validfields = array(
 		'forumid'           => array(TYPE_UINT,       REQ_INCR, VF_METHOD, 'verify_nonzero'),
-		'styleid'           => array(TYPE_INT,        REQ_NO,   'if ($data < 0) { $data = 0; } return true;'),
+		'styleid'           => array(TYPE_INT,        REQ_NO, 'if ($data < 0) { $data = 0; } return true;'),
 		'title'             => array(TYPE_STR,        REQ_YES,  VF_METHOD),
 		'title_clean'       => array(TYPE_STR,        REQ_YES),
 		'description'       => array(TYPE_STR,        REQ_NO,   VF_METHOD),
 		'description_clean' => array(TYPE_STR,        REQ_NO),
 		'options'           => array(TYPE_ARRAY_BOOL, REQ_AUTO),
 		'displayorder'      => array(TYPE_UINT,       REQ_NO),
-		'replycount'        => array(TYPE_UINT,       REQ_NO),
+		'replycount'        => array(TYPE_UINT,       REQ_NO, 'if ($data < 0) { $data = 0; } return true;'),
 		'lastpost'          => array(TYPE_UINT,       REQ_NO),
 		'lastposter'        => array(TYPE_STR,        REQ_NO),
 		'lastposterid'      => array(TYPE_STR,        REQ_NO),
@@ -59,7 +59,7 @@ class vB_DataManager_Forum extends vB_DataManager
 		'lastthreadid'      => array(TYPE_UINT,       REQ_NO),
 		'lasticonid'        => array(TYPE_INT,        REQ_NO),
 		'lastprefixid'      => array(TYPE_NOHTML,     REQ_NO),
-		'threadcount'       => array(TYPE_UINT,       REQ_NO),
+		'threadcount'       => array(TYPE_UINT,       REQ_NO, 'if ($data < 0) { $data = 0; } return true;'),
 		'daysprune'         => array(TYPE_INT,        REQ_AUTO, 'if ($data == 0) { $data = -1; } return true;'),
 		'newpostemail'      => array(TYPE_STR,        REQ_NO,   VF_METHOD, 'verify_emaillist'),
 		'newthreademail'    => array(TYPE_STR,        REQ_NO,   VF_METHOD, 'verify_emaillist'),
@@ -68,9 +68,9 @@ class vB_DataManager_Forum extends vB_DataManager
 		'link'              => array(TYPE_STR,        REQ_NO), // do not use verify_link on this -- relative redirects are prefectly valid
 		'parentlist'        => array(TYPE_STR,        REQ_AUTO, 'return preg_match(\'#^(\d+,)*-1$#\', $data);'),
 		'childlist'         => array(TYPE_STR,        REQ_AUTO),
-		'showprivate'       => array(TYPE_UINT,       REQ_NO,   'if ($data > 3) { $data = 0; } return true;'),
+		'showprivate'       => array(TYPE_UINT,       REQ_NO, 'if ($data > 3) { $data = 0; } return true;'),
 		'defaultsortfield'  => array(TYPE_STR,        REQ_NO),
-		'defaultsortorder'  => array(TYPE_STR,        REQ_NO,   'if ($data != "asc") { $data = "desc"; } return true;'),
+		'defaultsortorder'  => array(TYPE_STR,        REQ_NO, 'if ($data != "asc") { $data = "desc"; } return true;'),
 		'imageprefix'       => array(TYPE_NOHTML,     REQ_NO,  VF_METHOD)
 	);
 
@@ -581,8 +581,7 @@ class vB_DataManager_Forum extends vB_DataManager
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 32878 $
+|| # CVS: $RCSfile$ - $Revision: 62096 $
 || ####################################################################
 \*======================================================================*/
 ?>

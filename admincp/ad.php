@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,7 +15,7 @@
 error_reporting(E_ALL & ~E_NOTICE);
 
 // ##################### DEFINE IMPORTANT CONSTANTS #######################
-define('CVS_REVISION', '$RCSfile$ - $Revision: 37230 $');
+define('CVS_REVISION', '$RCSfile$ - $Revision: 58539 $');
 
 // #################### PRE-CACHE TEMPLATES AND DATA ######################
 $phrasegroups = array('advertising', 'notice');
@@ -239,8 +239,9 @@ if ($_REQUEST['do'] == 'edit' OR $_REQUEST['do'] == 'add')
 	$style_options = array();
 	foreach($stylecache AS $style)
 	{
-		$style_options["$style[styleid]"] = /*construct_depth_mark($style['depth'], '&nbsp; &nbsp; ') . ' ' .*/ $style['title'];
-		$style_options["$style[styleid]"] = construct_depth_mark($style['depth'], '--') . ' ' . $style['title'];
+		$masterset = $vbphrase[$style['type'] . '_styles'];
+		$style_options[$masterset]["$style[styleid]"] = /*construct_depth_mark($style['depth'], '&nbsp; &nbsp; ') . ' ' .*/ $style['title'];
+		$style_options[$masterset]["$style[styleid]"] = construct_depth_mark($style['depth'], '--') . ' ' . $style['title'];
 	}
 
 	// build the list of criteria options
@@ -560,6 +561,9 @@ if ($_POST['do'] == 'update')
 		replace_ad_template(-1, $ad_location_orig, $template_orig, $template_orig_un, 
 			$vbulletin->userinfo['username'], $vbulletin->options['templateversion'],
 			$ad_locations[$ad_location_orig]['product']);
+		replace_ad_template(-2, $ad_location_orig, $template_orig, $template_orig_un, 
+			$vbulletin->userinfo['username'], $vbulletin->options['templateversion'],
+			$ad_locations[$ad_location_orig]['product']);		
 	}
 
 	$ad_location = $vbulletin->GPC['ad_location'];
@@ -596,8 +600,12 @@ if ($_POST['do'] == 'update')
 	replace_ad_template(-1, $ad_location, $template, $template_un,
 		$vbulletin->userinfo['username'], $vbulletin->options['templateversion'],
 		$ad_locations[$ad_location]['product']);
-
-	build_all_styles();
+	replace_ad_template(-2, $ad_location, $template, $template_un,
+		$vbulletin->userinfo['username'], $vbulletin->options['templateversion'],
+		$ad_locations[$ad_location]['product']);
+	
+	build_all_styles(0, 0, '', false, 'standard');
+	build_all_styles(0, 0, '', false, 'mobile');
 
 	define('CP_REDIRECT', 'ad.php');
 	print_stop_message('saved_ad_x_successfully', $vbulletin->GPC['title']);
@@ -654,10 +662,11 @@ if ($_POST['do'] == 'remove')
 		WHERE
 			title = 'ad_" . $db->escape_string($adlocation) . "'
 		AND
-			styleid IN (-1,0)
+			styleid IN (-2,-1,0)
 	");
 
-	build_all_styles();
+	build_all_styles(0, 0, '', false, 'standard');
+	build_all_styles(0, 0, '', false, 'mobile');
 
 	define('CP_REDIRECT', 'ad.php?do=modify');
 	print_stop_message('deleted_ad_successfully');
@@ -794,7 +803,7 @@ if ($_POST['do'] == 'quickupdate')
 					username = '" . $db->escape_string($vbulletin->userinfo['username']) . "'
 				WHERE
 					title = 'ad_" . $db->escape_string($location) . "'
-					AND styleid IN (-1,0)
+					AND styleid IN (-2,-1,0)
 			");
 		}
 	}
@@ -975,7 +984,6 @@ print_cp_footer();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 37230 $
+|| # CVS: $RCSfile$ - $Revision: 58539 $
 || ####################################################################
 \*======================================================================*/

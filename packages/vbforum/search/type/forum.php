@@ -2,9 +2,9 @@
 
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -94,6 +94,9 @@ class vBForum_Search_Type_Forum extends vB_Search_Type
 			'cb' => array('nocache'),
 		 	'value' => array('query', 'threadlimit', 'postlimit') ) );
 		vB_Search_Searchtools::searchIntroRegisterHumanVerify($template);
+
+		($hook = vBulletinHook::fetch_hook('search_listui_complete')) ? eval($hook) : false;
+
 		return $template->render();
 	}
 
@@ -135,6 +138,8 @@ class vBForum_Search_Type_Forum extends vB_Search_Type
 			$this->set_display_date($criteria, $registry->GPC['forumdateline'], $registry->GPC['beforeafter']);
 
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_advanced_filters')) ? eval($hook) : false;
 	}
 
 	public function get_db_query_info($fieldname)
@@ -163,8 +168,10 @@ class vBForum_Search_Type_Forum extends vB_Search_Type
 		}
 		else
 		{
-			return false;
+			$result = false;
 		}
+
+		($hook = vBulletinHook::fetch_hook('search_dbquery_info')) ? eval($hook) : false;
 
 		return $result;
 	}
@@ -209,22 +216,26 @@ class vBForum_Search_Type_Forum extends vB_Search_Type
 */
 	public function additional_pref_defaults()
 	{
-		return array(
+		$retval = array(
 			'query'         => '',
 			'titleonly'     => 0,
-			'nocache'    => '',
+			'nocache'       => '',
 			'threadless'    => 0,
 			'threadlimit'   => '',
 			'forumdateline' => 0,
 			'beforeafter'   => 'after',
 			'postless'      => 0,
 			'postlimit'     => '',
-			'sortby'		=> 'dateline');
+			'sortby'		=> 'dateline'
+		);
+
+		($hook = vBulletinHook::fetch_hook('search_pref_defaults')) ? eval($hook) : false;
+
+		return $retval;
 	}
 
 	protected $package = "vBForum";
 	protected $class = "Forum";
-
 
 	protected $type_globals = array (
 		'threadless'     => TYPE_UINT,
@@ -237,7 +248,6 @@ class vBForum_Search_Type_Forum extends vB_Search_Type
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -43,7 +43,9 @@ class vB_Legacy_CurrentUser extends vB_Legacy_User
 
 	/**
 	 * Get a user specific has value  
-	 *
+	 
+	 ### THIS IS NOT USED ANYWHERE ###
+
 	 * Based on creation time, userid, and user specific salt value
 	 *
 	 * @param int $time timestamp value to use for the hash
@@ -282,7 +284,6 @@ class vB_Legacy_CurrentUser extends vB_Legacy_User
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 28678 $
 || ####################################################################
 \*======================================================================*/

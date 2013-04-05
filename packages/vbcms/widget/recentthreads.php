@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -15,8 +15,8 @@
  *
  * @package vBulletin
  * @author vBulletin Development Team
- * @version $Revision: 38992 $
- * @since $Date: 2010-09-15 12:29:46 -0700 (Wed, 15 Sep 2010) $
+ * @version $Revision: 60418 $
+ * @since $Date: 2012-03-16 08:52:01 -0700 (Fri, 16 Mar 2012) $
  * @copyright vBulletin Solutions Inc.
  */
 class vBCms_Widget_RecentThreads extends vBCms_Widget
@@ -256,7 +256,7 @@ class vBCms_Widget_RecentThreads extends vBCms_Widget
 	/**
 	 * This lists the forums for the select list
 	 *
-	 @param mixed $config - array of current configuration for this widget
+	 * @param mixed $config - array of current configuration for this widget
 	 * @return
 	 */
 	private function getForums($config, $name = 'forumchoice')
@@ -282,8 +282,7 @@ class vBCms_Widget_RecentThreads extends vBCms_Widget
 			$optionvalue = $forumid;
 			$optiontitle = "$forum[depthmark] $forum[title_clean]";
 
-			if ($vbulletin->options['fulltextsearch'] AND
-				!($vbulletin->userinfo['forumpermissions'][$forumid] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
+			if (!($vbulletin->userinfo['forumpermissions'][$forumid] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']))
 			{
 				$optiontitle .= '*';
 				$show['cantsearchposts'] = true;
@@ -297,8 +296,8 @@ class vBCms_Widget_RecentThreads extends vBCms_Widget
 				$haveforum = true;
 			}
 
-			$options .= render_option_template($optiontitle, $forumid, $optionselected,
-				'fjdpth' . min(4, $forum['depth']));
+			require_once DIR . '/includes/adminfunctions.php';
+			$options .= render_option_template(construct_depth_mark($forum['depth'], '--') . ' ' . $optiontitle, $forumid, $optionselected);
 		}
 
 		//"All subscribed" requires special handling.
@@ -312,7 +311,7 @@ class vBCms_Widget_RecentThreads extends vBCms_Widget
 			$subscribed_selected = '';
 		}
 
-		$select = "<select name=\"" .$name."[]\" multiple=\"multiple\" size=\"4\" $style_string>\n" .
+		$select = "<select name=\"" .$name."[]\" multiple=\"multiple\" size=\"6\" $style_string>\n" .
 					render_option_template($vbphrase['search_all_open_forums'], '',
 						$haveforum ? '' : 'selected="selected"') .
 					render_option_template($vbphrase['search_subscribed_forums'], 'subscribed', $subscribed_selected) .
@@ -382,7 +381,7 @@ class vBCms_Widget_RecentThreads extends vBCms_Widget
 				)
 			{
 				//Don't include the comments forum.
-				if (vB::$vbulletin->options['vbcmsforumid'] AND (intval(vB::$vbulletin->options['vbcmsforumid']) == intval($forumid)))
+				if (vB::$vbulletin->options['vbcmsforumid'] > 0 AND (intval(vB::$vbulletin->options['vbcmsforumid']) == intval($forumid)))
 				{
 					continue;
 				}
@@ -400,10 +399,8 @@ class vBCms_Widget_RecentThreads extends vBCms_Widget
 			//Note that there is an opening quote in $forumsql and the matching close
 			// quote in $associatedthread. We intend to rewrite this query in the
 			// next release to remove this inconsistency
-			$forumsql = " AND (" . (empty($subscribejoin) ? '' : "subscribeforum.forumid IS NOT NULL OR ") .
-				" thread.forumid IN(" . implode(',', $forumchoice) . ")";
-			$associatedthread = (vB::$vbulletin->options['vbcmsforumid'] ?
-					" AND (thread.forumid <> " . vB::$vbulletin->options['vbcmsforumid'] . ") )" : ')');
+			$forumsql = " AND (" . (empty($subscribejoin) ? '' : "subscribeforum.forumid IS NOT NULL OR ") . " thread.forumid IN(" . implode(',', $forumchoice) . ")";
+			$associatedthread = (vB::$vbulletin->options['vbcmsforumid'] ? " AND (thread.forumid <> " . vB::$vbulletin->options['vbcmsforumid'] . ") )" : ')');
 		}
 		else if (! empty($subscribejoin))
 		{
@@ -474,6 +471,7 @@ class vBCms_Widget_RecentThreads extends vBCms_Widget
 			$thread['date'] = vbdate(vB::$vbulletin->options['dateformat'], $thread['dateline'], true);
 			$thread['time'] = vbdate(vB::$vbulletin->options['timeformat'], $thread['dateline']);
 
+			$thread['detailedtime'] = (vB::$vbulletin->options['yestoday'] == 2);
 			$thread['lastpostdate'] = vbdate(vB::$vbulletin->options['dateformat'], $thread['lastpost'], true);
 			$thread['lastposttime'] = vbdate(vB::$vbulletin->options['timeformat'], $thread['lastpost']);
 			$forumid = $thread['forumid'];
@@ -484,7 +482,7 @@ class vBCms_Widget_RecentThreads extends vBCms_Widget
 			// get avatar
 			if (intval($thread['userid']) AND vB::$vbulletin->options['avatarenabled'])
 			{
-				$avatar = fetch_avatar_from_record($thread);
+				$avatar = fetch_avatar_from_record($thread, true);
 			}
 
 			if (!isset($avatar))
@@ -503,7 +501,7 @@ class vBCms_Widget_RecentThreads extends vBCms_Widget
 
 	public function getHash()
 	{
-		$context = new vB_Context('widget' ,
+		$context = new vB_Context('widget_' . $this->widget->getId() ,
 		array(
 			'widgetid' => $this->widget->getId(),
 		'permissions' => vB::$vbulletin->userinfo['forumpermissions'],
@@ -517,7 +515,6 @@ class vBCms_Widget_RecentThreads extends vBCms_Widget
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 38992 $
+|| # SVN: $Revision: 60418 $
 || ####################################################################
 \*======================================================================*/

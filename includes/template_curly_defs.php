@@ -342,17 +342,9 @@ class vB_TemplateParser_CurlyRawPhrase extends vB_TemplateParser_Curly
 			}
 		}
 
-		if ($main_node->attributes[0] instanceof vB_CurlyNode AND in_array($main_node->attributes[0]->value, array('raw', 'var')))
-		{
-			$string = $main_node->attributes[0]->attributes[0];
-			$string = ($string[0] !== '$' ? '$' : '') . $string;
-		}
-		else
-		{
-			$string = $main_node->attributes[0];
-		}
+		$string = self::attributeToString($main_node->attributes[0], $parser);
 
-		return 'vB_Template_Runtime::parsePhrase("' . $string . "\"$arguments" . ')';
+		return 'vB_Template_Runtime::parsePhrase(' . $string . $arguments . ')';
 	}
 }
 
@@ -594,21 +586,21 @@ class vB_TemplateParser_CurlyRaw extends vB_TemplateParser_Curly
 			{
 				$parts[1] = '$' . $main_node->attributes[1]->attributes[0];
 			}
-    	for ($i = 1; $i < sizeof($parts); $i++)
-    	{
+			for ($i = 1; $i < sizeof($parts); $i++)
+			{
 				if ($parts[$i][0] == '$')
 				{
-	        		$output .= '[' . $parts[$i] . ']';
+					$output .= '[' . $parts[$i] . ']';
 				}
 				else if (strpos($parts[$i], '$') !== false)
 				{
-	        		$output .= '["' . $parts[$i] . '"]';
+					$output .= '["' . $parts[$i] . '"]';
 				}
 				else
 				{
-	        		$output .= "['" . $parts[$i] . "']";
+					$output .= "['" . $parts[$i] . "']";
 				}
-    	}
+			}
 		}
 
 		return ($output[0] !== '$' ? '$' : '') . $output;

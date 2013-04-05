@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -256,9 +256,9 @@ if ($_POST['do'] == 'postthread')
 			$attach = new vB_Attach_Display_Content($vbulletin, 'vBForum_Post');
 			$postattach = $attach->fetch_postattach($posthash);
 		}
-
 		// ### PREVIEW POST ###
-		$postpreview = process_post_preview($newpost, 0 , $postattach);
+		// yes .. double postattach here
+		$postpreview = process_post_preview($newpost, 0, $postattach, $postattach);
 		$_REQUEST['do'] = 'newthread';
 		$newpost['message'] = htmlspecialchars_uni($newpost['message']);
 		$podcasturl = htmlspecialchars_uni($newpost['podcasturl']);
@@ -285,11 +285,11 @@ if ($_POST['do'] == 'postthread')
 			}
 			if ($forumperms & $vbulletin->bf_ugp_forumpermissions['canviewthreads'])
 			{
-				eval(print_standard_redirect('redirect_postthanks', true, true));
+				print_standard_redirect('redirect_postthanks', true, true);  
 			}
 			else
 			{
-				eval(print_standard_redirect('redirect_postthanks_nopermission', true, true));
+				print_standard_redirect('redirect_postthanks_nopermission', true, true);  
 			}
 		}
 		else if ($newpost['visible'])
@@ -311,18 +311,18 @@ if ($_POST['do'] == 'postthread')
 					publishtofacebook_newthread($newpost['title'], $newpost['message'], create_full_url($fblink));
 				}
 
-				eval(print_standard_redirect('redirect_postthanks'));
+				print_standard_redirect('redirect_postthanks');  
 			}
 			else
 			{
 				$vbulletin->url = fetch_seo_url('forum', $foruminfo);
-				eval(print_standard_redirect('redirect_postthanks_nopermission', true, true));
+				print_standard_redirect('redirect_postthanks_nopermission', true, true);  
 			}
 		}
 		else
 		{
 			$vbulletin->url = fetch_seo_url('forum', $foruminfo);
-			eval(print_standard_redirect('redirect_postthanks_moderate', true, true));
+			print_standard_redirect('redirect_postthanks_moderate', true, true);  
 		}
 	} // end if
 }
@@ -535,12 +535,29 @@ if ($_REQUEST['do'] == 'newthread')
 
 	construct_forum_rules($foruminfo, $forumperms);
 
+	$show['signaturecheckbox'] = ($permissions['genericpermissions'] & $vbulletin->bf_ugp_genericpermissions['canusesignature'] AND $vbulletin->userinfo['signature']);
 	$show['parseurl'] = (($vbulletin->options['allowedbbcodes'] & ALLOW_BBCODE_URL) AND $foruminfo['allowbbcode']);
-	$show['misc_options'] = ($vbulletin->userinfo['signature'] != '' OR $show['parseurl'] OR !empty($disablesmiliesoption));
+	$show['misc_options'] = ($show['signaturecheckbox'] OR $show['parseurl'] OR !empty($disablesmiliesoption));
 	$show['additional_options'] = ($show['misc_options'] OR !empty($attachmentoption) OR $show['member'] OR $show['poll'] OR !empty($threadmanagement));
+	$show['lightbox'] = ($vbulletin->options['lightboxenabled'] AND $vbulletin->options['usepopups']);
 
-	// display publish to Facebook checkbox in quick editor?
-	if (is_facebookenabled())
+	$guestuser = array(
+		'userid'      => 0,
+		'usergroupid' => 0,
+	);
+	cache_permissions($guestuser);
+
+	if (
+		$guestuser['permissions']['forumpermissions'] & $vbulletin->bf_ugp_forumpermissions['canview']
+			AND
+		$guestuser['forumpermissions']["$foruminfo[forumid]"] & $vbulletin->bf_ugp_forumpermissions['canview']
+			AND
+		$guestuser['forumpermissions']["$foruminfo[forumid]"] & $vbulletin->bf_ugp_forumpermissions['canviewthreads']
+			AND
+		($guestuser['forumpermissions']["$foruminfo[forumid]"] & $vbulletin->bf_ugp_forumpermissions['canviewothers'])
+			AND
+		is_facebookenabled()
+	)
 	{
 		$fbpublishcheckbox = construct_fbpublishcheckbox();
 	}
@@ -589,7 +606,6 @@ if ($_REQUEST['do'] == 'newthread')
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 43599 $
+|| # CVS: $RCSfile$ - $Revision: 57655 $
 || ####################################################################
 \*======================================================================*/

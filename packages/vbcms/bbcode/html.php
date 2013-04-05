@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -144,7 +144,11 @@ class vBCms_BBCode_HTML extends vB_BbCodeParser
 	*/
 	public function do_parse($pagetext, $do_html = false, $htmlstate = null)
 	{
-		return parent::do_parse($pagetext, $do_html, true, true, $this->candownload, true, false, $htmlstate);
+		if (isset($this->registry->options['thumb_override']))
+		{
+			$this->displayimage = $this->registry->options['thumb_override'];
+		}
+		return parent::do_parse($pagetext, $do_html, true, true, $this->candownload, true, false, $htmlstate, false, $this->candownload);
 	}
 
 	/** the default amount of preview text **/
@@ -226,7 +230,12 @@ class vBCms_BBCode_HTML extends vB_BbCodeParser
 			// and be confused when the tag is ignored.
 			return "<div>$page_title</div>";
 		}
-
+		else if (empty($this->parse_output) AND $this->current_page == 1)
+		{
+			$this->pages[1]['title'] = $page_title;
+			return '';
+		}
+		
 		if (!$this->output_page)
 		{
 			return '<h3 style="border: 1px dashed #cccccc; border-top: 3px double black; padding: 4px;">' . $page_title . '</h3>';
@@ -427,7 +436,6 @@ class vBCms_BBCode_HTML extends vB_BbCodeParser
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # SVN: $Revision: 29533 $
 || ####################################################################
 \*======================================================================*/

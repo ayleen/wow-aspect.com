@@ -1,18 +1,20 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
 || #################################################################### ||
 \*======================================================================*/
 
-define('FILE_VERSION', '4.1.5'); // this should match installsteps.php
-define('SIMPLE_VERSION', '415'); // see vB_Datastore::check_options()
+define('FILE_VERSION', '4.2.0'); // this should match installsteps.php
+define('SIMPLE_VERSION', '420'); // see vB_Datastore::check_options()
 define('YUI_VERSION', '2.9.0'); // define the YUI version we bundle
+define('JQUERY_VERSION', '1.6.4'); // define the jQuery version we use
+define('JQUERY_MOBILE_VERSION', '1.0'); // define the jQuery Mobile Style Version
 
 /**#@+
 * The maximum sizes for the "small" profile avatars
@@ -37,6 +39,7 @@ define('ALLOW_BBCODE_HTML',   512);
 define('ALLOW_BBCODE_IMG',    1024);
 define('ALLOW_BBCODE_QUOTE',  2048);
 define('ALLOW_BBCODE_CUSTOM', 4096);
+define('ALLOW_BBCODE_VIDEO',  8192);
 /**#@-*/
 
 /**#@+
@@ -74,8 +77,8 @@ define('DBARRAY_NUM',   2);
 * This class also handles data replication between a master and slave(s) servers
 *
 * @package	vBulletin
-* @version	$Revision: 46878 $
-* @date		$Date: 2011-08-01 16:35:31 -0700 (Mon, 01 Aug 2011) $
+* @version	$Revision: 62833 $
+* @date		$Date: 2012-05-19 14:21:12 -0700 (Sat, 19 May 2012) $
 */
 class vB_Database
 {
@@ -102,7 +105,7 @@ class vB_Database
 		'num_fields'         => 'mysql_num_fields',
 		'field_name'         => 'mysql_field_name',
 		'insert_id'          => 'mysql_insert_id',
-		'escape_string'      => 'mysql_escape_string',
+		'escape_string'      => 'mysql_real_escape_string',
 		'real_escape_string' => 'mysql_real_escape_string',
 		'close'              => 'mysql_close',
 		'client_encoding'    => 'mysql_client_encoding',
@@ -718,14 +721,7 @@ class vB_Database
 	*/
 	function escape_string($string)
 	{
-		if ($this->functions['escape_string'] == $this->functions['real_escape_string'])
-		{
-			return $this->functions['escape_string']($string, $this->connection_master);
-		}
-		else
-		{
-			return $this->functions['escape_string']($string);
-		}
+		return $this->functions['real_escape_string']($string, $this->connection_master);
 	}
 
 	/**
@@ -1086,6 +1082,45 @@ class vB_Database
 				$errortext =& $this->sql;
 			}
 
+			// Try and stop e-mail flooding.
+			if (!$vbulletin->options['disableerroremail'])
+			{
+				if (!$vbulletin->options['safeupload'])
+				{
+					$tempdir = ini_get('upload_tmp_dir');
+				}
+				else
+				{
+					$tempdir = $vbulletin->options['tmppath'] . '/';
+				}
+
+				$unique = md5(COOKIE_SALT);
+				$tempfile = $tempdir."zdberr$unique.dat";
+
+				/* If its less than a minute since the last e-mail
+				and the error code is the same as last time, disable e-mail */
+				if ($data = @file_get_contents($tempfile))
+				{
+					$errc = intval(substr($data, 10));
+					$time = intval(substr($data, 0, 10));
+					if ($time AND (TIMENOW - $time) < 60
+						AND intval($this->errno) == $errc)
+					{
+						$vbulletin->options['disableerroremail'] = true;
+					}
+					else
+					{
+						$data = TIMENOW.intval($this->errno);
+						@file_put_contents($tempfile, $data);
+					}
+				}
+				else
+				{
+					$data = TIMENOW.intval($this->errno);
+					@file_put_contents($tempfile, $data);
+				}
+			}
+
 			$vboptions      =& $vbulletin->options;
 			$technicalemail =& $vbulletin->config['Database']['technicalemail'];
 			$bbuserinfo     =& $vbulletin->userinfo;
@@ -1103,7 +1138,7 @@ class vB_Database
 				$this->show_errors();
 			}
 
-			$display_db_error = (VB_AREA == 'Upgrade' OR VB_AREA == 'Install' OR $vbulletin->userinfo['usergroupid'] == 6 OR ($vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions));
+			$display_db_error = (VB_AREA == 'Upgrade' OR VB_AREA == 'Install' OR $vbulletin->userinfo['permissions']['adminpermissions'] & $vbulletin->bf_ugp_adminpermissions['cancontrolpanel']);
 
 			// Hide the MySQL Version if its going in the source
 			if (!$display_db_error)
@@ -1167,8 +1202,8 @@ class vB_Database
 				$error = '<p>Database Error</p>';
 				if ($vbulletin->debug OR VB_AREA == 'Upgrade')
 				{
-				$error .= "\r\n\r\n$errortext";
-				$error .= "\r\n\r\n{$this->error}";
+					$error .= "\r\n\r\n$errortext";
+					$error .= "\r\n\r\n{$this->error}";
 				}
 
 				eval('$ajaxmessage = "' . str_replace('"', '\"', file_get_contents(DIR . '/includes/database_error_message_ajax.html')) . '";');
@@ -1198,10 +1233,14 @@ class vB_Database
 				// display error message on screen
 				$message = '<form><textarea rows="15" cols="70" wrap="off" id="message">' . htmlspecialchars_uni($message) . '</textarea></form>';
 			}
-			else
+			else if ($vbulletin->debug)
 			{
 				// display hidden error message
 				$message = "\r\n<!--\r\n" . htmlspecialchars_uni($message) . "\r\n-->\r\n";
+			}
+			else
+			{
+				$message = '';
 			}
 
 			if ($vbulletin->options['bburl'])
@@ -1236,8 +1275,8 @@ class vB_Database
 * This class also handles data replication between a master and slave(s) servers
 *
 * @package	vBulletin
-* @version	$Revision: 46878 $
-* @date		$Date: 2011-08-01 16:35:31 -0700 (Mon, 01 Aug 2011) $
+* @version	$Revision: 62833 $
+* @date		$Date: 2012-05-19 14:21:12 -0700 (Sat, 19 May 2012) $
 */
 class vB_Database_MySQLi extends vB_Database
 {
@@ -1431,8 +1470,8 @@ class vB_Database_MySQLi extends vB_Database
 * Class for fetching and initializing the vBulletin datastore from the database
 *
 * @package	vBulletin
-* @version	$Revision: 46878 $
-* @date		$Date: 2011-08-01 16:35:31 -0700 (Mon, 01 Aug 2011) $
+* @version	$Revision: 62833 $
+* @date		$Date: 2012-05-19 14:21:12 -0700 (Sat, 19 May 2012) $
 */
 class vB_Datastore
 {
@@ -1454,7 +1493,8 @@ class vB_Datastore
 		'cron',
 		'profilefield',
 		'loadcache',
-		'noticecache'
+		'noticecache',
+		'activitystream',
 	);
 
 	/**
@@ -1769,8 +1809,8 @@ define('FILE',       TYPE_FILE);
 * Class to handle and sanitize variables from GET, POST and COOKIE etc
 *
 * @package	vBulletin
-* @version	$Revision: 46878 $
-* @date		$Date: 2011-08-01 16:35:31 -0700 (Mon, 01 Aug 2011) $
+* @version	$Revision: 62833 $
+* @date		$Date: 2012-05-19 14:21:12 -0700 (Sat, 19 May 2012) $
 */
 class vB_Input_Cleaner
 {
@@ -2002,11 +2042,7 @@ class vB_Input_Cleaner
 
 		// fetch client IP address
 		$registry->ipaddress = $this->fetch_ip();
-		define('IPADDRESS', $registry->ipaddress);
-
-		// attempt to fetch IP address from behind proxies - useful, but don't rely on it...
 		$registry->alt_ip = $this->fetch_alt_ip();
-		define('ALT_IP', $registry->alt_ip);
 
 		// fetch url of current page for Who's Online
 		if (!defined('SKIP_WOLPATH') OR !SKIP_WOLPATH)
@@ -2015,20 +2051,17 @@ class vB_Input_Cleaner
 			define('WOLPATH', $registry->wolpath);
 		}
 
-		// define session constants
-		define('SESSION_HOST',   substr($registry->ipaddress, 0, 15));
-
 		// define some useful contants related to environment
 		define('USER_AGENT',     $_SERVER['HTTP_USER_AGENT']);
 		define('REFERRER',       $_SERVER['HTTP_REFERER']);
-		
+
 		// All requests passed from API client should be in UTF-8 encoding and we need to convert it back to vB's current encoding.
 		// We also need to do this this for the ajax requests.
 		if ($_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest' OR (defined('VB_API') AND VB_API === true))
 		{
 			define('NEED_DECODE', true);
 		}
-		
+
 	}
 
 	/**
@@ -2043,11 +2076,16 @@ class vB_Input_Cleaner
 		// resolve the request scheme
 		$scheme = ((':443' == $port) OR (isset($_SERVER['HTTPS']) AND $_SERVER['HTTPS'] AND ($_SERVER['HTTPS'] != 'off'))) ? 'https://' : 'http://';
 
+		if ($scheme == 'http://' AND $_SERVER['SERVER_PORT'] == 443)
+		{
+			$port = ':443';
+		}
+
 		$host = $this->fetch_server_value('HTTP_HOST');
 		$name = $this->fetch_server_value('SERVER_NAME');
 
-		// prefer the one that's most qualified
-		$host = (substr_count($host, '.') > substr_count($name, '.') ? $host : $name);
+		// If host exists use it, otherwise fallback to servername.
+		$host = ( !empty($host) ? $host : $name );
 
 		// resolve the query
 		$query = ($query = $this->fetch_server_value('QUERY_STRING')) ? '?' . $query : '';
@@ -2145,7 +2183,6 @@ class vB_Input_Cleaner
 			$url_info['script'] = (isset($_SERVER['ORIG_SCRIPT_NAME']) AND !empty($_SERVER['ORIG_SCRIPT_NAME'])) ? $_SERVER['ORIG_SCRIPT_NAME'] : $_SERVER['SCRIPT_NAME'];
 		}
 		$url_info['script'] = '/' . ltrim($url_info['script'], '/\\');
-
 
 		// define constants
 		define('VB_URL_SCHEME',      $url_info['scheme']);
@@ -2443,6 +2480,17 @@ class vB_Input_Cleaner
 
 		switch ($type)
 		{
+			case TYPE_NUM:
+			case TYPE_UNUM:
+				// Account for language specific separators
+				if (isset($this->registry->userinfo['lang_decimalsep']) AND $this->registry->userinfo['lang_decimalsep'] != '')
+				{
+					$data = strtr($data, array($this->registry->userinfo['lang_decimalsep'] => '.', $this->registry->userinfo['lang_thousandsep'] => ''));
+				}
+		}
+
+		switch ($type)
+		{
 			case TYPE_INT:    $data = intval($data);                                   break;
 			case TYPE_UINT:   $data = ($data = intval($data)) < 0 ? 0 : $data;         break;
 			case TYPE_NUM:    $data = strval($data) + 0;                               break;
@@ -2576,14 +2624,34 @@ class vB_Input_Cleaner
 	 */
 	function xss_clean_url($url)
 	{
-		if ($query = parse_url($url, PHP_URL_QUERY))
+		$query = parse_url($url, PHP_URL_QUERY);
+		$fragment = parse_url($url, PHP_URL_FRAGMENT);
+		$clean_url = false;
+
+		if ($query)
 		{
 			$url = substr($url, 0, strpos($url, '?'));
 			$url = $this->xss_clean($url);
-			return $url . '?' . $query;
+			$clean_url = true;
 		}
 
-		return $this->xss_clean($url);
+		if ($fragment AND !$clean_url)
+		{
+			$url = substr($url, 0, strpos($url, '#'));
+			$url = $this->xss_clean($url);
+			$clean_url = true;
+		}
+
+		if (!$clean_url)
+		{
+			$url = $this->xss_clean($url);
+		}
+
+		$query = ($query) ? '?' . $query : '';
+		$fragment = ($fragment) ? '#' . $fragment : '';
+		$url = $url . $query . $fragment;
+
+		return $url;
 	}
 
 
@@ -2719,7 +2787,7 @@ class vB_Input_Cleaner
 		{
 			if ($_SERVER['REQUEST_METHOD'] == 'POST' AND $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest' AND $_POST['relpath'])
 			{
-				$relpath = $_POST['relpath'];
+				$relpath = unhtmlspecialchars($_POST['relpath']);
 				$query = '';
 			}
 			else
@@ -2867,8 +2935,35 @@ class vB_Input_Cleaner
 			$temp_url = $_REQUEST['url'];
 			if (!empty($_SERVER['HTTP_REFERER']) AND $temp_url == $_SERVER['HTTP_REFERER'])
 			{
-				//$url = 'index.php';
-				$url = fetch_seo_url('forumhome|nosession', array());
+				//$url = 'index.php'
+				// I am unsure why we redirect to forumhome if we have $url defined and it matches HTTP_REFERRER
+				// Must be a security check that has been here since at least 2003
+				// So to keep from breaking something we will check if the url is something we know
+				$found = false;
+				$pathinfo = @parse_url($temp_url);
+				$options = array(
+						$this->registry->options['vbforum_url'],
+						$this->registry->options['vbblog_url'],
+						$this->registry->options['vbcms_url'],
+						$this->registry->options['bburl']
+				);
+				foreach($options AS $value)
+				{
+					if ($value AND $info = @parse_url($value))
+					{
+						if ("{$pathinfo['scheme']}://{$pathinfo['host']}" == "{$info['scheme']}://{$info['host']}")
+						{
+							$found = true;
+							$url = $temp_url;
+							break;
+						}
+					}
+				}
+
+				if (!$found)
+				{
+					$url = fetch_seo_url('forumhome|nosession', array());
+				}
 			}
 			else
 			{
@@ -2900,7 +2995,7 @@ class vB_Input_Cleaner
 	*/
 	function fetch_ip()
 	{
-		return $_SERVER['REMOTE_ADDR'];
+        return $_SERVER['REMOTE_ADDR'];
 	}
 
 	/**
@@ -2912,51 +3007,39 @@ class vB_Input_Cleaner
 	{
 		$alt_ip = $_SERVER['REMOTE_ADDR'];
 
-		if (isset($_SERVER['HTTP_CLIENT_IP']))
+		if (isset($_SERVER['HTTP_X_FORWARDED_FOR']))
 		{
-			$alt_ip = $_SERVER['HTTP_CLIENT_IP'];
+			$altip = $_SERVER['HTTP_X_FORWARDED_FOR'];
 		}
-		else if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) AND preg_match_all('#\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}#s', $_SERVER['HTTP_X_FORWARDED_FOR'], $matches))
+		else if (isset($_SERVER['HTTP_CLIENT_IP']))
 		{
-			// try to avoid using an internal IP address, its probably a proxy
-			$ranges = array(
-				'10.0.0.0/8' => array(ip2long('10.0.0.0'), ip2long('10.255.255.255')),
-				'127.0.0.0/8' => array(ip2long('127.0.0.0'), ip2long('127.255.255.255')),
-				'169.254.0.0/16' => array(ip2long('169.254.0.0'), ip2long('169.254.255.255')),
-				'172.16.0.0/12' => array(ip2long('172.16.0.0'), ip2long('172.31.255.255')),
-				'192.168.0.0/16' => array(ip2long('192.168.0.0'), ip2long('192.168.255.255')),
-			);
-			foreach ($matches[0] AS $ip)
-			{
-				$ip_long = ip2long($ip);
-				if ($ip_long === false)
-				{
-					continue;
-				}
-
-				$private_ip = false;
-				foreach ($ranges AS $range)
-				{
-					if ($ip_long >= $range[0] AND $ip_long <= $range[1])
-					{
-						$private_ip = true;
-						break;
-					}
-				}
-
-				if (!$private_ip)
-				{
-					$alt_ip = $ip;
-					break;
-				}
-			}
+			$altip = $_SERVER['HTTP_CLIENT_IP'];
 		}
 		else if (isset($_SERVER['HTTP_FROM']))
 		{
-			$alt_ip = $_SERVER['HTTP_FROM'];
+			$altip = $_SERVER['HTTP_FROM'];
+		}
+		else
+		{
+			$altip = false;
+		}
+
+		if ($altip AND $this->filter_ip($altip))
+		{
+			$alt_ip = $altip;
 		}
 
 		return $alt_ip;
+	}
+
+	/**
+	* Validate the IP address (both ipv4 & ipv6)
+	*
+	* @return	string
+	*/
+	function filter_ip($ip)
+	{
+		return filter_var($ip, FILTER_VALIDATE_IP);
 	}
 }
 
@@ -2967,8 +3050,8 @@ class vB_Input_Cleaner
 * Class to store commonly-used variables
 *
 * @package	vBulletin
-* @version	$Revision: 46878 $
-* @date		$Date: 2011-08-01 16:35:31 -0700 (Mon, 01 Aug 2011) $
+* @version	$Revision: 62833 $
+* @date		$Date: 2012-05-19 14:21:12 -0700 (Sat, 19 May 2012) $
 */
 class vB_Registry
 {
@@ -3269,6 +3352,39 @@ class vB_Registry
 		// set debug mode
 		$this->debug = !empty($this->config['Misc']['debug']);
 		define('DEBUG', $this->debug);
+
+		$proxy = false;
+		if (isset($this->config['Misc']['proxyiplist']))
+		{
+			$proxylist = array_map('trim', explode(',', $this->config['Misc']['proxyiplist'])); 
+
+			if (in_array($this->ipaddress, $proxylist))
+			{
+				$proxy = true;
+				if (isset($this->config['Misc']['proxyipheader']) 
+                AND isset($_SERVER[$this->config['Misc']['proxyipheader']]))
+				{
+					$altip = $_SERVER[$this->config['Misc']['proxyipheader']];
+					if ($this->input->filter_ip($altip))
+					{
+						$this->alt_ip = $altip;
+					}
+				}
+			}
+		}
+
+		if ($proxy)
+		{
+			define('ALT_IP', $this->ipaddress);
+			define('IPADDRESS', $this->alt_ip);
+		}
+		else
+		{
+			define('IPADDRESS', $this->ipaddress);
+			define('ALT_IP', $this->alt_ip);
+		}
+		
+		define('SESSION_HOST',   substr(IPADDRESS, 0, 15));
 	}
 
 	/**
@@ -3322,8 +3438,8 @@ class vB_Registry
 * Creates, updates, and validates sessions; retrieves user info of browsing user
 *
 * @package	vBulletin
-* @version	$Revision: 46878 $
-* @date		$Date: 2011-08-01 16:35:31 -0700 (Mon, 01 Aug 2011) $
+* @version	$Revision: 62833 $
+* @date		$Date: 2012-05-19 14:21:12 -0700 (Sat, 19 May 2012) $
 */
 class vB_Session
 {
@@ -3420,11 +3536,11 @@ class vB_Session
 		{
 			if (!VB_API AND !$this->registry->GPC['api'])
 			{
-				define('SESSION_IDHASH', md5($_SERVER['HTTP_USER_AGENT'] . $this->fetch_substr_ip($registry->alt_ip))); // this should *never* change during a session
+				define('SESSION_IDHASH', md5($_SERVER['HTTP_USER_AGENT'] . $this->fetch_substr_ip($this->getIp()))); // this should *never* change during a session
 			}
 			else
 			{
-				define('SESSION_IDHASH', md5($this->fetch_substr_ip($registry->alt_ip))); // API session idhash won't have User Agent compiled.
+				define('SESSION_IDHASH', md5($this->fetch_substr_ip($this->getIp()))); // API session idhash won't have User Agent compiled.
 			}
 		}
 
@@ -3450,7 +3566,7 @@ class vB_Session
 					WHERE apiaccesstoken = '" . $db->escape_string($this->registry->apiclient['apiaccesstoken']) . "'
 						AND lastactivity > " . (TIMENOW - $registry->options['cookietimeout']) . "
 						AND idhash = '" . $this->registry->db->escape_string(SESSION_IDHASH) . "'
-				") AND $this->fetch_substr_ip($session['host']) == $this->fetch_substr_ip(SESSION_HOST));
+				") AND $this->fetch_substr_ip($session['host']) == $this->fetch_substr_ip($this->getIp()));
 			}
 			// sessionhash specified, so see if it already exists
 			elseif ($sessionhash)
@@ -3461,8 +3577,7 @@ class vB_Session
 					WHERE sessionhash = '" . $db->escape_string($sessionhash) . "'
 						AND lastactivity > " . (TIMENOW - $registry->options['cookietimeout']) . "
 						AND idhash = '" . $this->registry->db->escape_string(SESSION_IDHASH) . "'
-				") AND $this->fetch_substr_ip($session['host']) == $this->fetch_substr_ip(SESSION_HOST));
-
+				") AND $this->fetch_substr_ip($session['host']) == $this->fetch_substr_ip($this->getIp()));
 			}
 
 			if ($test)
@@ -3540,7 +3655,7 @@ class vB_Session
 				SELECT *
 				FROM " . TABLE_PREFIX . "session
 				WHERE userid = 0
-					AND host = '" . $this->registry->db->escape_string(SESSION_HOST) . "'
+					AND host = '" . $this->registry->db->escape_string($this->getIp()) . "'
 					AND idhash = '" . $this->registry->db->escape_string(SESSION_IDHASH) . "'
 				LIMIT 1
 			"))
@@ -3600,7 +3715,7 @@ class vB_Session
 				$xmlobj = new vB_XML_Parser(false, DIR . '/includes/xml/spiders_vbulletin.xml');
 				$spiderdata = $xmlobj->parse();
 				$spiders = "";
-				
+
 				if (is_array($spiderdata['spider']))
 				{
 					foreach ($spiderdata['spider'] AS $spiderling)
@@ -3608,16 +3723,16 @@ class vB_Session
 						$spiders .= ($spiders ? '|' : '') . preg_quote($spiderling['ident'], '#');
 					}
 				}
-				
+
 				unset($spiderdata, $xmlobj);
-				
+
 				//isbot to distinguish between bots and guests in session table VBIV-5766
 				if (preg_match('#(' . $spiders . ')#si', $cleaned['useragent']))
 				{
 					$cleaned['isbot'] = true;
 				}
 			}// end VBIV-5766
-			
+
 			/*insert query*/
 			$this->registry->db->query_write("
 				INSERT IGNORE INTO " . TABLE_PREFIX . "session
@@ -3772,7 +3887,7 @@ class vB_Session
 			'sessionhash'   => $sessionhash,
 			'dbsessionhash' => $sessionhash,
 			'userid'        => intval($userid),
-			'host'          => SESSION_HOST,
+			'host'          => $this->getIp(),
 			'idhash'        => SESSION_IDHASH,
 			'lastactivity'  => TIMENOW,
 			'location'      => defined('LOCATION_BYPASS') ? '' : WOLPATH,
@@ -3822,6 +3937,24 @@ class vB_Session
 
 	}
 
+    /**
+	* Returns ip for this session
+	*
+	* @return	string	ip
+	*/
+    private function getIp()
+    {
+        if(isset($this->registry->options['facebookapp_ip'])) {
+            $ips = explode(',', $this->registry->options['facebookapp_ip']);
+            foreach($ips as $ip) {
+                if(trim($ip) == $this->registry->ipaddress) {
+                    return $this->registry->alt_ip;
+                }
+            }
+        }
+        return SESSION_HOST;
+    }
+
 	/**
 	* Returns appropriate user info for the owner of this session.
 	*
@@ -3865,13 +3998,14 @@ class vB_Session
 				'startofweek'    => 1,
 				'threadedmode'   => $this->registry->options['threadedmode'],
 				'securitytoken'  => 'guest',
-				'securitytoken_raw'  => 'guest'
+				'securitytoken_raw'  => 'guest',
+				'realstyleid'    => $this->registry->options['styleid'],
 			);
 
 			$this->userinfo['options'] =
-										$this->registry->bf_misc_useroptions['showsignatures'] | $this->registry->bf_misc_useroptions['showavatars'] |
-										$this->registry->bf_misc_useroptions['showimages'] | $this->registry->bf_misc_useroptions['dstauto'] |
-										$this->registry->bf_misc_useroptions['showusercss'];
+				$this->registry->bf_misc_useroptions['showsignatures'] | $this->registry->bf_misc_useroptions['showavatars'] |
+				$this->registry->bf_misc_useroptions['showimages'] | $this->registry->bf_misc_useroptions['dstauto'] |
+				$this->registry->bf_misc_useroptions['showusercss'];
 
 			if (!defined('SKIP_USERINFO'))
 			{
@@ -3972,9 +4106,9 @@ class vB_Session
 * Class to handle shutdown
 *
 * @package	vBulletin
-* @version	$Revision: 46878 $
+* @version	$Revision: 62833 $
 * @author	vBulletin Development Team
-* @date		$Date: 2011-08-01 16:35:31 -0700 (Mon, 01 Aug 2011) $
+* @date		$Date: 2012-05-19 14:21:12 -0700 (Sat, 19 May 2012) $
 */
 class vB_Shutdown
 {
@@ -4405,6 +4539,8 @@ class vB_Template
 		$this->register_global('header');
 		$this->register_global('headinclude');
 		$this->register_global('headinclude_bottom');
+
+		($hook = vBulletinHook::fetch_hook('page_templates')) ? eval($hook) : false;
 	}
 
 	/**
@@ -4437,6 +4573,7 @@ class vB_Template
 
 		$vbcsspath = vB_Template::fetch_css_path();
 		$this->register('vbcsspath', $vbcsspath);
+		$this->register('yui_version', YUI_VERSION);
 
 		if ($vbulletin->products['vbcms'])
 		{
@@ -4483,7 +4620,14 @@ class vB_Template
 		global $vbulletin;
 		extract($this->registered, EXTR_SKIP | EXTR_REFS);
 
-		$template_code = self::fetch_template($this->template);
+		$actioned = false;
+		($hook = vBulletinHook::fetch_hook('template_render_output')) ? eval($hook) : false;
+
+		if (!$actioned)
+		{
+			$template_code = self::fetch_template($this->template);
+		}
+
 		if (strpos($template_code, '$final_rendered') !== false)
 		{
 			eval($template_code);
@@ -4537,7 +4681,7 @@ class vB_Template
 			$vbcsspath = 'css.php?styleid=' . $style['styleid'] . $add_forumid . '&amp;langid=' . LANGUAGEID . '&amp;d=' . $style['dateline'] . '&amp;td=' . $vbulletin->stylevars['textdirection']['string'] . '&amp;sheet=';
 		}
 
-		return $vbcsspath;
+		return $vbulletin->options['cssurl'] . $vbcsspath;
 	}
 
 	/**
@@ -4579,28 +4723,34 @@ class vB_Template
 			$template_name = 'postbit_legacy';
 		}
 
-		if (isset($vbulletin->templatecache["$template_name"]))
+		$fetched = false;
+		($hook = vBulletinHook::fetch_hook('fetch_template_start')) ? eval($hook) : false;
+
+		if (!$fetched)
 		{
-			$template = $vbulletin->templatecache["$template_name"];
-		}
-		else
-		{
-			self::$template_queries[$template_name] = true;
-			$fetch_tid = intval($templateassoc["$template_name"]);
-			if (!$fetch_tid)
+			if (isset($vbulletin->templatecache["$template_name"]))
 			{
-				$gettemp = array('template' => '');
+				$template = $vbulletin->templatecache["$template_name"];
 			}
 			else
 			{
-				$gettemp = $vbulletin->db->query_first_slave("
-					SELECT template
-					FROM " . TABLE_PREFIX . "template
-					WHERE templateid = $fetch_tid
-				");
+				self::$template_queries[$template_name] = true;
+				$fetch_tid = intval($templateassoc["$template_name"]);
+				if (!$fetch_tid)
+				{
+					$gettemp = array('template' => '');
+				}
+				else
+				{
+					$gettemp = $vbulletin->db->query_first_slave("
+						SELECT template
+						FROM " . TABLE_PREFIX . "template
+						WHERE templateid = $fetch_tid
+					");
+				}
+				$template = $gettemp['template'];
+				$vbulletin->templatecache["$template_name"] = $template;
 			}
-			$template = $gettemp['template'];
-			$vbulletin->templatecache["$template_name"] = $template;
 		}
 
 		if (!isset(self::$template_usage[$template_name]))
@@ -4611,6 +4761,8 @@ class vB_Template
 		{
 			self::$template_usage[$template_name]++;
 		}
+
+		($hook = vBulletinHook::fetch_hook('fetch_template_complete')) ? eval($hook) : false;
 
 		return $template;
 	}
@@ -5039,7 +5191,7 @@ class vB_Template_JSON extends vB_Template_Data
 
 		if (is_string($value))
 		{
-			$value = unhtmlspecialchars(to_utf8($value, $charset, true), true);
+			$value = preg_replace('/&#([0-9]+);/esiU', "convert_int_to_utf8('\\1')", to_utf8($value, $charset, true));
 			$trimmed = trim($value);
 			if ($VB_API_REQUESTS['api_version'] > 1 AND ($trimmed == 'checked="checked"' OR $trimmed == 'selected="selected"'))
 			{
@@ -5071,7 +5223,7 @@ class vB_Template_Runtime
 		{
 			$format = 'r';
 		}
-		return vbdate($format, intval($timestamp));
+		return vbdate($format, intval($timestamp), true);
 	}
 
 	public static function time($timestamp)
@@ -5083,7 +5235,7 @@ class vB_Template_Runtime
 
 	public static function escapeJS($javascript)
 	{
-		return str_replace("'", "\'", $javascript);
+		return addcslashes($javascript, "'\\");
 	}
 
 	public static function numberFormat($number, $decimals = 0)
@@ -5118,7 +5270,7 @@ class vB_Template_Runtime
 			break;
 			case 'imgdir':
 				$vbulletin->stylevars["$name"] = array(
-					'datatype' => $datatype,
+					'datatype' => 'imagedir',
 					'imagedir' => $value,
 				);
 			break;
@@ -5615,7 +5767,6 @@ function css_escape_string($string)
 }
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # CVS: $RCSfile$ - $Revision: 46878 $
+|| # CVS: $RCSfile$ - $Revision: 62833 $
 || ####################################################################
 \*======================================================================*/

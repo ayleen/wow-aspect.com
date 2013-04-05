@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -1052,7 +1052,7 @@ abstract class vB_SiteMap
 	*/
 	protected function set_forum_priorities()
 	{
-		$forum_priorities = $this->dbobject->query_read("SELECT sourceid, prioritylevel FROM " . TABLE_PREFIX . "contentpriority WHERE contenttypeid = 'forum'");
+		$forum_priorities = $this->dbobject->query_read_slave("SELECT sourceid, prioritylevel FROM " . TABLE_PREFIX . "contentpriority WHERE contenttypeid = 'forum'");
 
 		while ($f_pri = $this->dbobject->fetch_array($forum_priorities))
 		{
@@ -1066,7 +1066,7 @@ abstract class vB_SiteMap
 	 */
 	protected function set_priorities($contenttype)
 	{
-		$forum_priorities = $this->dbobject->query_read("SELECT sourceid, prioritylevel FROM " . TABLE_PREFIX . "contentpriority WHERE contenttypeid = '$contenttype'");
+		$forum_priorities = $this->dbobject->query_read_slave("SELECT sourceid, prioritylevel FROM " . TABLE_PREFIX . "contentpriority WHERE contenttypeid = '$contenttype'");
 
 		if (! isset($this->custom_priority[$contenttype]))
 		{
@@ -1137,11 +1137,11 @@ class vB_SiteMap_Forum extends vB_SiteMap
 			return $this->pagecount;
 		}
 
-		$forums = $this->dbobject->query_read("
+		$forums = $this->dbobject->query_read_slave("
 			SELECT forumid, title, title_clean, lastpost
 			FROM " . TABLE_PREFIX . "forum
 			WHERE forumid IN (" . implode(',', $viewable_forums) . ")
-				AND forumid >= " . intval($startat) . "
+				AND forumid >= " . intval($startat) . " AND link = ''
 			ORDER BY forumid
 			LIMIT " . intval($perpage + 1) // for has_more check
 		);
@@ -1208,7 +1208,7 @@ class vB_SiteMap_Thread extends vB_SiteMap
 		require_once(DIR . '/includes/functions_bigthree.php');
 		$coventry = fetch_coventry('array', true);
 
-		$threads = $this->dbobject->query_read("
+		$threads = $this->dbobject->query_read_slave("
 			SELECT threadid, forumid, title, lastpost
 			FROM " . TABLE_PREFIX . "thread
 			WHERE forumid IN (" . implode(',', $viewable_forums) . ")
@@ -1285,9 +1285,8 @@ class vB_SiteMap_Cms extends vB_SiteMap
 		$this->has_more = false;
 
 		$route = vB_Route::create('vBCms_Route_Content');
-		while($node = next($this->nodes))
+		foreach($this->nodes as $node)
 		{
-
 			$this->pagecount++;
 			$this->lastid = $node['nodeid'];
 			$route->node = $node['nodeid'] . (empty($node['url']) ? '' : '-' . $node['url']);
@@ -1317,10 +1316,6 @@ class vB_SiteMap_Cms extends vB_SiteMap
 	 */
 	private function load_data()
 	{
-		//See if we need to bootstrap
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
-
 		$sections = vBCms_ContentManager::getSections();
 		$perms = vBCMS_Permissions::getPerms(0);
 		$this->custom_priority['cms'] = array();
@@ -1401,7 +1396,7 @@ class vB_SiteMap_Blog extends vB_SiteMap
 			GROUP BY blog.blogid, blog.title, blog.userid, blog.dateline,
 			blog.lastcomment, blog.comments_visible LIMIT $startat, $perpage";
 
-		$rst = $this->registry->db->query_read($sql);
+		$rst = $this->registry->db->query_read_slave($sql);
 		$authorkeys = array_keys($this->custom_priority['blog']['authors']);
 
 		while($blog = $this->registry->db->fetch_array($rst))
@@ -1455,7 +1450,7 @@ class vB_SiteMap_Blog extends vB_SiteMap
 	{
 		$this->custom_priority['blog'] = $this->defaults;
 		$authors = array();
-		if ($rst = $this->registry->db->query_read("SELECT name, value, weight from " . TABLE_PREFIX .
+		if ($rst = $this->registry->db->query_read_slave("SELECT name, value, weight from " . TABLE_PREFIX .
 			"blog_sitemapconf" ))
 		{
 			$weights = array();
@@ -1476,7 +1471,7 @@ class vB_SiteMap_Blog extends vB_SiteMap
 				$sql = "SELECT userid, username FROM " . TABLE_PREFIX . "user WHERE userid in ("
 					. implode(',', array_keys($weights)) . ")";
 
-				if ($rst = $this->registry->db->query_read($sql))
+				if ($rst = $this->registry->db->query_read_slave($sql))
 				{
 					while($author = $this->registry->db->fetch_array($rst))
 					{
@@ -1576,7 +1571,6 @@ class vB_SiteMap_Blog extends vB_SiteMap
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 28150 $
 || ####################################################################
 \*======================================================================*/

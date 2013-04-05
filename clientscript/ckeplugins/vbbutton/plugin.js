@@ -1,43 +1,9 @@
 (function()
 {
-	var disabled = {};
-	var hookedup = {};
-	
-	function clickLimitButtonHookup(button)
-	{
-		button.button.click = CKEDITOR.tools.override(button.button.click, function(original)
-		{
-			return function(editor)
-			{
-				if (!disabled[button.id] || new Date().getTime() - disabled[button.id] > 1500)
-				{
-					disabled[button.id] = new Date().getTime();
-					original.call(button.button, editor);
-				}
-			}
-		});
-	}
-	
-	function clickLimit()
-	{
-		for (var index in CKEDITOR.ui.button._.instances)
-		{
-			if (!hookedup[CKEDITOR.ui.button._.instances[index].id])
-			{
-				clickLimitButtonHookup(CKEDITOR.ui.button._.instances[index]);
-				hookedup[CKEDITOR.ui.button._.instances[index].id] = 1;
-			}
-		}
-	}
-	
 	CKEDITOR.plugins.add('vbbutton',
 	{
-		requires : [ 'button'],
-		
 		init : function(editor)
 		{
-			editor.on('instanceReady', clickLimit, this);
-			
 			if (CKEDITOR.env.ie)
 			{
 				CKEDITOR.ui.button.prototype.render = function( editor, output )
@@ -46,8 +12,7 @@
 						id = this._.id = CKEDITOR.tools.getNextId(),
 						classes = '',
 						command = this.command, // Get the command name.
-						clickFn,
-						index;
+						clickFn;
 		
 					this._.editor = editor;
 		
@@ -63,31 +28,69 @@
 						},
 						execute : function()
 						{
-							this.button.click( editor );
+							// IE 6 needs some time before execution (#7922)
+							if ( CKEDITOR.env.ie && CKEDITOR.env.version < 7 )
+								CKEDITOR.tools.setTimeout( function(){ this.button.click( editor ); }, 0, this );
+							else
+								this.button.click( editor );
 						}
 					};
 		
+					var keydownFn = CKEDITOR.tools.addFunction( function( ev )
+						{
+							if ( instance.onkey )
+							{
+								ev = new CKEDITOR.dom.event( ev );
+								return ( instance.onkey( instance, ev.getKeystroke() ) !== false );
+							}
+						});
+
+					var focusFn = CKEDITOR.tools.addFunction( function( ev )
+						{
+							var retVal;
+
+							if ( instance.onfocus )
+								  retVal = ( instance.onfocus( instance, new CKEDITOR.dom.event( ev ) ) !== false );
+
+							// FF2: prevent focus event been bubbled up to editor container, which caused unexpected editor focus.
+							if ( CKEDITOR.env.gecko && CKEDITOR.env.version < 10900 )
+								  ev.preventBubble();
+							return retVal;
+					});
+
 					instance.clickFn = clickFn = CKEDITOR.tools.addFunction( instance.execute, instance );
 		
-					instance.index = index = CKEDITOR.ui.button._.instances.push( instance ) - 1;
-
 					// Indicate a mode sensitive button.
 					if ( this.modes )
 					{
 						var modeStates = {};
+
+						function updateState()
+						{
+							// "this" is a CKEDITOR.ui.button instance.
+
+							var mode = editor.mode;
+
+							if ( mode )
+							{
+								// Restore saved button state.
+								var state = this.modes[ mode ] ? modeStates[ mode ] != undefined ? modeStates[ mode ] :
+										CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED;
+
+								this.setState( editor.readOnly && !this.readOnly ? CKEDITOR.TRISTATE_DISABLED : state );
+							}
+						}
+
 						editor.on( 'beforeModeUnload', function()
 							{
-								modeStates[ editor.mode ] = this._.state;
+								if ( editor.mode && this._.state != CKEDITOR.TRISTATE_DISABLED )
+									modeStates[ editor.mode ] = this._.state;
 							}, this );
 
-						editor.on( 'mode', function()
-							{
-								var mode = editor.mode;
-								// Restore saved button state.
-								this.setState( this.modes[ mode ] ?
-									modeStates[ mode ] != undefined ? modeStates[ mode ] :
-										CKEDITOR.TRISTATE_OFF : CKEDITOR.TRISTATE_DISABLED );
-							}, this);
+						editor.on( 'mode', updateState, this);
+
+						// If this button is sensitive to readOnly state, update it accordingly.
+						!this.readOnly && editor.on( 'readOnly', updateState, this);
 					}
 					else if ( command )
 					{
@@ -144,15 +147,24 @@
 					}
 		
 					output.push(
-							' onkeydown="return CKEDITOR.ui.button._.keydown(', index, ', event);"' +
-							' onfocus="return CKEDITOR.ui.button._.focus(', index, ', event);"' +
-							' onclick="CKEDITOR.tools.callFunction(', clickFn, ', this); return false;">' +
+								' onkeydown="return CKEDITOR.tools.callFunction(', keydownFn, ', event);"' +
+								' onfocus="return CKEDITOR.tools.callFunction(', focusFn,', event);" ' +
+								( CKEDITOR.env.ie ? 'onclick="return false;" onmouseup' : 'onclick' ) +		// #188
+									'="CKEDITOR.tools.callFunction(', clickFn, ', this); return false;">' +
 								'<span class="cke_icon"' );
 		
 					if ( this.icon )
 					{
-						var offset = ( this.iconOffset || 0 ) * -16;
-						output.push( ' style="background-image:url(', CKEDITOR.getUrl( this.icon ), ');background-position:0 ' + offset + 'px;"' );
+						if (editor.lang.dir == 'rtl' && CKEDITOR.env.version < 8)
+						{
+							var offset = 'right';
+						}
+						else
+						{
+							var offset = ( this.iconOffset || 0 ) * -16 + "px";
+						}
+						
+						output.push( ' style="background-image:url(', CKEDITOR.getUrl( this.icon ), ');background-position:0 ' + offset + ';"' );
 						output.push(
 									'><span class="cke_icon_image custom">&nbsp;</span></span>' +
 									'<span id="', id, '_label" class="cke_label">', this.label, '</span>' );

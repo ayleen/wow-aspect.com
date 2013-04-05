@@ -1,9 +1,9 @@
 <?php if (!defined('VB_ENTRY')) die('Access denied.');
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright �2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright �2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -16,7 +16,7 @@
  * @package
  * @author ebrown
  * @copyright Copyright (c) 2009
- * @version $Id: comments.php 45499 2011-07-05 20:48:15Z freddie $
+ * @version $Id: comments.php 62761 2012-05-17 17:27:06Z pmarsden $
  * @access public
  */
 class vBCms_Comments
@@ -57,24 +57,27 @@ class vBCms_Comments
 			'postid' => vB_Input::TYPE_UINT
 		));
 
-		if (! $row = vB::$vbulletin->db->query_first("SELECT node.comments_enabled, node.setpublish, node.publishdate,
-		 nodeinfo.associatedthreadid,	thread.forumid FROM "
-		. TABLE_PREFIX . "cms_node AS node LEFT JOIN "
-		. TABLE_PREFIX . "cms_nodeinfo AS nodeinfo ON node.nodeid = nodeinfo.nodeid LEFT JOIN "
-		. TABLE_PREFIX . "thread AS thread on thread.threadID = nodeinfo.associatedthreadid
-			WHERE	nodeinfo.nodeid = $nodeid LIMIT 1;" ))
+		if (!$row = vB::$vbulletin->db->query_first("
+			SELECT node.comments_enabled, node.setpublish, node.publishdate,
+			nodeinfo.associatedthreadid, thread.forumid, article.allcomments 
+			FROM "	. TABLE_PREFIX . "cms_node AS node 
+			LEFT JOIN "	. TABLE_PREFIX . "cms_nodeinfo AS nodeinfo ON (node.nodeid = nodeinfo.nodeid)
+			LEFT JOIN "	. TABLE_PREFIX . "cms_article AS article ON (article.contentid = node.contentid)
+			LEFT JOIN "	. TABLE_PREFIX . "thread AS thread ON (thread.threadid = nodeinfo.associatedthreadid)
+			WHERE	nodeinfo.nodeid = $nodeid 
+			LIMIT 1;" ))
 		{
 			return false;
 		}
 
-		if (! $row['comments_enabled'] OR !$row['setpublish'] OR ($row['publishdate'] > TIMENOW))
+		if (!$row['comments_enabled'] OR !$row['setpublish'] OR ($row['publishdate'] > TIMENOW))
 		{
 			return false;
 		}
 
-		if (! intval($row['forumid']))
+		if (!intval($row['forumid']))
 		{
-			$this->repairComments($row['associatedthreadid']);
+			self::repairComments($row['associatedthreadid'], $nodeid);
 		}
 
 		if (!intval($row['associatedthreadid']))
@@ -104,8 +107,9 @@ class vBCms_Comments
 		$pageno = vB::$vbulletin->GPC_exists['page'] ?
 			vB::$vbulletin->GPC['page'] : 1;
 		$view->pageno = $pageno;
+
 		$view->node_comments = self::showComments($view->nodeid,
-			$this_user, $pageno, 20, $target_url, $associatedthreadid);
+			$this_user, $pageno, 20, $target_url, $row['allcomments'], $associatedthreadid);
 
 		// make sure user has permission to post comment before displaying comment editor
 		if (self::canPostComment($view->threadid, $this_user))
@@ -120,7 +124,7 @@ class vBCms_Comments
 				true,
 				true,
 				false,
-				'fe_nofocus',
+				'qr',
 				'',
 				array(),
 				'content',
@@ -128,7 +132,7 @@ class vBCms_Comments
 				0,
 				$nodeid
 			);
-			$view->messagearea = $messagearea;//
+			$view->messagearea = $messagearea;
 			$view->editor_name = $editor_name;
 
 			// include captcha validation and guest username field
@@ -153,31 +157,69 @@ class vBCms_Comments
 
 		return $view;
 	}
+
 	/** If somebody deletes a forum or thread, the function does cleanup ***/
-	private static function repairComments($threadid)
+	private static function repairComments($threadid, $nodeid)
 	{
-			vB::$vbulletin->db->query_write("UPDATE " . TABLE_PREFIX . "cms_nodeinfo SET associatedthreadid = NULL
-		where associatedthreadid = $threadid");
-		vB_Cache::instance()->event('cms_comments_change_' . $threadid);
+		if (!$threadid OR !$nodeid)
+		{
+			return false;
+		}
+
+		vB::$vbulletin->db->query_write("
+			UPDATE " . TABLE_PREFIX . "cms_nodeinfo 
+			SET associatedthreadid = NULL
+			WHERE associatedthreadid = $threadid
+		");
+
+		vB_Cache::instance()->eventPurge('cms_comments_change');
+		vB_Cache::instance()->eventPurge('cms_comments_change_' . $threadid);
+		vB_Cache::instance()->eventPurge('cms_comments_add_' . $nodeid);
+
+		//we also need to clear the item cache.
+		$node = new vBCms_Item_Content($nodeid);
+		$class  = vB_Types::instance()->getContentClassFromId($node->getContentTypeId());
+		$classname = $class['package']. "_Item_Content_" . $class['class'];
+
+		if (class_exists($classname))
+		{
+			$node = new $classname($this_id);
+		}
+
+		vB_Cache::instance()->event($node->getCacheEvents());
 	}
 
 	/*******
 	* This function gets a list of comment ids and caches the list.
 	***/
-	private static function getComments($nodeid, $userinfo, &$permissions, $associatedthreadid)
+	private static function getComments($nodeid, $userinfo, &$permissions, $allcomments, $associatedthreadid, $ajax = false)
 	{
 		require_once DIR . '/vb/cache.php';
-		if ($comments = vB_Cache::instance()->read(
-			self::getStaticHash($nodeid), true))
+		$comments = vB_Cache::instance()->read(self::getStaticHash($nodeid));
+		if ($comments AND !empty($comments) AND !$ajax)
 		{
 			return $comments;
 		}
 
-		$sql = "SELECT distinct post.postid, post.visible, post.dateline
-			FROM " . TABLE_PREFIX .	"post AS post
-			WHERE threadid = $associatedthreadid AND parentid != 0 AND visible = 1 ORDER BY post.dateline ASC";
+		//This should be moved to the boot process, but currently we're only
+		// using the db_assertor class here. So no sense spending the
+		// cpu cycles to initialize on every page load. But in the future
+		// we should move it.
 
-		if (! ($rst = vB::$vbulletin->db->query_read($sql)))
+		vB_dB_Assertor::init(vB::$vbulletin->db, vB::$vbulletin->userinfo);
+
+		//There are two different queries, if we display all comments, or just those since we started.
+
+		if (intval($allcomments))
+		{
+			$comments = vB_dB_Assertor::assertQuery('get_all_comments', array('nodeid' => $nodeid));
+		}
+		else
+		{
+			$comments = vB_dB_Assertor::assertQuery('get_comments', array('nodeid' => $nodeid));
+		}
+
+		if (!$comments OR !$comments->valid())
 		{
 			return false;
 		}
@@ -187,12 +229,14 @@ class vBCms_Comments
 		//Now we compare the fields. We need to check fields from the third
 		// to the end of the row. If the value is different from the previous row,
 		// we add a record.
-		while($row =  vB::$vbulletin->db->fetch_array($rst))
+		$row = $comments->current();
+		while( $comments->valid())
 		{
 			if (self::canViewPost($row, $permissions))
 			{
 				$ids[] = $row['postid'];
 			}
+			$row = $comments->next();
 		}
 
 		if ((count($ids) == 1) and !intval($ids[0]))
@@ -202,7 +246,9 @@ class vBCms_Comments
 
 		//Now we have a list of posts.
 		vB_Cache::instance()->write(self::getStaticHash($nodeid),
-			   $ids, self::$static_cache_ttl, array('cms_comments_change_' . $associatedthreadid));
+			   $ids, self::$static_cache_ttl,
+			   array('cms_comments_change_' . $associatedthreadid,
+			  'cms_comments_add_' . $nodeid) );
 		return $ids;
 
 	}
@@ -223,23 +269,26 @@ class vBCms_Comments
 	{
 		require_once DIR . '/vb/legacy/thread.php';
 
-		if (! $row = vB::$vbulletin->db->query_first("SELECT nodeinfo.associatedthreadid
-		AS threadid, thread.forumid FROM " . TABLE_PREFIX . "cms_nodeinfo
-		AS nodeinfo LEFT JOIN " . TABLE_PREFIX . "thread AS thread
-		ON thread.threadid = nodeinfo.associatedthreadid
-		WHERE	nodeinfo.nodeid = $nodeid;" ))
+		if (! $row = vB::$vbulletin->db->query_first("
+			SELECT nodeinfo.associatedthreadid AS threadid, thread.forumid 
+			FROM " . TABLE_PREFIX . "cms_nodeinfo AS nodeinfo 
+			LEFT JOIN " . TABLE_PREFIX . "thread AS thread ON (thread.threadid = nodeinfo.associatedthreadid)
+			WHERE nodeinfo.nodeid = $nodeid;" 
+			)
+		)
 		{
 			return false;
 		}
 
 		//we have to worry about people deleting the thread or the forum. Annoying.
-		if (intval($row['associatedthreadid']) AND ! intval($row['forumid']))
+		if (intval($row['associatedthreadid']) AND !intval($row['forumid']))
 		{
-			$this->repaircomments($row['associatedthreadid']);
+			self::repaircomments($record['associatedthreadid'], $nodeid);
 			return false;
 		}
 
 		// Trust me, it's just a temp fix -- Xiaoyu
+		// A temp fix for what ? Need to look at this sometime (Paul).
 		global $thread;
 		$thread = vB_Legacy_Thread::create_from_id($row['threadid']);
 		if (!$thread)
@@ -266,7 +315,7 @@ class vBCms_Comments
 
 		}
 
-		if (! $can_moderate_forums AND $is_coventry)
+		if (!$can_moderate_forums AND $is_coventry)
 		{
 			return false;
 		}
@@ -401,8 +450,9 @@ class vBCms_Comments
 	 * @return string;
 	 */
 	private static function showComments($nodeid, $userinfo, $pageno,
-		$perpage, $target_url, $associatedthreadid )
+		$perpage, $target_url, $allcomments, $associatedthreadid, $ajax = false)
 	{
+
 		require_once DIR . '/includes/functions_misc.php';
 		require_once DIR . '/includes/functions.php';
 		require_once DIR . '/includes/functions_databuild.php';
@@ -426,7 +476,7 @@ class vBCms_Comments
 		// without checking. We'll verify each post anyway.
 
 		//get our results
-		$results = self::getComments($nodeid, $userinfo, $permissions, $associatedthreadid);
+		$results = self::getComments($nodeid, $userinfo, $permissions, $allcomments, $associatedthreadid, $ajax);
 		$record_count = count($results);
 
 		if (!$results OR !count($results))
@@ -434,13 +484,12 @@ class vBCms_Comments
 			return '';
 		}
 
-
 		//If we are passed a postid, we'll display just that comment.
 		if (vB::$vbulletin->GPC_exists['postid'] AND intval(vB::$vbulletin->GPC['postid'])
 			AND ($record_count > $perpage) AND in_array(vB::$vbulletin->GPC['postid'], $results))
 		{
-			$index = array_search(vB::$vbulletin->GPC['postid'], $results) ;
-			$pageno = max(1,ceil($index/$perpage));
+			$index = array_search(vB::$vbulletin->GPC['postid'], $results);
+			$pageno = max(1,ceil(($index+1)/$perpage));
 			$first = ($pageno -1) * $perpage;
 		}
 		else
@@ -457,13 +506,15 @@ class vBCms_Comments
 				$first = $perpage * ($pageno -1) ;
 			}
 		}
+
 		//Let's trim off the results we need.
 		//This also tells us if we should show the "next" button.
 		$results = array_slice($results, $first, $perpage, true);
 
 		//Now format the overall block.
-		if (!count($results) OR !$comments = self::renderResult( $userinfo, $results, $permissions,
-				$forumperms, $target_url, $nodeid)
+		$ajax_last_post = 0;
+		if (!count($results) OR !$comments = self::renderResult($userinfo, $results, $permissions,
+				$forumperms, $target_url, $nodeid, $ajax_last_post)
 			OR ($comments == ''))
 		{
 			return false;
@@ -476,6 +527,8 @@ class vBCms_Comments
 
 		$pagenav = construct_page_nav($pageno, $perpage, $record_count, $target_url, '', 'comments');
 
+		$allow_ajax_qr = (($pageno == ceil($record_count / $perpage)) ? 1 : 0); // On last page ?
+
 		$template = vB_Template::create('vbcms_comments_block');
 		$template->register('comment_count', $record_count	);
 		$template->register('sessionhash', $sessionhash	);
@@ -484,7 +537,8 @@ class vBCms_Comments
 		$template->register('this_url', $target_url);
 		$template->register('nodeid', $nodeid);
 		$template->register('target_url', $target_url);
-
+		$template->register('allow_ajax_qr', $allow_ajax_qr);
+		$template->register('ajax_last_post', $ajax_last_post);
 		return $template->render() ;
 	}
 
@@ -499,21 +553,21 @@ class vBCms_Comments
 	* @return string;
 	*/
 	public static function showCommentsXml($nodeid, $userinfo, $pageno = 1,
-		$perpage = 20, $target_url = '')
+		$perpage = 20, $target_url = '', $associatedthreadid = '', $all_comments)
 	{
 		require_once DIR . '/includes/functions_misc.php';
 		global $show;
-
 
 		$xml = new vB_AJAX_XML_Builder( vB::$vbulletin, 'text/xml');
 		$xml->add_group('root');
 
 		//todo handle prefs for xml types
-		$xml->add_tag('html', $check_val = self::showComments($nodeid, $userinfo,  $pageno,
-		$perpage, $target_url));
+		$xml->add_tag('html', $check_val = self::showComments($nodeid, $userinfo,  "last",
+		$perpage, $target_url, $all_comments, $associatedthreadid, true));
 
 		$xml->close_group();
-		$xml->print_xml();
+		return $xml->fetch_xml();
+		//$xml->print_xml();
 	}
 
 	/******
@@ -547,7 +601,7 @@ class vBCms_Comments
 	* @return string : the html results of the render.
 	*/
 	private static function renderResult($userinfo, $post_array, $permissions,
-		$forumperms, $target_url, $nodeid)
+		$forumperms, $target_url, $nodeid, &$finalposttime)
 	{
 
 		if (!count($post_array))
@@ -568,15 +622,17 @@ class vBCms_Comments
 		$threadinfo = verify_id('thread', $thread['threadid'], 1, 1);
 		$foruminfo = verify_id('forum', $threadinfo['forumid'], 1, 1);
 		$firstpostid = false;
+		
+		$displayed_dateline = $threadinfo['lastpost'];
+		$finalposttime = intval($threadinfo['lastpost']); // pass this back for ajax.
 
-		$displayed_dateline = 0;
 		if (vB::$vbulletin->options['threadmarking'] AND vB::$vbulletin->userinfo['userid'])
 		{
 			$threadview = max($threadinfo['threadread'], $threadinfo['forumread'], TIMENOW - (vB::$vbulletin->options['markinglimit'] * 86400));
 		}
 		else
 		{
-			$threadview = intval(fetch_bbarray_cookie('thread_lastview', $thread['threadid']));
+			$threadview = intval(fetch_bbarray_cookie('thread_lastview', $threadinfo['threadid']));
 			if (!$threadview)
 			{
 				$threadview = vB::$vbulletin->userinfo['lastvisit'];
@@ -584,27 +640,22 @@ class vBCms_Comments
 		}
 		require_once DIR . '/includes/functions_user.php';
 		$show['inlinemod'] = false;
-		$postids = array();
 
-		if (! isset(vB::$vbulletin->userinfo['permissions']['cms']))
+		if (!isset(vB::$vbulletin->userinfo['permissions']['cms']))
 		{
 			vBCMS_Permissions::getUserPerms();
 		}
 
-
-
 		$postids = ' post.postid in ('
  			. implode(', ', $post_array) .')';
-
 
 		$posts =  vB::$vbulletin->db->query_read($sql = "
 			SELECT
 			post.*, post.username AS postusername, post.ipaddress AS ip, IF(post.visible = 2, 1, 0) AS isdeleted,
 			user.*, userfield.*, usertextfield.*,
-			" . iif($forum['allowicons'], 'icon.title as icontitle, icon.iconpath,') . "
-			" . iif( vB::$vbulletin->options['avatarenabled'], 'avatar.avatarpath, NOT ISNULL(customavatar.userid) AS hascustomavatar, customavatar.dateline AS avatardateline,customavatar.width AS avwidth,customavatar.height AS avheight,') . "
-			" . ((can_moderate($thread['forumid'], 'canmoderateposts') OR can_moderate($thread['forumid'], 'candeleteposts')) ? 'spamlog.postid AS spamlog_postid,' : '') . "
-				" . iif($deljoin, 'deletionlog.userid AS del_userid, deletionlog.username AS del_username, deletionlog.reason AS del_reason,') . "
+			" . iif($foruminfo['allowicons'], 'icon.title as icontitle, icon.iconpath,') . "
+			" . iif( vB::$vbulletin->options['avatarenabled'] AND vB::$vbulletin->userinfo['showavatars'], 'avatar.avatarpath, NOT ISNULL(customavatar.userid) AS hascustomavatar, customavatar.dateline AS avatardateline,customavatar.width AS avwidth,customavatar.height AS avheight,') . "
+			" . ((can_moderate($threadinfo['forumid'], 'canmoderateposts') OR can_moderate($threadinfo['forumid'], 'candeleteposts')) ? 'spamlog.postid AS spamlog_postid,' : '') . "
 				editlog.userid AS edit_userid, editlog.username AS edit_username, editlog.dateline AS edit_dateline,
 				editlog.reason AS edit_reason, editlog.hashistory,
 				postparsed.pagetext_html, postparsed.hasimages,
@@ -613,21 +664,18 @@ class vBCms_Comments
 				IF(displaygroupid=0, user.usergroupid, displaygroupid) AS displaygroupid, infractiongroupid,
 			 	customprofilepic.userid AS profilepic, customprofilepic.dateline AS profilepicdateline, customprofilepic.width AS ppwidth, customprofilepic.height AS ppheight
 				" . iif(!($permissions['genericpermissions'] &  vB::$vbulletin->bf_ugp_genericpermissions['canseehiddencustomfields']),  vB::$vbulletin->profilefield['hidden']) . "
-				$hook_query_fields
 			FROM " . TABLE_PREFIX . "post AS post
 			LEFT JOIN " . TABLE_PREFIX . "user AS user ON(user.userid = post.userid)
 			LEFT JOIN " . TABLE_PREFIX . "userfield AS userfield ON(userfield.userid = user.userid)
 			LEFT JOIN " . TABLE_PREFIX . "usertextfield AS usertextfield ON(usertextfield.userid = user.userid)
-			" . iif($forum['allowicons'], "LEFT JOIN " . TABLE_PREFIX . "icon AS icon ON(icon.iconid = post.iconid)") . "
-			" . iif( vB::$vbulletin->options['avatarenabled'], "LEFT JOIN " . TABLE_PREFIX . "avatar AS avatar ON(avatar.avatarid = user.avatarid) LEFT JOIN " . TABLE_PREFIX . "customavatar AS customavatar ON(customavatar.userid = user.userid)") . "
-			" . ((can_moderate($thread['forumid'], 'canmoderateposts') OR can_moderate($thread['forumid'], 'candeleteposts')) ? "LEFT JOIN " . TABLE_PREFIX . "spamlog AS spamlog ON(spamlog.postid = post.postid)" : '') . "
-				$deljoin
+			" . iif($foruminfo['allowicons'], "LEFT JOIN " . TABLE_PREFIX . "icon AS icon ON(icon.iconid = post.iconid)") . "
+			" . iif( vB::$vbulletin->options['avatarenabled'] AND vB::$vbulletin->userinfo['showavatars'], "LEFT JOIN " . TABLE_PREFIX . "avatar AS avatar ON(avatar.avatarid = user.avatarid) LEFT JOIN " . TABLE_PREFIX . "customavatar AS customavatar ON(customavatar.userid = user.userid)") . "
+			" . ((can_moderate($threadinfo['forumid'], 'canmoderateposts') OR can_moderate($threadinfo['forumid'], 'candeleteposts')) ? "LEFT JOIN " . TABLE_PREFIX . "spamlog AS spamlog ON(spamlog.postid = post.postid)" : '') . "
 			LEFT JOIN " . TABLE_PREFIX . "editlog AS editlog ON(editlog.postid = post.postid)
 			LEFT JOIN " . TABLE_PREFIX . "postparsed AS postparsed ON(postparsed.postid = post.postid AND postparsed.styleid = " . intval(STYLEID) . " AND postparsed.languageid = " . intval(LANGUAGEID) . ")
 			LEFT JOIN " . TABLE_PREFIX . "sigparsed AS sigparsed ON(sigparsed.userid = user.userid AND sigparsed.styleid = " . intval(STYLEID) . " AND sigparsed.languageid = " . intval(LANGUAGEID) . ")
 			LEFT JOIN " . TABLE_PREFIX . "sigpic AS sigpic ON(sigpic.userid = post.userid)
 			LEFT JOIN " . TABLE_PREFIX . "customprofilepic AS customprofilepic ON (user.userid = customprofilepic.userid)
-				$hook_query_joins
 			WHERE $postids
 			ORDER BY post.dateline
 		");
@@ -642,15 +690,16 @@ class vBCms_Comments
 			vB::$vbulletin->options['viewattachedimages'] = ((vB::$vbulletin->options['viewattachedimages'] AND vB::$vbulletin->options['attachthumbs']) ? 1 : 0);
 		}
 
-		$postcount = count($postid_array);
+		$postcount = count($post_array);
 
 		$counter = 0;
 		$postbits = '';
-		 vB::$vbulletin->noheader = true;
+		vB::$vbulletin->noheader = true;
+
 		$postbit_factory = new vB_Postbit_Factory();
-		$postbit_factory->registry =  vB::$vbulletin;
+		$postbit_factory->registry = vB::$vbulletin;
 		$postbit_factory->forum = $foruminfo;
-		$postbit_factory->thread = $thread;
+		$postbit_factory->thread = $threadinfo;
 		$postbit_factory->cache = array();
 		$postbit_factory->bbcode_parser = new vB_BbCodeParser( vB::$vbulletin, fetch_tag_list());
 		//We need to tell the parser to handle quotes differently.
@@ -660,35 +709,34 @@ class vBCms_Comments
 		$show['return_node'] = $nodeid;
 		$show['avatar'] = 1;
 
-		while ($post =  vB::$vbulletin->db->fetch_array($posts))
+		$ignore = array();
+		if (trim(vB::$vbulletin->userinfo['ignorelist']))
 		{
-			if (! self::canViewPost($post, $permissions) )
+			$ignorelist = preg_split('/( )+/', trim(vB::$vbulletin->userinfo['ignorelist']), -1, PREG_SPLIT_NO_EMPTY);
+			foreach ($ignorelist AS $ignoreuserid)
+			{
+				$ignore["$ignoreuserid"] = 1;
+			}
+		}
+
+		while ($post = vB::$vbulletin->db->fetch_array($posts))
+		{
+			if (!self::canViewPost($post, $permissions) )
 			{
 				continue;
 			}
 
-			if (!$post['hascustomavatar'])
+			if (vB::$vbulletin->options['avatarenabled'] AND vB::$vbulletin->userinfo['showavatars'] AND !$post['hascustomavatar'] AND !$post['avatarid'])
 			{
-				if ($post['profilepic'])
-				{
-					$post['hascustomavatar'] = 1;
-					$post['avatarid'] = true;
-					$post['avatarpath'] = "image.php?"  . vB::$vbulletin->session->vars['sessionurl'] . "u=" . $post['userid']  . "&amp;dateline=" . $post['profilepicdateline'] . "&amp;type=profile";
-					$post['avwidth'] = $post['ppwidth'];
-					$post['avheight'] = $post['ppheight'];
-				}
-				else
-				{
-					$post['hascustomavatar'] = 1;
-					$post['avatarid'] = true;
-					// explicity setting avatarurl to allow guests comments to show unknown avatar
-					$post['avatarurl'] = $post['avatarpath'] = vB_Template_Runtime::fetchStyleVar('imgdir_misc') . '/unknown.gif';
-					$post['avwidth'] = 60;
-					$post['avheight'] = 60;
-				}
+				$post['hascustomavatar'] = 1;
+				$post['avatarid'] = true;
+				// explicity setting avatarurl to allow guests comments to show unknown avatar
+				$post['avatarurl'] = $post['avatarpath'] = vB_Template_Runtime::fetchStyleVar('imgdir_misc') . '/unknown.gif';
+				$post['avwidth'] = 60;
+				$post['avheight'] = 60;	
 			}
 
-			if ($tachyuser = in_coventry($post['userid']) AND !can_moderate($thread['forumid']))
+			if ($tachyuser = in_coventry($post['userid']) AND !can_moderate($threadinfo['forumid']))
 			{
 				continue;
 			}
@@ -723,15 +771,7 @@ class vBCms_Comments
 				$fetchtype = 'post';
 			}
 
-			if (
-				( vB::$vbulletin->GPC['viewfull'] AND $post['postid'] == $postinfo['postid'] AND $fetchtype != 'post')
-				AND
-				(can_moderate($threadinfo['forumid']) OR !$post['isdeleted'])
-				)
-			{
-				$fetchtype = 'post';
-			}
-
+			// Not convinced this hook should be here, Left in for now. //
 			($hook = vBulletinHook::fetch_hook('showthread_postbit_create')) ? eval($hook) : false;
 
 			$postbit_obj = $postbit_factory->fetch_postbit($fetchtype);
@@ -754,16 +794,20 @@ class vBCms_Comments
 
 			$parsed_postcache = array('text' => '', 'images' => 1, 'skip' => false);
 
-
 			$this_postbit = $postbit_obj->construct_postbit($post);
 
 			$this_template = vB_Template::create('vbcms_comments_detail');
 			$this_template->register('postid', $post['postid'] );
 			$this_template->register('postbit', $this_postbit);
-			$this_template->register('indent', $post_array[$this_key]['level'] * $pixel_indent);
+			$this_template->register('indent', $post_array[$this_key]['level']);
 
 			$postbits .= $this_template->render();
 			$LASTPOST = $post;
+
+			if ($post['dateline'] > $finalposttime)
+			{
+				$finalposttime = $post['dateline']; // for ajax.
+			}
 
 			// Only show after the first post, counter isn't incremented for deleted/moderated posts
 
@@ -773,7 +817,7 @@ class vBCms_Comments
 				{
 					$saveparsed .= ',';
 				}
-				$saveparsed .= "($post[postid], " . intval($thread['lastpost']) . ', ' . intval($postbit_obj->post_cache['has_images']) . ", '" . vB::$vbulletin->db->escape_string($postbit_obj->post_cache['text']) . "', " . intval(STYLEID) . ", " . intval(LANGUAGEID) . ")";
+				$saveparsed .= "($post[postid], " . intval($threadinfo['lastpost']) . ', ' . intval($postbit_obj->post_cache['has_images']) . ", '" . vB::$vbulletin->db->escape_string($postbit_obj->post_cache['text']) . "', " . intval(STYLEID) . ", " . intval(LANGUAGEID) . ")";
 			}
 
 			if (!empty($postbit_obj->sig_cache) AND $post['userid'])
@@ -785,7 +829,6 @@ class vBCms_Comments
 				$save_parsed_sigs .= "($post[userid], " . intval(STYLEID) . ", " . intval(LANGUAGEID) . ", '" . vB::$vbulletin->db->escape_string($postbit_obj->sig_cache['text']) . "', " . intval($postbit_obj->sig_cache['has_images']) . ")";
 			}
 		}
-
 
 		if ($LASTPOST['dateline'] > $displayed_dateline)
 		{
@@ -830,7 +873,7 @@ class vBCms_Comments
 		require_once DIR . '/includes/functions_editor.php' ;
 		require_once(DIR . '/includes/functions_file.php');
 
-		$config = $this->getConfig();
+		$config = self::getConfig();
 
 		$attachmentoption = '';
 		$attachcount = 0;
@@ -875,21 +918,7 @@ class vBCms_Comments
 	 */
 	protected static function getStaticHash($nodeid, $postid = false)
 	{
-		$context = new vB_Context('comments' , array('nodeid' => $nodeid,
-			'permissions' => vB::$vbulletin->userinfo['permissions']));
-		return strval($context);
-	}
-
-
-	/**** This function creates the hash to store the post information
-	 *
-	 * @param int
-	 *
-	 * @return string
- 	 ****/
-	protected function getPostHash($postid)
-	{
-		$context = new vB_Context('comments' , array('$postid' => $nodeid,
+		$context = new vB_Context("vbcms_comments_$nodeid" , array('nodeid' => $nodeid,
 			'permissions' => vB::$vbulletin->userinfo['permissions']));
 		return strval($context);
 	}
@@ -897,7 +926,6 @@ class vBCms_Comments
 
 /*======================================================================*\
 || ####################################################################
-|| # 
-|| # SVN: $Revision: 45499 $
+|| # SVN: $Revision: 62761 $
 || ####################################################################
 \*======================================================================*/
