@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -442,9 +442,6 @@ class vB_Upgrade_404 extends vB_Upgrade_Version
 			$this->skip_message();
 		}
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
-
 		//clear the cache.  There are some values that are incorrect because of code changes,
 		//make sure that we don't allow those values to be used after the upgrade.
 		vB_Cache::instance()->clean(false);
@@ -453,7 +450,6 @@ class vB_Upgrade_404 extends vB_Upgrade_Version
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -22,6 +22,46 @@ if (!defined('VB_AREA') AND !defined('THIS_SCRIPT'))
 }
 
 // #####################################################################
+
+function get_engine($db, $allow_memory)
+{
+	$memory = $innodb = false;
+	$engines = $db->query('SHOW ENGINES');
+
+	while ($row = $db->fetch_array($engines))
+	{
+		if ($allow_memory 
+			AND strtoupper($row['Engine']) == 'MEMORY' 
+			AND strtoupper($row['Support']) == 'YES')
+		{
+			$memory = true;
+		}
+		
+		if (strtoupper($row['Engine']) == 'INNODB' 
+			AND (strtoupper($row['Support']) == 'YES' 
+			OR strtoupper($row['Support']) == 'DEFAULT'))
+		{
+			$innodb = true;
+		}
+	}
+
+	if ($memory) 
+	{ // Use Memory if possible, and allowed
+		return 'MEMORY';
+	}
+	else if ($innodb)
+	{ // Otherise try Innodb
+		return 'InnoDB';
+	}
+	return 'MyISAM'; // Otherwise default to MyISAM.
+}
+
+// Choose Engine for Session Tables.
+function get_session_engine($db)
+{
+	return get_engine($db, true);
+}
+
 // Determines which mysql engine to use for high concurrency tables
 // Will use InnoDB if its available, otherwise MyISAM
 function get_high_concurrency_table_engine($db)
@@ -31,23 +71,7 @@ function get_high_concurrency_table_engine($db)
 		return 'MyISAM';
 	}
 
-	$set = $db->query('SHOW ENGINES');
-
-	while ($row = $db->fetch_array($set))
-	{
-		if (
-			strcasecmp($row['Engine'], 'innodb') == 0 AND
-			(
-				(strcasecmp($row['Support'], 'yes') == 0) OR
-				(strcasecmp($row['Support'], 'default') == 0)
-			)
-		)
-		{
-			return 'InnoDB';
-		}
-
-	}
-	return 'MyISAM';
+	return get_engine($db, false);
 }
 
 function should_install_suite()
@@ -82,7 +106,6 @@ function print_admin_stop_exception($e)
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 29116 $
 || ####################################################################
 \*======================================================================*/

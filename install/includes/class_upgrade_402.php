@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -89,19 +89,29 @@ class vB_Upgrade_402 extends vB_Upgrade_Version
 			$count++;
 			$template_un = '';
 			$template = compile_template($template_un);
-			$this->run_query(
-				sprintf($this->phrase['core']['altering_x_table'], 'template', $count, count($doads)),
-				"UPDATE " . TABLE_PREFIX . "template
-				SET
-					template = '" . $this->db->escape_string($template) . "',
-					template_un = '',
-					dateline = " . TIMENOW . "
-				WHERE
-					styleid IN (-1,0)
-						AND
-					title = 'ad_" . $this->db->escape_string($ad) . "'
-				"
-			);
+			// This template should never be false since it goes in empty but to be consistent
+			if ($template === false)
+			{
+				$this->show_message(
+					sprintf($this->phrase['vbphrase']['compile_template_x_failed'], 'ad_' . $ad)
+				);
+			}
+			else
+			{
+				$this->run_query(
+					sprintf($this->phrase['core']['altering_x_table'], 'template', $count, count($doads)),
+					"UPDATE " . TABLE_PREFIX . "template
+					SET
+						template = '" . $this->db->escape_string($template) . "',
+						template_un = '',
+						dateline = " . TIMENOW . "
+					WHERE
+						styleid IN (-1,0)
+							AND
+						title = 'ad_" . $this->db->escape_string($ad) . "'
+					"
+				);
+			}
 		}
 		if (!$count)
 		{
@@ -163,7 +173,6 @@ class vB_Upgrade_402 extends vB_Upgrade_Version
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

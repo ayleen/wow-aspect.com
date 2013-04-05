@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -54,7 +54,14 @@ class vB_Upgrade_Cli extends vB_Upgrade_Abstract
 	* @var	boolean
 	*/
 	protected $limitqueries = false;
-
+	
+	/** 
+	* Command Line Options
+	* 
+	* @var	array
+	*/
+	protected $options = array();
+	
 	/**
 	* Constructor.
 	*
@@ -75,19 +82,37 @@ class vB_Upgrade_Cli extends vB_Upgrade_Abstract
 		
 		parent::init();
 
+		$this->process_options();
+		
 		if ($this->setuptype == 'install')
 		{
 			$this->startup_errors[] = $this->phrase['install']['cli_install_not_supported'];
 		}
 
-		if (!empty($this->startup_errors))
+		if ($this->startup_errors OR $this->startup_file_errors)
 		{
 			$this->echo_phrase("\r\n");
-			foreach ($this->startup_errors AS $error)
+			if ($this->startup_file_errors)
 			{
-				$this->echo_phrase("$error\r\n");
+				foreach ($this->startup_file_errors AS $error)
+				{
+					$errorstring = $this->convert_phrase("$error\r\n");
+				}
+				$response = $this->prompt(sprintf($this->phrase['core']['suspect_files_detected_cli'], $errorstring), array('y','n', 'Y', 'N'));
+				
+				if (strtolower($response) == 'n')
+				{	
+					die();
+				}
 			}
-			die();
+			else
+			{
+				foreach ($this->startup_errors AS $error)
+				{
+					$this->echo_phrase($this->convert_phrase("$error\r\n"));
+				}
+				die();
+			}
 		}
 
 		// Where does this upgrade need to begin?
@@ -102,6 +127,18 @@ class vB_Upgrade_Cli extends vB_Upgrade_Abstract
 		$this->process_script($this->scriptinfo['version'], $script);
 	}
 
+	/**
+	* Process Command Line options ton $this->options
+	* 
+	*/
+	private function process_options()
+	{
+		if (in_array('skip_template_merge', $_SERVER['argv']))
+		{
+			$this->options['skiptemplatemerge'] = true;
+		}
+	}
+	
 	/**
 	* Echo a phrase after converting to console charset
 	*
@@ -170,7 +207,7 @@ class vB_Upgrade_Cli extends vB_Upgrade_Abstract
 			$endstep = $script->stepcount;
 
 			$this->echo_phrase("\r\n");
-			if (in_array($this->scriptinfo['version'], array_merge(array('final', 'skimlinks'), $this->products)))
+			if (in_array($this->scriptinfo['version'], $this->endscripts))
 			{
 				$this->echo_phrase($this->convert_phrase($this->phrase['core']['processing_' . $this->scriptinfo['version']]));
 			}
@@ -231,6 +268,7 @@ class vB_Upgrade_Cli extends vB_Upgrade_Abstract
 	*/
 	public function execute_step($step, $script, $check_table = true, $data = null)
 	{
+		$data['options'] = $this->options;
 		$result = $script->execute_step($step, $check_table, $data);
 
 		$output = false;
@@ -337,7 +375,6 @@ class vB_Upgrade_Cli extends vB_Upgrade_Abstract
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

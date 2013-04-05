@@ -1,8 +1,8 @@
 /*!======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -21,9 +21,18 @@ function vB_Upgrade()
 	YAHOO.util.Event.on("promptresponse", "keypress", this.promptentry, this, true);
 	YAHOO.util.Event.on("confirmform", "submit", this.confirmsubmit, this, true);
 	YAHOO.util.Event.on("confirmok", "click", this.confirmsubmit, this, true);
+	YAHOO.util.Event.on("submitconfirmok", "click", this.confirmsubmitok, this, true);
 	YAHOO.util.Event.on("confirmcancel", "click", this.confirmsubmit, this, true);
 	YAHOO.util.Event.on("admincp", "click", function() { window.location = ADMINDIR; });
 	YAHOO.util.Event.on("beginupgrade", "click", this.beginupgrade, this, true);
+	if (SCRIPTINFO['version'] == 'install')
+	{
+		YAHOO.util.Dom.addClass("options", "hidden");
+	}
+	else
+	{
+		YAHOO.util.Event.on("options", "click", this.options, this, true);
+	}
 	// start the processing..
 
 	this.upgradelog = YAHOO.util.Dom.get("mainmessage");
@@ -61,10 +70,23 @@ vB_Upgrade.prototype.beginupgrade = function(e)
 	this.process_step(SCRIPTINFO['version'], SCRIPTINFO['step'], SCRIPTINFO['startat'], true, false, true, SCRIPTINFO['only']);
 }
 
+vB_Upgrade.prototype.options = function(e)
+{
+	YAHOO.util.Event.stopEvent(e);
+	if (YAHOO.util.Dom.hasClass("optionsbox", "hidden"))
+	{
+		YAHOO.util.Dom.removeClass("optionsbox", "hidden");
+	}
+	else
+	{
+		YAHOO.util.Dom.addClass("optionsbox", "hidden");
+	}
+}
+
 vB_Upgrade.prototype.querystatus = function(step)
 {
 	YAHOO.util.Dom.get("querystatus").disabled = true;
-	var postdata = "ajax=1&status=1&";
+	var postdata = "ajax=1&status=1";
 
 	var callback =
 	{
@@ -78,6 +100,7 @@ vB_Upgrade.prototype.querystatus = function(step)
 	{
 		YAHOO.util.Connect.abort(this.ajax_query_req);
 	}
+	/* Upgrade/Install to not call fetch_ajax_url() */
 	this.ajax_query_req = YAHOO.util.Connect.asyncRequest("POST", this.target, callback, postdata);
 }
 
@@ -114,13 +137,17 @@ vB_Upgrade.prototype.process_querystatus = function(ajax)
 vB_Upgrade.prototype.process_step = function(version, step, startat, checktable, response, firstrun, only, htmldata)
 {
 	this.showprogress();
+
+	var psuedoform = new vB_Hidden_Form();
+	psuedoform.add_variables_from_object(YAHOO.util.Dom.get("optionsbox"));
 	var postdata =
 		"ajax=1&version=" + PHP.urlencode(version) +
 		"&checktable=" + checktable +
 		"&firstrun=" + (firstrun ? true : false) +
 		"&step=" + step +
 		"&startat=" + startat +
-		"&only=" + (only == 1 ? true : false) ;
+		"&only=" + (only == 1 ? true : false) +
+		"&" + psuedoform.build_query_string();
 
 	if (typeof(response) != "undefined" && typeof(response) != "boolean" && response != null)
 	{
@@ -142,6 +169,7 @@ vB_Upgrade.prototype.process_step = function(version, step, startat, checktable,
 			"version" : version
 		}
 	}
+	/* Upgrade/Install to not call fetch_ajax_url() */
 	YAHOO.util.Connect.asyncRequest("POST", this.target, callback, postdata);
 	// Start process timer.
 	var thisC = this;
@@ -376,13 +404,13 @@ vB_Upgrade.prototype.process_bad_response = function(text, step, version)
 		this.abort_upgrade();
 		return;
 	}
-	
+
 	if (text.match(/fatal error.*maximum execution time/i))
 	{
 		//  Only the template merge allows skip at present
-		if (version == "final" && step == 6)
+		if (version == "final" && (step == 8 || step == 9))
 		{
-			// Tell step 6 that it timed out so that it will output the proper "time out" phrase and continue
+			// Tell step 8 (or 9) that it timed out so that it will output the proper "time out" phrase and continue
 			// on with the next step. That could be done right here without calling the script again but this
 			// way allows us to continue with the flow of the step process without sticking in branches
 			this.process_step(version, step, 0, false, "timeout", null, SCRIPTINFO['only']);
@@ -390,7 +418,7 @@ vB_Upgrade.prototype.process_bad_response = function(text, step, version)
 		}
 	}
 	this.show_confirm(construct_phrase(UNEXPECTED_TEXT, PHP.htmlspecialchars(text)), null, true);
-	this.abort_upgrade();	
+	this.abort_upgrade();
 }
 
 vB_Upgrade.prototype.confirmhtml = function(e, confirm)
@@ -667,6 +695,14 @@ vB_Upgrade.prototype.confirmsubmit = function(e)
 	}
 }
 
+vB_Upgrade.prototype.confirmsubmitok = function(e)
+{
+	YAHOO.util.Event.stopEvent(e);
+	var target = YAHOO.util.Event.getTarget(e);
+	YAHOO.util.Dom.addClass("startup_errors", "hidden");
+	YAHOO.util.Dom.removeClass("progressbox", "hidden");
+}
+
 vB_Upgrade.prototype.exitupgrade = function(e, confirm)
 {
 	if (confirm)
@@ -841,7 +877,6 @@ var upgradeobj = new vB_Upgrade();
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 26385 $
 || ####################################################################
 \*======================================================================*/

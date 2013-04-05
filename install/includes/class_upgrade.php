@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -57,9 +57,9 @@ class vB_Upgrade
 
 		if (!$phrases)
 		{
-			require_once(CWD . '/includes/class_xml.php');
+			require_once(DIR . '/includes/class_xml.php');
 			$languagecode = defined('UPGRADE_LANGUAGE') ? UPGRADE_LANGUAGE : 'en';
-			$xmlobj = new vB_XML_Parser(false, CWD . '/install/upgrade_language_' . $languagecode . '.xml');
+			$xmlobj = new vB_XML_Parser(false, DIR . '/install/upgrade_language_' . $languagecode . '.xml');
 			$xml = $xmlobj->parse(defined('UPGRADE_ENCODING') ? UPGRADE_ENCODING : 'ISO-8859-1');
 
 			foreach ($xml['group'] AS $value)
@@ -150,10 +150,12 @@ abstract class vB_Upgrade_Abstract
 	*	@var array
 	*/
 	protected $xml_versions = array(
-		'language'  => null,
-		'style'     => null,
-		'adminhelp' => null,
-		'settings'  => null
+		'language'     => null,
+		'style'        => null,
+		'adminhelp'    => null,
+		'settings'     => null,
+		'mobile-style' => null,
+		'navigation'     => null,
 	);
 
 	/**
@@ -239,6 +241,31 @@ abstract class vB_Upgrade_Abstract
 		'414'    => '4.1.4',
 		'415b1'  => '4.1.5 Beta 1',
 		'415'    => '4.1.5',
+		'416b1'  => '4.1.6 Beta 1',
+		'416'    => '4.1.6',
+		'417b1'  => '4.1.7 Beta 1',
+		'417'    => '4.1.7',
+		'418b1'  => '4.1.8 Beta 1',
+		'418'    => '4.1.8',
+		'419b1'  => '4.1.9 Beta 1',
+		'419'    => '4.1.9',
+		'4110a1' => '4.1.10 Alpha 1',
+		'4110a2' => '4.1.10 Alpha 2',
+		'4110a3' => '4.1.10 Alpha 3',
+		'4110b1' => '4.1.10 Beta 1',
+		'4110'   => '4.1.10',
+		'4111a1' => '4.1.11 Alpha 1',
+		'4111a2' => '4.1.11 Alpha 2',
+		'4111b1' => '4.1.11 Beta 1',
+		'4111b2' => '4.1.11 Beta 2',
+		'4111'   => '4.1.11',
+		'4112a1' => '4.1.12 Alpha 1',
+		'4112b1' => '4.1.12 Beta 1',
+		'4112b2' => '4.1.12 Beta 2',
+		'4112'   => '4.1.12',
+		'420a1'  => '4.2.0 Alpha 1',
+		'420b1'  => '4.2.0 Beta 1',
+		'420'    => '4.2.0',
 	);
 
 	/**
@@ -250,6 +277,8 @@ abstract class vB_Upgrade_Abstract
 		'vbblog',
 		'vbcms',
 		'skimlinks',
+		'forumrunner',
+		'postrelease',
 		'final',
 	);
 
@@ -284,6 +313,13 @@ abstract class vB_Upgrade_Abstract
 	*/
 	protected $startup_errors = array();
 
+	/**
+	* Startup File Errors
+	*
+	* @var	array
+	*/
+	protected $startup_file_errors = array();	
+	
 	/**
 	* Setup type, new install or upgrade?
 	*
@@ -646,40 +682,62 @@ abstract class vB_Upgrade_Abstract
 	*
 	* @return string
 	*/
-	protected function fetch_short_version($version)
+	protected function fetch_short_version($version, $typeonly = false)
 	{
 		if (preg_match('/^(\w+\s+)?(\d+)\.(\d+)\.(\d+)(\s+(a|alpha|b|beta|g|gamma|rc|release candidate|gold|stable|final|pl|patch level)(\s+(\d+))?)?$/siU', $version, $regs))
 		{
 			switch (strtolower($regs[6]))
 			{
 				case 'alpha':
+					$type = -5;
 					$regs[6] = 'a';
 					break;
 				case 'beta':
+					$type = -4;
 					$regs[6] = 'b';
 					break;
 				case 'gamma':
+					$type = -3;
 					$regs[6] = 'g';
 					break;
 				case 'release candidate':
+					$type = -2;
 					$regs[6] = 'rc';
 					break;
 				case 'patch level':
+					$type = 1;
 					$regs[6] = 'pl';
 					break;
 				case 'gold':
 				case 'stable':
 				case 'final':
+					$type = -1;
 					$regs[6] = '';
-					$regs[7] = '';
+					break;
+				default:
+					$type = 0;
 					break;
 			}
-
-			return $regs[2] . $regs[3] . $regs[4] . $regs[6] . $regs[8];
+			
+			if ($typeonly)
+			{
+				return $type;
+			}
+			else
+			{
+				return $regs[2] . $regs[3] . $regs[4] . $regs[6] . $regs[8];
+			}
 		}
 		else
 		{
-			return $version;
+			if ($typeonly)
+			{
+				return 2; // Non standard type
+			}
+			else
+			{
+				return $version;
+			}
 		}
 	}
 
@@ -706,6 +764,7 @@ abstract class vB_Upgrade_Abstract
 		$this->startup_alter("ALTER TABLE " . TABLE_PREFIX . "upgradelog ADD only TINYINT NOT NULL DEFAULT '0'");
 		$this->startup_alter("ALTER TABLE " . TABLE_PREFIX . "adminmessage ADD args MEDIUMTEXT");
 		$this->startup_alter("ALTER TABLE " . TABLE_PREFIX . "language ADD phrasegroupinfo MEDIUMTEXT");
+		$this->startup_alter("ALTER TABLE " . TABLE_PREFIX . "style ADD type ENUM('standard', 'mobile') NOT NULL DEFAULT 'standard'");
 		$this->db->show_errors();
 	}
 
@@ -862,8 +921,234 @@ abstract class vB_Upgrade_Abstract
 		}
 
 		$this->verify_install_environment();
+		$this->verify_files();
 	}
 
+	protected function verify_files()
+	{
+		if (!empty($this->startup_errors) OR defined('SKIP_UPGRADE_FILE_CHECK'))
+		{
+			return;
+		}
+		
+		$extensions = array('.php', '.xml', '.js', '.htc', '.css', '.new', '.style', '.sh', '.htm', '.html', '.txt');
+
+		if (file_exists(DIR . '/includes/md5_sums_vbulletin.php'))
+		{
+			$md5_sums_array = array();
+			$md5_sum_versions = array('vbulletin' => '4.2.0 Patch Level 3');
+			$file_software_assoc = array();
+			$scanned_md5_files = array();
+			$ignored_files = array('/includes/config.php', '/includes/config.php.new', '/install/install.php', '/includes/version_vbulletin.php');
+			$ignored_dirs = array('/cpstyles/', '/includes/datastore','/clientscript/libraries','/clientscript/yui/history/assets');
+			$endversion = end($this->versions);
+			
+			$md5_short_version = $this->fetch_short_version($md5_sum_versions['vbulletin']);
+			$end_short_version = $this->fetch_short_version($endversion);
+
+			// Do simple check only (on initial x.y.x only).
+			if ($this->fetch_short_version($md5_sum_versions['vbulletin'], true) > 0)
+			{
+				// Get numeric only (remove any dots, just in case). 
+				$md5_short_version = intval(str_replace('.', '', $md5_short_version));
+				$end_short_version = intval(str_replace('.', '', $end_short_version));
+			}
+
+			include(DIR . '/includes/md5_sums_vbulletin.php');
+			$relative_md5_sums = array();
+
+			if ($md5_short_version != $end_short_version)
+			{
+				$this->startup_file_errors[] = construct_phrase($this->phrase['core']['invalid_md5_sums'], $md5_sum_versions[$md5_sum_softwareid], $endversion);
+				return;
+			}
+
+			if ($this->setuptype == 'upgrade' AND $this->registry->options['forumhome'] != 'forum' AND !empty($md5_sums['/']['forum.php']))
+			{
+				//$md5_sums['/']["{$this->registry->options['forumhome']}.php"] = $md5_sums['/']['forum.php'];
+				unset($md5_sums['/']['forum.php']);
+			}
+
+			// need to fix up directories which are configurable
+			foreach ($md5_sums AS $key => $val)
+			{
+				$admin_dir = strpos($key, '/admincp');
+				$mod_dir = strpos($key, '/modcp');
+
+				// not using str_replace since it could be greedy and replace all values of admincp / modcp
+				if ($this->registry->config['Misc']['admincpdir'] !== 'admincp' AND $admin_dir === 0)
+				{
+					$key = substr_replace($key, $this->registry->config['Misc']['admincpdir'], 1, strlen('admincp'));
+				}
+				else if ($this->registry->config['Misc']['modcpdir'] !== 'modcp' AND $mod_dir === 0)
+				{
+					$key = substr_replace($key, $this->registry->config['Misc']['modcpdir'], 1, strlen('modcp'));
+				}
+
+				$relative_md5_sums["$key"] = $val;
+
+				foreach (array_keys($val) AS $file)
+				{
+					$file_software_assoc["$key/$file"] = $md5_sum_softwareid;
+				}
+			}
+
+			$ignored_files[] = DIR . '/includes/md5_sums_vbulletin.php';
+			$md5_sums_array = array_merge_recursive($relative_md5_sums, $md5_sums_array);
+
+			if (empty($md5_sums_array))
+			{
+				$this->startup_file_errors[] = $this->phrase['core']['unable_to_read_md5_sums'];
+			}
+
+			$errors = array();
+			$file_count = array();
+
+			foreach ($md5_sums_array AS $directory => $md5_sums)
+			{
+				foreach ($ignored_dirs AS $ignored_dir)
+				{
+					if (substr($directory, 0, strlen($ignored_dir)) == $ignored_dir)
+					{
+						// directory is an ignored directory, skip the contents
+						continue 2;
+					}
+				}
+
+				$handle = @opendir(DIR . $directory);
+				if ($handle)
+				{
+					$file_count["$directory"] = 0;
+
+					while ($file = readdir($handle))
+					{
+						if ($file == '.' OR $file == '..')
+						{
+							continue;
+						}
+
+						if (is_file(DIR . "$directory/$file") AND !in_array("$directory/$file", $ignored_files) AND substr($file, 0, 1) != '.' AND in_array($ext = '.' . file_extension($file), $extensions))
+						{
+							$file_count["$directory"]++;
+
+							if ($file == 'index.html' AND trim(file_get_contents(DIR . $directory . '/' . $file)) == '')
+							{
+								continue;
+							}
+
+							// check if file has a record in the MD5 sums array
+							if ($md5_sums["$file"])
+							{
+								$check_md5 = true;
+
+								if (is_readable(DIR . $directory . '/' . $file))
+								{
+									// valid, readable file -- try to match the contents and version
+									if (in_array($ext, array('.php', '.js')) AND $fp = @fopen(DIR . $directory . '/' . $file, 'rb'))
+									{
+										$linenumber = 0;
+										$finished = false;
+										$matches = array();
+
+										while ($line = fgets($fp, 4096) AND $linenumber <= 10)
+										{
+											if ($ext == '.php' AND preg_match('#\|\| \# vBulletin[^0-9]* (\d.*?) -#si', $line, $matches))
+											{
+												$finished = true;
+											}
+											else if (preg_match('#^\|\| \# vBulletin[^0-9]* (\d.*)$#si', $line, $matches))
+											{
+												$finished = true;
+											}
+
+											$linenumber++;
+
+											if ($finished)
+											{
+												if (!empty($file_software_assoc["$directory/$file"]))
+												{
+													$version_check = $md5_sum_versions[$file_software_assoc["$directory/$file"]];
+												}
+												else
+												{
+													$version_check = $md5_sum_versions['vbulletin'];
+												}
+
+												if (strtolower(trim($matches[1])) != strtolower($version_check))
+												{
+													$check_md5 = false;
+													$errors["$directory"]["$file"][] = construct_phrase($this->phrase['core']['file_version_mismatch_x_expected_y'], htmlspecialchars_uni($matches[1]), htmlspecialchars_uni($version_check));
+												}
+												break;
+											}
+										}
+										fclose($fp);
+									}
+
+									if ($check_md5 AND md5(str_replace("\r\n", "\n", file_get_contents(DIR . $directory . '/' . $file))) != $md5_sums["$file"])
+									{
+										$errors["$directory"]["$file"][] = $this->phrase['core']['file_contents_mismatch'];
+									}
+								}
+								else
+								{
+									// file exists, but we can't read it
+									$errors["$directory"]["$file"][] = $this->phrase['core']['file_not_readable'];
+								}
+							}
+							else
+							{
+								// file is not listed in the md5_sums files
+								//$errors["$directory"]["$file"][] = $this->phrase['core']['file_not_recognized'];
+							}
+
+							$md5_sums["$file"] = true;
+						}
+					}
+
+					// now check for any files listed in the md5 sum files that we have not found
+					foreach ($md5_sums AS $file => $value)
+					{
+						if ($value !== true AND !in_array("$directory/$file", $ignored_files))
+						{
+							$errors["$directory"]["$file"][] = $this->phrase['core']['file_not_found'];
+						}
+					}
+
+					closedir($handle);
+				}
+			}
+
+			ksort($file_count);
+
+			if (!empty($errors))
+			{
+				$errorstring = $this->phrase['core']['suspect_files_detected'];
+			}
+			foreach ($file_count AS $directory => $file_count)
+			{	
+				if (is_array($errors["$directory"]))
+				{
+					ksort($errors["$directory"]);
+
+					foreach ($errors["$directory"] AS $file => $error)
+					{
+						$filename = $directory != '/' ? "$directory/$file" : "/$file";
+						$errorstring .= "<br /><strong>$filename</strong> - " . implode('<br />', $error);
+					}
+				}
+			}
+			if ($errorstring)
+			{
+				$this->startup_file_errors[] = $errorstring;
+			}
+		}
+		else
+		{
+			$this->startup_file_errors[] = $this->phrase['core']['unable_to_read_md5_sums'];						
+		}
+	}
+	
 	protected function verify_install_environment()
 	{
 		if (defined('SKIPDB'))
@@ -972,11 +1257,13 @@ abstract class vB_Upgrade_Abstract
 		{
 			if ($fp = @fopen(DIR . '/install/vbulletin-' . $file . '.xml', 'rb'))
 			{
-				$data = @fread($fp, 300);
+				$data = @fread($fp, 400);
 				if (
-					($file != 'settings' AND preg_match('#vbversion="(.*?)"#', $data, $matches))
+					($file != 'settings' AND file != 'navigation' AND preg_match('#vbversion="(.*?)"#', $data, $matches))
 						OR
 					($file == 'settings' AND preg_match('#<setting varname="templateversion".*>(.*)</setting>#sU', $data, $matches) AND preg_match('#<defaultvalue>(.*?)</defaultvalue>#', $matches[1], $matches))
+						OR
+					($file == 'navigation' AND preg_match('#<version>(.*)</version>#sU', $data, $matches))
 				)
 				{
 					$this->xml_versions[$file] = $matches[1];
@@ -1889,10 +2176,9 @@ abstract class vB_Upgrade_Version
 			$step = 0;
 			if ($this->SHORT_VERSION == 'final' OR $only)
 			{
-				//This needs an index on 'script' added
 				$this->db->query_write("
 					DELETE FROM " . TABLE_PREFIX . "upgradelog
-					WHERE script IN ('final', 'vbblog', 'vbcms', 'skimlinks')
+					WHERE script IN ('final', 'vbblog', 'vbcms', 'skimlinks', 'forumrunner', 'postrelease')
 				");
 
 				$insertstep = false;
@@ -2085,11 +2371,55 @@ abstract class vB_Upgrade_Version
 		}
 		return true;
 	}
+	
+	protected function import_product_mobile($data, $product)
+	{
+		switch ($product)
+		{
+			case 'vbblog':
+				$file = 'vbulletin-mobile-style-blog.xml';
+				break;
+			case 'vbcms':
+				$file = 'vbulletin-mobile-style-cms.xml';
+				break;
+			default:
+				$this->skip_message();
+				return;				
+		}	
+		
+		$perpage = 1;
+		$startat = intval($data['startat']);
+		require_once(DIR . '/includes/adminfunctions_template.php');
+
+		$importfile = '';
+		if (!($xml = file_read(DIR . '/install/' . $file)))
+		{
+			// output a mobile style not found error
+			$this->add_error(sprintf($this->phrase['vbphrase']['file_not_found'],$file), self::PHP_TRIGGER_ERROR, true);
+			return;
+		}
+
+		if ($startat == 0)
+		{
+			$this->show_message(sprintf($this->phrase['vbphrase']['importing_file'], $file));
+		}
+
+		$info = xml_import_style($xml, -2, -2, '', false, 1, false, $startat, $perpage, 0, $file);
+
+		if (!$info['done'])
+		{
+			$this->show_message($info['output']);
+			return array('startat' => $startat + $perpage);
+		}
+		else
+		{
+			$this->show_message($this->phrase['core']['import_done']);
+		}
+	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

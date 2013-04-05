@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -428,13 +428,14 @@ class vB_Upgrade_408 extends vB_Upgrade_Version
 			"'wgosubheader_font'",
 		));
 
+		// Mobile Style as styleid -2 won't exist (yet)
 		$this->show_message($this->phrase['version']['408']['retrieving_customized_stylevar_values']);
 		$style_result = $this->db->query_read("
 			SELECT stylevarid, styleid, value
 			FROM " . TABLE_PREFIX . "stylevar
 			WHERE
 				stylevarid IN (" . $stylevarbase . ")
-				AND
+					AND
 				styleid > 0
 		");
 		$stylevar = array();
@@ -548,7 +549,6 @@ class vB_Upgrade_408 extends vB_Upgrade_Version
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

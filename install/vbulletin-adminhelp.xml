@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 
-<helptopics vbversion="4.1.5" product="vbulletin" hasphrases="1">
+<helptopics vbversion="4.2.0" product="vbulletin" hasphrases="1">
 	<helpscript name="accessmask">
 		<helptopic disp="1">
 			<title date="0" username="vBulletin Solutions" version="">About Access Masks</title>
@@ -151,6 +151,10 @@ For all other holidays - those that appear in the Holiday Manager - use the "Sho
 		<helptopic disp="170" act="add,edit" opt="allowimgcode">
 			<title date="0" username="vBulletin Solutions" version="">Allow BB IMG Code</title>
 			<text date="0" username="vBulletin Solutions" version="">This allows users to display images inline on the event page. If you set this to No, a link to the image will be displayed instead of showing the actual image.</text>
+		</helptopic>
+		<helptopic disp="170" act="add,edit" opt="allowvideocode">
+			<title date="0" username="vBulletin Solutions" version="4.1.10 Alpha 2">Allow BB VIDEO Code</title>
+			<text date="0" username="vBulletin Solutions" version="4.1.10 Alpha 2">This allows users to display videos inline on the event page. If you set this to No, a link to the video will be displayed instead of showing the actual video.</text>
 		</helptopic>
 		<helptopic disp="180" act="add,edit" opt="allowsmilies">
 			<title date="0" username="vBulletin Solutions" version="">Allow Smilies</title>
@@ -784,7 +788,7 @@ To create a new announcement in a specific forum, click the New button across fr
 	<helpscript name="attachment">
 		<helptopic disp="1">
 			<title date="0" username="vBulletin Solutions" version="">About Attachments</title>
-			<text date="1205431035" username="vBulletin Solutions" version="3.7.0 Release Candidate 1"><![CDATA[<b>Related General Help Topics:</b><br />
+			<text date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[<b>Related General Help Topics:</b><br />
 <a href="help.php?s=&amp;do=answer&amp;page=attachment&amp;pageaction=&amp;option=">Attachments</a><br />
 <a href="help.php?s=&amp;do=answer&amp;page=moderate&amp;pageaction=&amp;option=">Moderating Content</a><br /><br />
 
@@ -793,9 +797,9 @@ vBulletin supports file uploads to posts, called post attachments.  Post attachm
 
 vBulletin provides you with two options for storing post attachments: 1) you can store them in the database or 2) you can store them in the file system on your web server.  Both methods have advantages and disadvantages.  The database is more efficient with storage space and is easier to backup than individual files.  However, storing attachments in the database is also an extra burden on the database when users download attachments.  Other considerations include how you want to restrict access to attachments, whether you want to use vBulletin's permission system or directory permissions like htaccess.<br /><br />
 
-vBulletin's attachment system allows you to specify maximum file sizes for each type of file you allow to be attached.  Some file types tend to belong to larger files (videos and images versus text for example) and this ability allows you to take that into consideration.<br /><br />
+vBulletin's attachment system allows you to specify maximum file-sizes for each type of file you allow to be attached.  Some file types tend to belong to larger files (videos and images versus text for example) and this ability allows you to take that into consideration.<br /><br />
 
-On the topic of maximum file sizes, vBulletin allows you to limit the total size of all of a user's attachments at the group level (see the <a href="usergroup.php?do=modify" target="_blank">Usergroup Manager</a>).  This is useful in preventing any one user from taking up too much storage with their attachments.<br /><br />
+On the topic of maximum file-sizes, vBulletin allows you to limit the total size of all of a user's attachments at the group level (see the <a href="usergroup.php?do=modify" target="_blank">Usergroup Manager</a>).  This is useful in preventing any one user from taking up too much storage with their attachments.<br /><br />
 
 Another nice feature of vBulletin's attachment system is its support for thumbnails.  When a user posts an image attachment you can configure vBulletin to generate a miniature version of the image (called a thumbnail) that is linked to the larger version of the image.  This is useful in preventing large inline image attachments from stretching your forum layout.  You can configure thumbnails and many other attachment options in your <a href="options.php?dogroup=attachment&amp;do=options" target="_blank">vBulletin options</a>.  If you are using the ImageMagick library, then you may be able to create thumbnails from additional image types: BMP, TIF, PSD, and PDF.  You should have the latest versions of ImageMagick and Ghostscript installed for creating thumbnails from PDF files. Thumbnailing large PDF files may still cause problems so use this option with caution.<br /><br />
 
@@ -815,9 +819,7 @@ Like other forum permissions in vBulletin, the ability of a user to post attachm
 		</helptopic>
 		<helptopic disp="1" act="edit" opt="url">
 			<title date="0" username="vBulletin Solutions" version="">Remote Upload</title>
-			<text date="1205943297" username="vBulletin Solutions" version="3.7.0 Release Candidate 1"><![CDATA[Specify a complete URL to a file to have vBulletin retrieve the file and attach it to the post.  Example:<br /><br />
-
-http://localhost/images_vb3/misc/vbulletin3_logo_white.gif]]></text>
+			<text date="1205943297" username="vBulletin Solutions" version="3.7.0 Release Candidate 1"><![CDATA[Specify a complete URL to a file to have vBulletin retrieve the file and attach it to the post.]]></text>
 		</helptopic>
 		<helptopic disp="20" act="edit" opt="a_filename">
 			<title date="0" username="vBulletin Solutions" version="">Filename</title>
@@ -877,12 +879,12 @@ Under Advanced Attachment Search, you can use specific criteria to do a custom s
 			<text date="0" username="vBulletin Solutions" version="">Finds attachments that have had less than X downloads, X being the number you specify. Note if you use both More Than and Less Than X Downloads, the More Than number must be less than the Less Than number or there will be no search range!</text>
 		</helptopic>
 		<helptopic disp="70" act="intro" opt="sizemore">
-			<title date="0" username="vBulletin Solutions" version="">Filesize Greater Than</title>
+			<title date="1311525963" username="vBulletin Solutions" version="4.1.7 Beta 1">File-size Greater Than</title>
 			<text date="0" username="vBulletin Solutions" version=""><![CDATA[Enter the size, in bytes, that the attachment must be larger than. Remember this is in bytes, <i>not</i> KiloBytes.]]></text>
 		</helptopic>
 		<helptopic disp="80" act="intro" opt="sizeless">
-			<title date="0" username="vBulletin Solutions" version="">Filesize Less Than</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[Enter the size, in bytes, that the attachment must be smaller than. Remember this is in bytes, <i>not</i> KiloBytes! Note that if you are using both Filesize Greater Than and Filesize Less Than, Filesize Greater Than must be less than Filesize Less Than or there will be no range to search!]]></text>
+			<title date="1311525963" username="vBulletin Solutions" version="4.1.7 Beta 1">File-size Less Than</title>
+			<text date="1311525963" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[Enter the size, in bytes, that the attachment must be smaller than. Remember this is in bytes, <i>not</i> KiloBytes! Note that if you are using both File-size Greater Than and File-size Less Than, File-size Greater Than must be less than File-size Less Than or there will be no range to search!]]></text>
 		</helptopic>
 		<helptopic disp="90" act="intro" opt="visible">
 			<title date="0" username="vBulletin Solutions" version="">Attachment Is Visible</title>
@@ -890,7 +892,7 @@ Under Advanced Attachment Search, you can use specific criteria to do a custom s
 		</helptopic>
 		<helptopic disp="100" act="intro" opt="orderby">
 			<title date="0" username="vBulletin Solutions" version="">Order By</title>
-			<text date="0" username="vBulletin Solutions" version="">You can order your search results by several options, either ascending or descending. They are Attached By, Downloads, Filename, Filesize, Time Attached, Visible. This will not affect your search, only how the results are displayed.</text>
+			<text date="1311525963" username="vBulletin Solutions" version="4.1.7 Beta 1">You can order your search results by several options, either ascending or descending. They are Attached By, Downloads, Filename, File-size, Time Attached, Visible. This will not affect your search, only how the results are displayed.</text>
 		</helptopic>
 		<helptopic disp="110" act="intro" opt="results">
 			<title date="0" username="vBulletin Solutions" version="">Attachments to Show Per Page</title>
@@ -925,7 +927,7 @@ At the extreme right is a link to delete an attachment.]]></text>
 		</helptopic>
 		<helptopic disp="1" act="stats">
 			<title date="0" username="vBulletin Solutions" version="">Viewing Attachment Statistics</title>
-			<text date="1205430963" username="vBulletin Solutions" version="3.7.0 Release Candidate 1"><![CDATA[On this screen you are given several "top 5s" about the attachments on your forum as well as some general statistics.<br /><br />
+			<text date="1311525963" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[On this screen you are given several "top 5s" about the attachments on your forum as well as some general statistics.<br /><br />
 
 From top to bottom:
 <b>Statistics:</b><br />
@@ -935,7 +937,7 @@ From top to bottom:
 
 <b>Storage Type</b>: Where the attachments are being stored, either in the database or the file system, and if they are in the file system, the actual path to them.<br /><br />
 
-<b>Average Attachment Filesize</b>: This is the average size of an attachment, determined by dividing the number of attachments into the total disk space used.<br /><br />
+<b>Average Attachment File-size</b>: This is the average size of an attachment, determined by dividing the number of attachments into the total disk space used.<br /><br />
 
 Under <b>Five Most Popular Attachments</b>, the columns are:<br />
 <b>Rank</b>: The rank of the attachment.<br /><br />
@@ -984,7 +986,7 @@ This file path should be readable AND writeable by your web server (usually CHMO
 			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This is the extension of the file - the letter(s) after the dot in the filename. For example, the filename <b>vb.net</b> has an extension of <b>net</b>.]]></text>
 		</helptopic>
 		<helptopic disp="20" act="updatetype" opt="size">
-			<title date="0" username="vBulletin Solutions" version="">Max File Size</title>
+			<title date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1">Max File-Size</title>
 			<text date="0" username="vBulletin Solutions" version="">You can set the maximum size of uploaded files per type. This number is in bytes.</text>
 		</helptopic>
 		<helptopic disp="30" act="updatetype" opt="height">
@@ -1021,7 +1023,7 @@ You can find a list of types and subtypes <a href="http://www.iana.org/assignmen
 			<text date="1148489948" username="vBulletin Solutions" version="3.6.0 Beta 1">If this type is an image, this sets the maximum height that the image may be, otherwise it is ignored.</text>
 		</helptopic>
 		<helptopic disp="1" act="edit" opt="size">
-			<title date="1148489915" username="vBulletin Solutions" version="3.6.0 Beta 1">Max Filesize</title>
+			<title date="1311525963" username="vBulletin Solutions" version="4.1.7 Beta 1">Max File-size</title>
 			<text date="1148489915" username="vBulletin Solutions" version="3.6.0 Beta 1">You can set the maximum size of uploaded files per type. This number is in bytes.</text>
 		</helptopic>
 		<helptopic disp="1" act="edit" opt="useextension">
@@ -1207,7 +1209,7 @@ e.g. to demonstrate the use of the [b] tag, you would enter [b]Some Text[/b].]]>
 For example
 <blockquote>[tag][b]some text here[/b][/tag]</blockquote>
 
-Will show as 
+Will show as
 
 <blockquote>[b]some text here[/b]</blockquote>
 
@@ -2047,6 +2049,10 @@ When adding / editing a forum there is an option called "Act as Forum".  When th
 			<title date="0" username="vBulletin Solutions" version="">Adding a Forum</title>
 			<text date="0" username="vBulletin Solutions" version="">Options on this page are listed below.</text>
 		</helptopic>
+		<helptopic disp="1" act="add,edit" opt="allowvideos">
+			<title date="1325183307" username="vBulletin Solutions" version="4.1.10 Alpha 3">Allow BB Video Code in posts</title>
+			<text date="1325183307" username="vBulletin Solutions" version="4.1.10 Alpha 3">This allows users to display videos inline on the showthread page. If you set this to No, a link to the video will be displayed instead of showing the actual video.</text>
+		</helptopic>
 		<helptopic disp="20" act="add,edit" opt="title">
 			<title date="0" username="vBulletin Solutions" version="">Title</title>
 			<text date="0" username="vBulletin Solutions" version="">This is the title of the new forum. You may use HTML in this, but be aware this will also be used as the title of the page. Since HTML formatting is not valid in the title of a page, it will be shown as plain text, and will look odd.</text>
@@ -2208,6 +2214,18 @@ If you change any of the posting options at the bottom of this page then you sho
 			<title date="0" username="vBulletin Solutions" version="">Apply this password to Child Forums</title>
 			<text date="0" username="vBulletin Solutions" version=""><![CDATA[If you set this to Yes and change or add a password, the password will apply to all child forums of this forum. This <b>will not</b> have any effect if you do not change the existing password or add a new one.]]></text>
 		</helptopic>
+		<helptopic disp="1" act="edit,add" opt="bypassdp">
+			<title date="1334941593" username="vBulletin Solutions" version="4.2.0 Alpha 1">Exclude From Double Post Merges</title>
+			<text date="1334941593" username="vBulletin Solutions" version="4.2.0 Alpha 1">Determines if this forum is excluded from the Double Post merging feature.</text>
+		</helptopic>
+		<helptopic disp="1" act="edit,add" opt="canreputation">
+			<title date="1334941598" username="vBulletin Solutions" version="4.2.0 Alpha 1">Allow Reputation</title>
+			<text date="1334941598" username="vBulletin Solutions" version="4.2.0 Alpha 1">Determines if members are allowed to give reputation to posts in this forum.</text>
+		</helptopic>
+		<helptopic disp="1" act="edit,add" opt="displaywrt">
+			<title date="1334941595" username="vBulletin Solutions" version="4.2.0 Alpha 1">Display Who Read List</title>
+			<text date="1334941595" username="vBulletin Solutions" version="4.2.0 Alpha 1">Determines if the Who Read a Thread display is allowed in this forum.</text>
+		</helptopic>
 		<helptopic disp="1" act="modify">
 			<title date="0" username="vBulletin Solutions" version="">Modifying Forums</title>
 			<text date="1205430963" username="vBulletin Solutions" version="3.7.0 Release Candidate 1"><![CDATA[On the Modify Forums screen you will see a list of every forum you have, including any which are hidden from end-users. On this screen, you can set the Display Order (make sure to click Update Display Order to save your changes).<br /><br />
@@ -2344,9 +2362,21 @@ Settings on this page will override a usergroup's default permissions. If there 
 
 If you want to revert the permissions for this group, select "Use Usergroup Default" and press Save Changes. If any subforums of this forum are currently inheriting these settings, they will also be reverted to the default.]]></text>
 		</helptopic>
+		<helptopic disp="1" act="edit" opt="bypassdoublepost">
+			<title date="1335193638" username="vBulletin Solutions" version="4.2.0 Alpha 1">Exclude From Double Post Merges</title>
+			<text date="1335193638" username="vBulletin Solutions" version="4.2.0 Alpha 1">Determines if members of the usergroup are exclude from the Double Post merging feature.</text>
+		</helptopic>
+		<helptopic disp="1" act="edit" opt="canattachmentcss">
+			<title date="1335193632" username="vBulletin Solutions" version="4.2.0 Alpha 1">Can Define Arbitrary Styles for Inline Attached Images</title>
+			<text date="1335193632" username="vBulletin Solutions" version="4.2.0 Alpha 1">This setting allows user to add CSS styles to inline attached images. Styles are added by double clicking on inline images which opens a new window which includes a field for style definition. This permission should be used with caution as it can be abused by users to deface your forum.</text>
+		</helptopic>
 		<helptopic disp="1" act="edit" opt="canseethumbnails">
 			<title date="1219832213" username="vBulletin Solutions" version="3.8.0 Alpha 1">Can See Thumbnails</title>
 			<text date="1219832213" username="vBulletin Solutions" version="3.8.0 Alpha 1"><![CDATA[If this is set to 'Yes' the user will be able to see thumbnails of attached images in threads, even if the do not have the Can Download Attachments permission.]]></text>
+		</helptopic>
+		<helptopic disp="1" act="edit" opt="canwrtmembers">
+			<title date="1335193635" username="vBulletin Solutions" version="4.2.0 Alpha 1">Can View Who Read a Thread</title>
+			<text date="1335193635" username="vBulletin Solutions" version="4.2.0 Alpha 1">Determines if members of the usergroup can view the Who Read a Thread display.</text>
 		</helptopic>
 		<helptopic disp="20" act="edit" opt="mode">
 			<title date="0" username="vBulletin Solutions" version="">Custom Settings vs. Usergroup Default</title>
@@ -2823,6 +2853,14 @@ You can also change the default on the Language Manager screen.]]></text>
 
 You can also download a language set from your vBulletin to share with others if you have translated the vBulletin user interface into another language.]]></text>
 		</helptopic>
+		<helptopic disp="1" act="files" opt="charset">
+			<title date="1324068695" username="vBulletin Solutions" version="4.1.10 Alpha 1">Charset</title>
+			<text date="1324068695" username="vBulletin Solutions" version="4.1.10 Alpha 1">This option sets the charset attribute for the language file. No conversion of data is performed.</text>
+		</helptopic>
+		<helptopic disp="1" act="files" opt="readcharset">
+			<title date="1324068611" username="vBulletin Solutions" version="4.1.10 Alpha 1">Read Charset from File</title>
+			<text date="1324068611" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[When this option is enabled, the charset setting for the imported XML file will be read from the file header. When disabled, 'ISO-8859-1' will be used.]]></text>
+		</helptopic>
 		<helptopic disp="10" act="files" opt="languageid">
 			<title date="0" username="vBulletin Solutions" version="">Language to Download</title>
 			<text date="0" username="vBulletin Solutions" version="">Select the language you wish to download from this list of all languages installed in your vBulletin.</text>
@@ -2985,6 +3023,10 @@ This function will delete any posts that belong to threads that no longer exist.
 		<helptopic disp="70" act="chooser" opt="reputation_base">
 			<title date="0" username="vBulletin Solutions" version="">Base Reputation Value</title>
 			<text date="0" username="vBulletin Solutions" version="">All users with reputations greater than or equal to this value will be processed.</text>
+		</helptopic>
+		<helptopic disp="1" act="clearauto" opt="cleandays">
+			<title date="1315951409" username="vBulletin Solutions" version="4.1.8 Beta 1">Clear Auto-save Table Entries</title>
+			<text date="1315951190" username="vBulletin Solutions" version="4.1.8 Beta 1">This function cleans out all old entries from the auto-save table based on the supplied limit in days. The default is 21 days which means any entries more than 3 weeks old will be removed. You cannot use this to remove any entries that are less than 7 days old.</text>
 		</helptopic>
 	</helpscript>
 	<helpscript name="moderate">
@@ -3381,6 +3423,94 @@ To return to the main screen, choose Restart from the bottom of any page.<br /><
 You can restrict access to this script, or just to the pruning function or just to the viewing function. See <a href="help.php?do=answer&amp;page=adminlog.php&amp;pageaction=restrict">Restricting Access to Admin Log</a>.]]></text>
 		</helptopic>
 	</helpscript>
+	<helpscript name="navigation">
+		<helptopic disp="1" act="add,edit" opt="active">
+			<title date="1332457145" username="vBulletin Solutions" version="4.2.0 Alpha 1">Active</title>
+			<text date="1332457145" username="vBulletin Solutions" version="4.2.0 Alpha 1">Turns the navigation element on or off.</text>
+		</helptopic>
+		<helptopic disp="2" act="add,edit" opt="product">
+			<title date="1332510090" username="vBulletin Solutions" version="4.2.0 Alpha 1">Product</title>
+			<text date="1332510090" username="vBulletin Solutions" version="4.2.0 Alpha 1">Select the product this element will belong to.</text>
+		</helptopic>
+		<helptopic disp="3" act="add,edit" opt="title">
+			<title date="1332510195" username="vBulletin Solutions" version="4.2.0 Alpha 1">Title</title>
+			<text date="1332510195" username="vBulletin Solutions" version="4.2.0 Alpha 1">This is the text of the Tab, Menu or Link that will be displayed.</text>
+		</helptopic>
+		<helptopic disp="4" act="add,edit" opt="url">
+			<title date="1332510296" username="vBulletin Solutions" version="4.2.0 Alpha 1">Target URL</title>
+			<text date="1332510296" username="vBulletin Solutions" version="4.2.0 Alpha 1">This is the URL that the Tab or Link should redirect you to. It can be a relative target or a full url. It can also be blank (sometimes useful for tabs, not really useful for links).</text>
+		</helptopic>
+		<helptopic disp="5" act="add,edit" opt="show">
+			<title date="1332510665" username="vBulletin Solutions" version="4.2.0 Alpha 1">Show Permission</title>
+			<text date="1332510665" username="vBulletin Solutions" version="4.2.0 Alpha 1"><![CDATA[This determines which variable(s) in the vBulletin $show array will be used to decide if the element should be displayed. For instance 'member' means it will only display if $show['member'] is true. Multiple variables can be specified by joining them with a dot. All of them must then be true for the element to display.]]></text>
+		</helptopic>
+		<helptopic disp="6" act="add,edit" opt="scripts">
+			<title date="1332511098" username="vBulletin Solutions" version="4.2.0 Alpha 1">Tab Scripts</title>
+			<text date="1332537452" username="vBulletin Solutions" version="4.2.0 Alpha 1"><![CDATA[This can be used to specify a number of scripts that the system will use to check if the Tab should be seleted. The constant THIS_SCRIPT is checked, and if it matches any of the specified script names, the tab will be marked to be displayed as selected. All vBulletin frontend scripts set a THIS_SCRIPT value. <br /><br /> You can specify more than one by joining them with a dot - however, this option is limited to 30 characters maximum, it is not designed for mass usage. If you are writing a product that uses many different scripts, you should set your own constant in them, and use the 'set_navigation_tab' hook to detect this constant and set your selected tab.]]></text>
+		</helptopic>
+		<helptopic disp="7" act="add,edit" opt="usetabid">
+			<title date="1332510775" username="vBulletin Solutions" version="4.2.0 Alpha 1">Append Tabid</title>
+			<text date="1332510775" username="vBulletin Solutions" version="4.2.0 Alpha 1">If set, tabid=xx will be appended to the Tabs target url. Note that if the target url is blank, the tabid will always be appended, regardless of this setting.</text>
+		</helptopic>
+		<helptopic disp="1" act="add,edit,move" opt="order">
+			<title date="1332510385" username="vBulletin Solutions" version="4.2.0 Alpha 1">Display Order</title>
+			<text date="1332510385" username="vBulletin Solutions" version="4.2.0 Alpha 1">Sets the order that Tabs or Links will be displayed on the front end. The range is 0 to 65535. Most people use steps of 10.</text>
+		</helptopic>
+		<helptopic disp="1" act="add,move" opt="parent">
+			<title date="1332538686" username="vBulletin Solutions" version="4.2.0 Alpha 1">Parent</title>
+			<text date="1332511896" username="vBulletin Solutions" version="4.2.0 Alpha 1">If the element is a Menu, select the Tab it should belong to. If the element is a Link, select the Tab or Menu it should belong to.</text>
+		</helptopic>
+		<helptopic disp="1" act="default" opt="newid">
+			<title date="1332509980" username="vBulletin Solutions" version="4.2.0 Alpha 1">New Default</title>
+			<text date="1332509980" username="vBulletin Solutions" version="4.2.0 Alpha 1">Select the Tab or Link that you want to be the sites default landing page - this is the page that will be presented when someone lands on your index.php - they will be redirected to the chosen link (if it is valid). If the target url is not valid, forum.php will be used. You cannot redirect to index.php or forum.php as that would cause looping. You cannot use a link to another site.</text>
+		</helptopic>
+		<helptopic disp="2" act="default" opt="confirm">
+			<title date="1332509741" username="vBulletin Solutions" version="4.2.0 Alpha 1">Confirm Default</title>
+			<text date="1332509741" username="vBulletin Solutions" version="4.2.0 Alpha 1">Confirm you wish to change the sites default landing page.</text>
+		</helptopic>
+		<helptopic disp="1" act="list">
+			<title date="1332457512" username="vBulletin Solutions" version="4.2.0 Alpha 1">Navigation Manager</title>
+			<text date="1332465789" username="vBulletin Solutions" version="4.2.0 Alpha 1"><![CDATA[The Navigation Manager allows you to Add and Edit Navigation elements, specifically Tabs, Links and Pop-up Menu's (with further Links). Click on a Tab to expand its sub elements.]]></text>
+		</helptopic>
+		<helptopic disp="1" act="list" opt="tabrow">
+			<title date="1332465248" username="vBulletin Solutions" version="4.2.0 Alpha 1">Navigation Tab Row</title>
+			<text date="1337276132" username="vBulletin Solutions" version="4.2.0 Beta 1"><![CDATA[Lists the details for a navigation Tab element.<br />
+<br />
+The Active Status and Display Order can be changed (remember to click on Save).<br />
+<br />
+The Controls allow the following actions for a Tab.<br />
+<br />
+Add Menu : Allows you to add a Menu element to the Tab.<br />
+Add Link : Allows you to add a Link element to the Tab.<br />
+Edit : Allows you to edit the Tab.<br />
+Delete : Allows you to delete a custom element.  The supplied default elements cannot be deleted.<br />
+Set Default : Allow you to set the Tab as the sites default page when someone lands on index.php.<br />]]></text>
+		</helptopic>
+		<helptopic disp="2" act="list" opt="menurow">
+			<title date="1332465405" username="vBulletin Solutions" version="4.2.0 Alpha 1">Navigation Menu Row</title>
+			<text date="1332465405" username="vBulletin Solutions" version="4.2.0 Alpha 1"><![CDATA[Lists the details for a navigation Menu element.<br />
+The Active Status and Display Order can be changed (remember to click on Save).<br />
+<br />
+The Controls allow the following actions for a Menu.<br />
+<br />
+Add Link : Allows you to add a Link element to the Tab/Menu.<br />
+Edit : Allows you to edit the Menu.<br />
+Move : Allow you to move the Menu to another Tab.<br />
+Delete : Allows you to delete a custom element. The supplied default elements cannot be deleted.<br />]]></text>
+		</helptopic>
+		<helptopic disp="3" act="list" opt="linkrow">
+			<title date="1332465632" username="vBulletin Solutions" version="4.2.0 Alpha 1">Navigation Link Row</title>
+			<text date="1332465632" username="vBulletin Solutions" version="4.2.0 Alpha 1"><![CDATA[Lists the details for a navigation Link element.<br />
+The Active Status and Display Order can be changed (remember to click on Save).<br />
+<br />
+The Controls allow the following actions for a Link.<br />
+<br />
+Edit : Allows you to edit the Link.<br />
+Move : Allow you to move the Linkto another Tab or Menu.<br />
+Delete : Allows you to delete a custom element. The supplied default elements cannot be deleted.<br />
+Set Default : Allow you to set the Link as the sites default page when someone lands on index.php.<br />]]></text>
+		</helptopic>
+	</helpscript>
 	<helpscript name="notice">
 		<helptopic disp="1" act="add,edit" opt="title">
 			<title date="1190023671" username="vBulletin Solutions" version="3.6.8">Notice Title</title>
@@ -3470,6 +3600,10 @@ If you are looking for a specific option and you don't know what group it's in, 
 			<title date="0" username="vBulletin Solutions" version="">Modifying vBulletin Options</title>
 			<text date="0" username="vBulletin Solutions" version="">On this screen you can select the group of options you wish to modify. You can also opt to view all settings on one screen by choosing Show All Settings. Internet Explorer users can double-click on their choice to be taken to that page automatically.</text>
 		</helptopic>
+		<helptopic disp="1" act="options" opt="ajaxheader">
+			<title date="1317849568" username="vBulletin Solutions" version="4.1.8 Beta 1">Ajax Content Length Header</title>
+			<text date="1317849568" username="vBulletin Solutions" version="4.1.8 Beta 1">When vBulletin sends XML (ajax) responses back to clients, it normally includes a content length header if IIS is being used. In some circumstances (such as when you are running IIS with server level compression) it may be necessary to disable this header, otherwise ajax will not work.</text>
+		</helptopic>
 		<helptopic disp="1" act="options" opt="albums_perpage">
 			<title date="1193063555" username="vBulletin Solutions" version="3.7.0 Beta 1">Albums Per Page</title>
 			<text date="1208955489" username="vBulletin Solutions" version="3.7.0 Release Candidate 4"><![CDATA[When listing multiple albums on one page, this controls how many will be displayed before pagination occurs.<br />
@@ -3516,6 +3650,28 @@ This value cannot go below 1.]]></text>
 			<title date="1308769534" username="vBulletin Solutions" version="4.1.5 Beta 1">API Device Identification</title>
 			<text date="1308769770" username="vBulletin Solutions" version="4.1.5 Beta 1">Threads and Posts generated with applications that utilize the vBulletin API can be publicly tagged and identified with a device signature that will appear in the post. You can add additional links to your Apple iTunes and/or Android Marketplace to promote your applications. If the option is enabled but the link definition is not defined, the signature will still appear on the post but not be clickable.</text>
 		</helptopic>
+		<helptopic disp="1" act="options" opt="as_content">
+			<title date="1336083088" username="vBulletin Solutions" version="4.2.0 Alpha 1">Activity Stream Content Tracked</title>
+			<text date="1336083088" username="vBulletin Solutions" version="4.2.0 Alpha 1"><![CDATA[The content that is tracked within the Activity Stream can be controlled per content type.  Content that isn't enabled with this option will not be tracked and displayed in the Activity Stream.]]></text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="as_expire">
+			<title date="1335459702" username="vBulletin Solutions" version="4.2.0 Alpha 1">Activity Stream Expiration</title>
+			<text date="1335459683" username="vBulletin Solutions" version="4.2.0 Alpha 1">By default, activity stream data is stored for 180 days.  Choosing to never delete activity stream data will result in all activity stream data being kept.  The activity stream functions can become slow to respond due to this.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="as_perpage">
+			<title date="1337144881" username="vBulletin Solutions" version="4.2.0 Alpha 1">Activity Stream Items Per Page</title>
+			<text date="1337144968" username="vBulletin Solutions" version="4.2.0 Alpha 1"><![CDATA[This controls how many items will be displayed before the "More Activity" link occurs.<br />
+<br />
+<b>Note: </b>This number must be at least 1 and no more than 30. At times there may be less than the specified number of items on the page. Items may not be displayed due to permissions.]]></text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="as_refresh">
+			<title date="1336799810" username="vBulletin Solutions" version="4.2.0 Alpha 1">Stream Real Time Refresh Rate</title>
+			<text date="1336799810" username="vBulletin Solutions" version="4.2.0 Alpha 1">If this value is set to one then then the stream will be checked for data every one minute while the user is active on the page. If the page is unattended for five minutes, the check will be suspended until the user is active again. Setting the refresh value to greater than 5 will result in only one update unless the user is active after the update. Activity is determined by mouse movement on the page.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="as_snippet">
+			<title date="1337211740" username="vBulletin Solutions" version="4.2.0 Beta 1">Length of Preview Snippet</title>
+			<text date="1337211740" username="vBulletin Solutions" version="4.2.0 Beta 1"><![CDATA[This setting controls how much of a content's text to display in the Activity Stream. Setting this to 0 will display all of the content.]]></text>
+		</helptopic>
 		<helptopic disp="1" act="options" opt="attachresize">
 			<title date="1145475753" username="vBulletin Solutions" version="3.6.0 Beta 1">Resize Images</title>
 			<text date="1177625993" username="vBulletin Solutions" version="3.6.6"><![CDATA[This option will attempt to automatically resize image attachments that exceed the set dimensions for that specific image type. The image will be proportionately resized to the maximum dimensions for that image type. Resized images will be converted to JPG images to conserve space. Image types that can be resized depends on your server configuration. Resizing is as follows:
@@ -3536,17 +3692,9 @@ PSD (N/A)*<br />
 PDF (N/A)*<br /><br />
 <dfn>*PSD and PDF image types are not resized as you would want to retain their current setting.</dfn>]]></text>
 		</helptopic>
-		<helptopic disp="1" act="options" opt="bbfooter">
-			<title date="1243380745" username="vBulletin Solutions" version="4.0.0 Alpha 1">Show Forum Link in Footer</title>
-			<text date="1243380745" username="vBulletin Solutions" version="4.0.0 Alpha 1">This option allows you to add a link to your forum overview in the footer on every page.</text>
-		</helptopic>
 		<helptopic disp="1" act="options" opt="bbmenu">
 			<title date="1243380603" username="vBulletin Solutions" version="4.0.0 Alpha 1">Show Forum Link in Menu</title>
 			<text date="1243380603" username="vBulletin Solutions" version="4.0.0 Alpha 1">This option allows you to add an extra forum link to the navigation menu on every page. This may be useful if you have non forum products installed.</text>
-		</helptopic>
-		<helptopic disp="1" act="options" opt="bbnav">
-			<title date="1243380713" username="vBulletin Solutions" version="4.0.0 Alpha 1">Show Forum Link in Breadcrumb</title>
-			<text date="1243380713" username="vBulletin Solutions" version="4.0.0 Alpha 1">This option allows you to add an extra breadcrumb to the breadcrumb navigation to link to the forum overview.  This may be useful if you have non forum products installed and the top link in the breadcrumb does not link to your forums.</text>
 		</helptopic>
 		<helptopic disp="1" act="options" opt="bburl_basepath">
 			<title date="1264697905" username="vBulletin Solutions" version="4.0.3">Always use Forum URL as Base Path</title>
@@ -3566,21 +3714,54 @@ This email is used when using an SMTP server, or when the "Enable -f Parameter" 
 			<title date="1205941754" username="vBulletin Solutions" version="3.7.0 Release Candidate 1">COPPA Registration System Cookie Check</title>
 			<text date="1144879595" username="vBulletin Solutions" version="3.6.0 Beta 1"><![CDATA[This option will save a cookie onto the user's computer if an age  under 13 is entered.  Subsequent registration attempts will be failed, no matter what age is entered.<br /><br />This will stop users from trying to register with an age older than 13.  Users can still circumvent this check by manually removing the cookie.]]></text>
 		</helptopic>
-		<helptopic disp="1" act="options" opt="cmsfooter">
-			<title date="1243381327" username="vBulletin Solutions" version="4.0.0 Alpha 1">Show CMS Link in Footer</title>
-			<text date="1243381327" username="vBulletin Solutions" version="4.0.0 Alpha 1">This option allows you to add a link to the CMS Default Page in the footer on every page.</text>
-		</helptopic>
-		<helptopic disp="1" act="options" opt="cmsmenu">
-			<title date="1243381195" username="vBulletin Solutions" version="4.0.0 Alpha 1">Show CMS Link in Menu</title>
-			<text date="1243381195" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[This option allows you to add a link to the CMS Default Page in the navigation menu on every page.  This may be useful if the CMS is not your <em>Homepage URL</em> or you are not displaying your <em>Homepage URL</em> in the menu.]]></text>
-		</helptopic>
-		<helptopic disp="1" act="options" opt="cmsnav">
-			<title date="1243381287" username="vBulletin Solutions" version="4.0.0 Alpha 1">Show CMS Link in Breadcrumb</title>
-			<text date="1243381287" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[If this option is set to 'Yes' a link to the CMS Default Page will be included in the breadcrumb on every CMS page.  This may be useful if your CMS is not used as your <em>Homepage URL</em> or you are not using <em>Display Home Link on Breadcrumb</em>.]]></text>
-		</helptopic>
 		<helptopic disp="1" act="options" opt="cmstitle">
 			<title date="1243381128" username="vBulletin Solutions" version="4.0.0 Alpha 1">CMS Name</title>
 			<text date="1243381128" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[The CMS name is included in the title of CMS pages.  If this is left blank then the <em>Forum Name</em> will be used instead.]]></text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="contentread_cleandays">
+			<title date="1334941120" username="vBulletin Solutions" version="4.2.0 Alpha 1">Content Read Clean-up</title>
+			<text date="1334941120" username="vBulletin Solutions" version="4.2.0 Alpha 1">Sets the time limit at which old contentread records are deleted from the database. This can be useful on very busy sites where the table may get quite large.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="customjquery_path">
+			<title date="1328056751" username="vBulletin Solutions" version="4.1.11 Alpha 1">Custom Remote jQuery Path</title>
+			<text date="1328057126" username="vBulletin Solutions" version="4.1.11 Alpha 1"><![CDATA[In place of selecting Google, jQuery, or Microsoft for serving jQuery remotely, you may enter a URL to another jQuery CDN. Please replace the jQuery version(s) in the url with {version}. If the URL supports SSL, don't add http:// at the beinning, otherwise do so. Examples:<br /><br />
+
+http://ajax.aspnetcdn.com/ajax/jquery/jquery-{version}.min.js <strong>(No SSL Support)</strong><br />
+ajax.aspnetcdn.com/ajax/jquery/jquery-{version}.min.js <strong>(SSL Support)</strong>]]></text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="customyui_combopath">
+			<title date="1327626246" username="vBulletin Solutions" version="4.1.11 Alpha 1">Custom Remote YUI Combo Path</title>
+			<text date="1327626246" username="vBulletin Solutions" version="4.1.11 Alpha 1"><![CDATA[In place of selecting Google or Yahoo! for serving YUI remotely, you may enter a URL to another YUI CDN. This is the URL to the "Combo" YUI option. Please include 'http://'. Do not include the YUI Version or ? portions of the path in your URL. Example:<br /><br />
+http://yui.yahooapis.com/combo]]></text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="customyui_path">
+			<title date="1327626282" username="vBulletin Solutions" version="4.1.11 Alpha 1">Custom Remote YUI Path</title>
+			<text date="1327626282" username="vBulletin Solutions" version="4.1.11 Alpha 1"><![CDATA[In place of selecting Google or Yahoo! for serving YUI remotely, you may enter a URL to another YUI CDN. Please include 'http://'. Do not include the YUI Version or /build portions of the path in your URL. Example:<br /><br />
+http://ajax.googleapis.com/ajax/libs/yui/]]></text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="dp_bump">
+			<title date="1334938947" username="vBulletin Solutions" version="4.2.0 Alpha 1">Timestamp Update</title>
+			<text date="1334938947" username="vBulletin Solutions" version="4.2.0 Alpha 1">If enabled this will update the post time of the post when a double post is merged, otherwise it will remain at the original post time.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="dp_color">
+			<title date="1334938724" username="vBulletin Solutions" version="4.2.0 Alpha 1">Spacer Color</title>
+			<text date="1334938724" username="vBulletin Solutions" version="4.2.0 Alpha 1">Sets the color of the spacer text between merged posts text. Leave it blank to use the default text color.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="dp_ipcheck">
+			<title date="1334939036" username="vBulletin Solutions" version="4.2.0 Alpha 1">Guest IP Check</title>
+			<text date="1334939036" username="vBulletin Solutions" version="4.2.0 Alpha 1">If enabled this checks for an IP address match on Guest Doubleposts - and will not merge if they differ, this stops guest posts from different posters from being merged.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="dp_spacer">
+			<title date="1334938730" username="vBulletin Solutions" version="4.2.0 Alpha 1">Spacer</title>
+			<text date="1334938730" username="vBulletin Solutions" version="4.2.0 Alpha 1">Set the spacer option that separates merged posts. Custom text uses the custom text option, default uses the dp_spacer phrase.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="dp_text">
+			<title date="1334938726" username="vBulletin Solutions" version="4.2.0 Alpha 1">Custom Spacer Text</title>
+			<text date="1334938726" username="vBulletin Solutions" version="4.2.0 Alpha 1">Enter the custom text for the doublepost spacer if that option has been chosen.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="dp_timespan">
+			<title date="1334938823" username="vBulletin Solutions" version="4.2.0 Alpha 1">Time Check Limit</title>
+			<text date="1334939373" username="vBulletin Solutions" version="4.2.0 Alpha 1">This sets the time limit used by the double post feature. If the posts are outside this limit they will not be merged. Setting this to zero disables the feature.</text>
 		</helptopic>
 		<helptopic disp="1" act="options" opt="errorlogemail">
 			<title date="1146250311" username="vBulletin Solutions" version="3.6.0 Beta 1">Log Emails to a File</title>
@@ -3604,8 +3785,12 @@ This option should only be enabled to troubleshoot email issues.  Your server pe
 <br />
 Changing this value will not increase or decrease the amount of records that are returned by default. This option simply gives your users the ability to request more records if they desire by adding &amp;tackon=X to their RSS feeds.]]></text>
 		</helptopic>
+		<helptopic disp="1" act="options" opt="flcache">
+			<title date="1309309737" username="vBulletin Solutions" version="4.1.5 Beta 1">Forum Leaders Cache</title>
+			<text date="1309309737" username="vBulletin Solutions" version="4.1.5 Beta 1">This sets the number of minutes that the forum leaders page is cached for. Caching this page can significantly improve its performance if you have a large number of users and usergroups. Setting the value to 0 will disable the cache.</text>
+		</helptopic>
 		<helptopic disp="1" act="options" opt="friendlyurl">
-			<title date="1237463321" username="vBulletin Solutions" version="4.0.0 Alpha 1" />
+			<title date="1314133120" username="vBulletin Solutions" version="4.1.7 Beta 1">Friendly URLs</title>
 			<text date="1237463321" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[Enabling friendly URLs can increase your site's ranking in search engines and can be useful for users to understand the URL's that they follow.
 
 <ul>
@@ -3629,18 +3814,6 @@ Changing this value will not increase or decrease the amount of records that are
 <br />
 <b>Note: </b>This number must be at least 1.]]></text>
 		</helptopic>
-		<helptopic disp="1" act="options" opt="homefooter">
-			<title date="1243381046" username="vBulletin Solutions" version="4.0.0 Alpha 1">Show Home Link in Footer</title>
-			<text date="1243381046" username="vBulletin Solutions" version="4.0.0 Alpha 1">This option allows you to add a link to the Homepage URL in the footer on every page.  This option is enabled by default.</text>
-		</helptopic>
-		<helptopic disp="1" act="options" opt="homemenu">
-			<title date="1243380914" username="vBulletin Solutions" version="4.0.0 Alpha 1">Show Home Link in Menu</title>
-			<text date="1243380984" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[This option allows you to add a link to the <em>Homepage URL</em> in the navigation menu. This may be useful if you have non forum products installed.]]></text>
-		</helptopic>
-		<helptopic disp="1" act="options" opt="homenav">
-			<title date="1243380950" username="vBulletin Solutions" version="4.0.0 Alpha 1">Show Home Link in Breadcrumb</title>
-			<text date="1243381010" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[This option ensures that a link to the <em>Homepage URL</em> is always included in the breadcrumb.  This may be useful if you have non forum products installed.]]></text>
-		</helptopic>
 		<helptopic disp="1" act="options" opt="hvcheck">
 			<title date="1216639930" username="vBulletin Solutions" version="3.8.0 Alpha 1">Human Verified Actions</title>
 			<text date="1274370799" username="vBulletin Solutions" version="4.0.4"><![CDATA[Setting any of the options will require users with the usergroup permission <strong>Require Human Verification on Configured Actions</strong> to pass the Human Verification test when performing the selected actions.
@@ -3652,13 +3825,41 @@ Changing this value will not increase or decrease the amount of records that are
 			<title date="1153754401" username="vBulletin Solutions" version="3.6.0 Release Candidate 3">Session IP Octet Length Check</title>
 			<text date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1"><![CDATA[This is used to specify to what length the session IP should be verified to, the most secure version is when an IP address is fully checked against the session stored IP though this can cause problems with certain ISP's. The security risk is however minimal as it involves being within a 254 range of the same connection.]]></text>
 		</helptopic>
+		<helptopic disp="1" act="options" opt="mailqueue">
+			<title date="1335973918" username="vBulletin Solutions" version="4.2.0 Alpha 1">Use Cron Based Sending</title>
+			<text date="1335973918" username="vBulletin Solutions" version="4.2.0 Alpha 1">If enabled this will process the internal vBulletin e-mail queue using the scheduled e-mail task. Each time the task runs it will process a batch of e-mails (as defined in the batch option). By default, this task runs every 10 minutes, so if the batch size is 50, it will process 6 batches x 50 emails per hour (i.e. 300 e-mails).</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="mail_delay">
+			<title date="1335974129" username="vBulletin Solutions" version="4.2.0 Alpha 1">E-Mail Send Delay</title>
+			<text date="1335974129" username="vBulletin Solutions" version="4.2.0 Alpha 1">This will add a delay before the sending of every e-mail. You can use this to spread out the load if process a batch of e-mails in one go. For example, if you have 50 e-mails, and a 1 second delay, then the 50 e-mails will be sent out 1 per second until all 50 have been sent. This can reduce the load on e-mail servers, but should be used with caution.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="maxvideos">
+			<title date="1329383039" username="vBulletin Solutions" version="4.1.11 Alpha 2">Maximum Videos Per Post</title>
+			<text date="1329383039" username="vBulletin Solutions" version="4.1.11 Alpha 2">Set this to the maximum number of videos you wish to allow per post and signature. Set this to 0 to disable the videos count.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="member_rep_comments">
+			<title date="1335974569" username="vBulletin Solutions" version="4.2.0 Alpha 1">Number of Comments</title>
+			<text date="1335974569" username="vBulletin Solutions" version="4.2.0 Alpha 1">Controls the maximum number of reputation comments displayed on the reputation tab in a members profile.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="neednegreason">
+			<title date="1334937584" username="vBulletin Solutions" version="4.2.0 Alpha 1">Require Negative Reputation Comment</title>
+			<text date="1334937302" username="vBulletin Solutions" version="4.2.0 Alpha 1">Setting this to Yes means members cannot give negative reputation unless they also enter a reason or comment.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="needposreason">
+			<title date="1334937568" username="vBulletin Solutions" version="4.2.0 Alpha 1">Require Positive Reputation Comment</title>
+			<text date="1334937265" username="vBulletin Solutions" version="4.2.0 Alpha 1">Setting this to Yes means members cannot give positive reputation unless they also enter a reason or comment.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="newrepcount">
+			<title date="1334938099" username="vBulletin Solutions" version="4.2.0 Alpha 1">Enable New Reputation Comments Notification</title>
+			<text date="1334938099" username="vBulletin Solutions" version="4.2.0 Alpha 1">Turning this on will enable notifications in the notification dropdown when someone has given a member a reputation comment.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="nextprevlinks">
+			<title date="1334940259" username="vBulletin Solutions" version="4.2.0 Alpha 1">Full Next / Prev Links</title>
+			<text date="1334940259" username="vBulletin Solutions" version="4.2.0 Alpha 1"><![CDATA[Enable this option to have the Next and Previous thread titles shown at the bottom of the current thread. This feature will add two queries to the page. By default only "Next Thread" and "Prev Thread" are displayed whether or not there may be an actual "Next Thread" or "Prev Thread" entry to view.]]></text>
+		</helptopic>
 		<helptopic disp="1" act="options" opt="nocache">
 			<title date="1237465475" username="vBulletin Solutions" version="4.0.0 Alpha 1">Disable Content Caching</title>
 			<text date="1237465475" username="vBulletin Solutions" version="4.0.0 Alpha 1">Some content is cached to speed up page load times.  Disabling content caching forces content to be fetched directly and not from the cache.  This should only be done for trouble shooting purposes.</text>
-		</helptopic>
-		<helptopic disp="1" act="options" opt="flcache">
-			<title date="1309309737" username="vBulletin Solutions" version="4.1.5 Beta 1">Forum Leaders Cache</title>
-			<text date="1309309737" username="vBulletin Solutions" version="4.1.5 Beta 1">This sets the number of minutes that the forum leaders page is cached for. Caching this page can significantly improve its performance if you have a large number of users and usergroups. Setting the value to 0 will disable the cache.</text>
 		</helptopic>
 		<helptopic disp="1" act="options" opt="paymentemail">
 			<title date="1147373803" username="vBulletin Solutions" version="3.6.0 Beta 1">Paid Subscription Email Notification</title>
@@ -3694,6 +3895,11 @@ If you would prefer to specify which usergroups have their picture comments mode
 <br />
 <b>Note: </b>This number must be at least 1.]]></text>
 		</helptopic>
+		<helptopic disp="1" act="options" opt="player_wmode">
+			<title date="1321356707" username="vBulletin Solutions" version="4.1.10 Alpha 1">WMODE Setting</title>
+			<text date="1321528948" username="vBulletin Solutions" version="4.1.10 Alpha 1"><![CDATA[Choose the desired wmode setting for playback of embeded flash videos.<br /><br />
+For more information about the wmode options go to <a href="http://kb2.adobe.com/cps/127/tn_12701.html" target="_blank">wmode options</a>]]></text>
+		</helptopic>
 		<helptopic disp="1" act="options" opt="pmthrottleperiod">
 			<title date="1220958342" username="vBulletin Solutions" version="3.8.0 Alpha 1">Throttle Check Period</title>
 			<text date="1220958342" username="vBulletin Solutions" version="3.8.0 Alpha 1">This is the period of time of which throttle checking is performed.  The amount of messages that a user can send within this period is defined by their Message Throttle Quantity usergroup permission.  If this is set to 0 then private messages will not be throttled.</text>
@@ -3716,10 +3922,6 @@ Edits will not be logged if an 'edited by' notice is not displayed or updated. T
 <li>The post is edited quickly enough after being posted to trigger the <em>Time to Wait Before Starting to Display 'Last Edited by...'</em> option.</li>
 </ul>]]></text>
 		</helptopic>
-		<helptopic disp="1" act="options" opt="postimagecheck">
-			<title date="1144866566" username="vBulletin Solutions" version="3.6.0 Beta 1">Guest Post Image Verification</title>
-			<text date="1144866566" username="vBulletin Solutions" version="3.6.0 Beta 1">If you enable this option, guest users will be required to pass a test during posts where an image is displayed that has a random number on it, and the user must type in the number they see in order to prove they are not an automated system attempting to post. PHP must have GD support enabled for this option to work.</text>
-		</helptopic>
 		<helptopic disp="1" act="options" opt="profileprivacy">
 			<title date="1218465531" username="vBulletin Solutions" version="3.8.0 Alpha 1">Allow Users to Edit Profile Privacy</title>
 			<text date="1218465512" username="vBulletin Solutions" version="3.8.0 Alpha 1"><![CDATA[Setting this option to yes will allow users to customize the blocks on their profile page so that they are either hidden or shown to other users.<br /><br />
@@ -3738,6 +3940,12 @@ Note: When enabled, the 'Profile Privacy' link on the User Control Panel allows 
 			<title date="1310661285" username="vBulletin Solutions" version="4.1.5">Disable Redirect Domain Checking</title>
 			<text date="1310661285" username="vBulletin Solutions" version="4.1.5"><![CDATA[When this option is enabled, all redirected URLs will be allowed, regardless of what is defined in the "Redirect Domain Whitelist" option.  Unless you are sure that this is desired, this option should be left disabled. Some add-on products may require this to work properly if the product has not been updated to work correctly with the "Redirect Domain Whitelist" option.]]></text>
 		</helptopic>
+		<helptopic disp="1" act="options" opt="remotejquery">
+			<title date="1328041277" username="vBulletin Solutions" version="4.1.11 Alpha 1">Use Remote jQuery</title>
+			<text date="1328041277" username="vBulletin Solutions" version="4.1.11 Alpha 1"><![CDATA[By default jQuery script files are served from Google's CDN. Serving jQuery from a Content Distribution Network may save you some bandwidth and potentially decrease load times.
+
+These services are available for free from Google, jQuery, and Microsoft. If enabled the files will be served from their servers.]]></text>
+		</helptopic>
 		<helptopic disp="1" act="options" opt="remoteyui">
 			<title date="1193314535" username="vBulletin Solutions" version="3.7.0 Beta 1">Use Remote YUI</title>
 			<text date="1229602903" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[By default YUI (Yahoo! User Interface Library) script files are hosted locally on your server, you may however have them on a Content Distribution Network saving you some bandwidth and potentially decreasing load times.<br /><br />
@@ -3745,6 +3953,10 @@ Note: When enabled, the 'Profile Privacy' link on the User Control Panel allows 
 These services are available for free from both Yahoo! and Google. If enabled the files will be served from their servers.<br /><br />
 
 Only the Google service supports SSL hosting.]]></text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="reputationcap">
+			<title date="1334937854" username="vBulletin Solutions" version="4.2.0 Alpha 1">Reputation Power Cap</title>
+			<text date="1334937854" username="vBulletin Solutions" version="4.2.0 Alpha 1">This setting sets a global limit on any members reputation power, i.e. the number of points they give with a reputation comment. The only time this cap can be overridden is if an admins reputation is set to a fixed value.</text>
 		</helptopic>
 		<helptopic disp="1" act="options" opt="route_requestvar">
 			<title date="1237463640" username="vBulletin Solutions" version="4.0.0 Alpha 1">Standard URL Routing Variable</title>
@@ -3843,9 +4055,9 @@ If a user enters a name longer than this limit, an error will be generated and t
 <br />
 <b>Note: </b>This number must be at least 1.]]></text>
 		</helptopic>
-		<helptopic disp="1" act="options" opt="showforumbutton">
-			<title date="1242997545" username="vBulletin Solutions" version="4.0.0 Alpha 1">Show Forum Button</title>
-			<text date="1242997545" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[Selecting 'Yes' will show a link to the Forum Home on the navigation bar on all pages.  This link will take the user to the forum overview, even if the Script for Forum Home Page does not.]]></text>
+		<helptopic disp="1" act="options" opt="showrepinown">
+			<title date="1334937534" username="vBulletin Solutions" version="4.2.0 Alpha 1">Display Reputation Link in Own Posts</title>
+			<text date="1334937534" username="vBulletin Solutions" version="4.2.0 Alpha 1">This setting determines if the reputation link will be shown to members in their own posts. If you set this to yes, they will see the link, and clicking on it will simply display their current reputation score. Members cannot give themselves reputation.</text>
 		</helptopic>
 		<helptopic disp="1" act="options" opt="skypeweb_gfx">
 			<title date="0" username="vBulletin Solutions" version="">Use SkypeWeb Graphics</title>
@@ -4001,7 +4213,7 @@ This option will have no effect unless iconv or mbstring is available.]]></text>
 		</helptopic>
 		<helptopic disp="1" act="options" opt="vbforum_url">
 			<title date="1291743931" username="vBulletin Solutions" version="4.1.1 Alpha 1">Forum Component URL</title>
-			<text date="1294350858" username="vBulletin Solutions" version="4.1.2"><![CDATA[<p><b>
+			<text date="1318998748" username="vBulletin Solutions" version="4.1.8 Beta 1"><![CDATA[<p><b>
 This feature requires that the "Always use Forum URL as Base Path" be set to yes.
 </b></p>
 
@@ -4025,6 +4237,16 @@ In addition to setting the Forum Component URL, you will need to take the follow
 If you are using rewrite friendly URLs, you will need to copy the .htaccess file from do_not_upload/rewrite/apache2/forum to the stub directory before uploading.
 </li>
 
+<li>
+If you are using a different domain, such as forum.example.com versus www.example.com then you will need a crossdomain.xml file for the asset manager flash upload. Create a file called "crossdomain.xml" and place it in your forum subdirectory with the following contents modified to suit your domain.
+<div style="border:1px dashed red; margin:4px; padding:4px; white-space:pre">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+&lt;cross-domain-policy xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xsi:noNamespaceSchemaLocation=&quot;http://www.adobe.com/xml/schemas/PolicyFile.xsd&quot;&gt;
+  &lt;allow-access-from domain=&quot;*.example.com&quot;/&gt;
+	&lt;site-control permitted-cross-domain-policies=&quot;master-only&quot;/&gt;
+  &lt;allow-http-request-headers-from domain=&quot;*.example.com&quot; headers=&quot;*&quot; secure=&quot;true&quot;/&gt;
+&lt;/cross-domain-policy&gt;</div>
+</li>
+
 </ol>
 
 <p><b>
@@ -4041,6 +4263,46 @@ By default, Basic (B, I, U), Color and Link (URL, EMAIL, THREAD, POST) tags are 
 			<title date="1145990990" username="vBulletin Solutions" version="3.6.0 Beta 1">Welcome Private Message</title>
 			<text date="1145990990" username="vBulletin Solutions" version="3.6.0 Beta 1">If you enable this setting, the user will be sent a private message after registration. Note if you enable Verify Email Address in Registration below, the user must verify their address before a private message will be sent. If you have Moderate New Members enabled above, the private message will be sent when the user is approved.</text>
 		</helptopic>
+		<helptopic disp="1" act="options" opt="wgo_members">
+			<title date="1334939800" username="vBulletin Solutions" version="4.2.0 Alpha 1">Enable Display</title>
+			<text date="1334939800" username="vBulletin Solutions" version="4.2.0 Alpha 1">Turns the visiting members display on or off.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="wgo_members_24">
+			<title date="1334939743" username="vBulletin Solutions" version="4.2.0 Alpha 1">Rolling 24 Hours Display</title>
+			<text date="1334939743" username="vBulletin Solutions" version="4.2.0 Alpha 1">If set to Yes, the who visited display will always show visiting members for the last 24 hours, otherwise the display will reset at each members midnight.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="wgo_members_collapse">
+			<title date="1334939569" username="vBulletin Solutions" version="4.2.0 Alpha 1">Display Collapse (on Load)</title>
+			<text date="1334939569" username="vBulletin Solutions" version="4.2.0 Alpha 1">If enabled, this will cause the who visited display to always load collapsed. This can be useful on a busy forum when the display can get quite large.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="wgo_members_most">
+			<title date="1334939623" username="vBulletin Solutions" version="4.2.0 Alpha 1">Most Ever Members Option</title>
+			<text date="1334939623" username="vBulletin Solutions" version="4.2.0 Alpha 1">This will enable the most members who have visited count. This can only be enabled if you use the rolling 24 hours option.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="wgo_members_names">
+			<title date="1334939794" username="vBulletin Solutions" version="4.2.0 Alpha 1">Display Member Names</title>
+			<text date="1334939794" username="vBulletin Solutions" version="4.2.0 Alpha 1">If enabled, the who visited display will list all the members names, otherwise the names will not be displayed.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="who_read">
+			<title date="1334940994" username="vBulletin Solutions" version="4.2.0 Alpha 1">Enable Who Read a Thread</title>
+			<text date="1336427251" username="vBulletin Solutions" version="4.2.0 Alpha 1">If set to No, this turns the Who Read display on off, regardless of any other permissions or settings. Note that this will also disable the recording of the who read data as well.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="wrtauthor">
+			<title date="1334940384" username="vBulletin Solutions" version="4.2.0 Alpha 1">Who Read - Allow Author View</title>
+			<text date="1334940384" username="vBulletin Solutions" version="4.2.0 Alpha 1">If set, this allows the thread creator to see the who read display, even if their usergroup permissions would not normally allow it. They will not be able to see the display if it is turned off in the forums settings.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="wrtcollapse">
+			<title date="1334940465" username="vBulletin Solutions" version="4.2.0 Alpha 1">Who Read - Collapse on Load</title>
+			<text date="1334940465" username="vBulletin Solutions" version="4.2.0 Alpha 1">If set to Yes, the who read display will always be collapsed on first page load.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="wrtlimit">
+			<title date="1334940930" username="vBulletin Solutions" version="4.2.0 Alpha 1">Who Read - Days Limit</title>
+			<text date="1334940930" username="vBulletin Solutions" version="4.2.0 Alpha 1">Sets the time limit on the who read display, for example, if you set this to 10, then only members who have read the thread in the last 10 days will be shown. Set this to 0 to display all readers. bear in mind that this will also be affected by the automatic clean-up routine that deletes old records from the contentread table.</text>
+		</helptopic>
+		<helptopic disp="1" act="options" opt="wrtreaders">
+			<title date="1334940438" username="vBulletin Solutions" version="4.2.0 Alpha 1">Who Read - Names Display</title>
+			<text date="1334940438" username="vBulletin Solutions" version="4.2.0 Alpha 1">Determines if the who read a thread display shows the members names. If set to No then names will not be shown.</text>
+		</helptopic>
 		<helptopic disp="10" act="options" opt="socnet_groups_msg_enabled">
 			<title date="1199282205" username="vBulletin Solutions" version="3.7.0 Beta 4">Enable Group Messages</title>
 			<text date="1201194465" username="vBulletin Solutions" version="3.7.0 Beta 5">If you select this option, members of each group will be able to post messages in the group. Users who are not part of the group will still be able to read the messages.</text>
@@ -4052,22 +4314,18 @@ By default, Basic (B, I, U), Color and Link (URL, EMAIL, THREAD, POST) tags are 
 If the data is identified as spam, it will be marked for moderation to allow for verification by moderators. You should give your moderators the 'Can Moderate' permission to allow for this.]]></text>
 		</helptopic>
 		<helptopic disp="20" act="options" opt="bbactive">
-			<title date="0" username="vBulletin Solutions" version="">Forum Active</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[If this is set to "Yes", then users will be able to use your forum. If this is set to "No", then users will see a message notifying them that the forum is turned off.  You can edit this message in the "Reason For Turning Forum Off" option below.<br /><br />
+			<title date="1314805903" username="vBulletin Solutions" version="4.1.7 Beta 1">vBulletin Active</title>
+			<text date="1314805903" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[If this is set to "Yes", then users will be able to use your vBulletin. If this is set to "No", then users will see a message notifying them that the site is turned off. You can edit this message in the "Reason For Turning vBulletin Off" option (below).<br /><br />
 
-Note that admins will still be able to use the forum while it is off, but they will see a notice on the top and bottom of the screen that says the forum is offline.]]></text>
-		</helptopic>
-		<helptopic disp="20" act="options" opt="socnet_groups_albums_enabled">
-			<title date="1199282230" username="vBulletin Solutions" version="3.7.0 Beta 4">Enable Group Pictures</title>
-			<text date="1209722727" username="vBulletin Solutions" version="3.7.1">If this option is selected, any users with albums will be able to add pictures from an album to groups they belong to.</text>
+Note that admins will still be able to use vBulletin while it is turned off, but they will see a notice on the top and bottom of the screen that says the site is offline.]]></text>
 		</helptopic>
 		<helptopic disp="20" act="options" opt="vb_antispam_posts">
 			<title date="1194885603" username="vBulletin Solutions" version="3.7.0 Beta 1">Spam Scanning Post Threshold</title>
 			<text date="1194885603" username="vBulletin Solutions" version="3.7.0 Beta 1"><![CDATA[If a non moderator usergroup has less than this number of posts then all content will be scanned by the Anti-Spam service for possible signs of spam. A value of <em>0</em> will scan all posts.]]></text>
 		</helptopic>
 		<helptopic disp="30" act="options" opt="bbclosedreason">
-			<title date="0" username="vBulletin Solutions" version="">Reason For Turning Forum Off</title>
-			<text date="0" username="vBulletin Solutions" version="">When the forum is turned off, this message will be displayed for users who try to load a forum page.</text>
+			<title date="1314805903" username="vBulletin Solutions" version="4.1.7 Beta 1">Reason For Turning vBulletin Off</title>
+			<text date="1314805903" username="vBulletin Solutions" version="4.1.7 Beta 1">When vBulletin is turned off, this message will be displayed for users who try to load a page.</text>
 		</helptopic>
 		<helptopic disp="40" act="options" opt="bbtitle">
 			<title date="0" username="vBulletin Solutions" version="">Forum Name</title>
@@ -4422,11 +4680,11 @@ Windows: C:\imagemagick\</text>
 		</helptopic>
 		<helptopic disp="480" act="options" opt="safeupload">
 			<title date="0" username="vBulletin Solutions" version="">Safe Mode Upload Enabled</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[If your server has Safe Mode enabled, you should set this to Yes. You can determine if Safe Mode is enabled by viewing your <a href="index.php?do=phpinfo" target="_blank">phpinfo</a> page and searching for Safe Mode.]]></text>
+			<text date="1311634639" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[If your server has Safe Mode enabled, you should set this to Yes. You can determine if Safe Mode is enabled by viewing your <a href="index.php?do=phpinfo" target="_blank">phpinfo</a> page and searching for Safe Mode. You may also need to set this if you have open_basedir restrictions in place which prevent you from using the default tmp location.]]></text>
 		</helptopic>
 		<helptopic disp="490" act="options" opt="tmppath">
 			<title date="0" username="vBulletin Solutions" version="">Safe Mode Temporary Directory</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[If your server has PHP's Safe Mode enabled, you must specify a directory that is writable by PHP and is CHMODed 777. This will act as a temporary directory for uploads before they are moved to the database. Do *not* include the final slash at the end.]]></text>
+			<text date="1311634639" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[If your server has PHP's Safe Mode enabled, you must specify a directory that is writable by PHP and is CHMOD to 777. You may also need to set this if you have open_basedir restrictions in place which prevent you using the default tmp location. <br />This folder will act as a temporary location for uploads before they are moved to the database. Do *not* include the final slash at the end.]]></text>
 		</helptopic>
 		<helptopic disp="493" act="options" opt="copypostindex">
 			<title date="0" username="vBulletin Solutions" version="">Duplicate Search Index Information on Thread Copy?</title>
@@ -4459,6 +4717,10 @@ Windows: C:\imagemagick\</text>
 		<helptopic disp="560" act="options" opt="storecssasfile">
 			<title date="0" username="vBulletin Solutions" version="">Store CSS Stylesheets as Files?</title>
 			<text date="0" username="vBulletin Solutions" version="">If this is enabled, you can store the CSS for your pages as files which will reduce the size of pages (since the CSS file can be cached locally and referred to from each page, instead of having all the CSS information within each page). If you enable this, you must create a directory named vbulletin_css in the clientscript folder of your vBulletin installation and the web server must have permission to create, write, and remove files from that directory. (Normally this is accomplished by CHMODing the directory 777.)</text>
+		</helptopic>
+		<helptopic disp="565" act="options" opt="cssurl">
+			<title date="1309813476" username="vBulletin Solutions" version="4.1.7 Beta 1">External CSS URL</title>
+			<text date="1309813476" username="vBulletin Solutions" version="4.1.7 Beta 1">To serve your css from an external url, enter the path here. Make sure you include the trailing slash, e.g. http://my.css-server.com/pathtocss/</text>
 		</helptopic>
 		<helptopic disp="570" act="options" opt="usepopups">
 			<title date="0" username="vBulletin Solutions" version="">Use DHTML Popup Menus?</title>
@@ -4556,15 +4818,11 @@ Some double-byte character sets may have their display broken by using this sett
 		</helptopic>
 		<helptopic disp="670" act="options" opt="usecoppa">
 			<title date="0" username="vBulletin Solutions" version="">Use COPPA Registration System</title>
-			<text date="1231760814" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[Enable the COPPA registration system. This complies with the US COPPA laws and requires children under the age of 13 to get parental consent before they can post. For more information about this law, visit <a href="http://www.coppa.org" target="_blank">this page</a>.]]></text>
+			<text date="1231760814" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[Enable the COPPA registration system. This complies with the US COPPA laws and requires children under the age of 13 to get parental consent before they can post. For more information about this law, visit <b>http://www.vbulletin.com/go/coppa</b>.]]></text>
 		</helptopic>
 		<helptopic disp="680" act="options" opt="moderatenewmembers">
 			<title date="0" username="vBulletin Solutions" version="">Moderate New Members</title>
-			<text date="0" username="vBulletin Solutions" version="">If you enable this setting, all new users will be placed into a validation queue for you to approve before they are allowed full privileges. (You can determine what permissions these users have while they are awaiting validation by modifying the permissions for the (COPPA) Users Awaiting Moderation group.) If you also have Verify Email Address in Registration enabled, below, the user must first verify their email address, and then they will be put into the validation queue.</text>
-		</helptopic>
-		<helptopic disp="690" act="options" opt="regimagecheck">
-			<title date="0" username="vBulletin Solutions" version="">Image Verification</title>
-			<text date="0" username="vBulletin Solutions" version="">If you enable this option, users will be required to pass a test during registration where an image is displayed that has a random number on it, and the user must type in the number they see in order to prove they are not an automated system attempting to register. PHP must have GD support enabled for this option to work.</text>
+			<text date="1311585963" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[If you enable this setting, all new users will be placed into a validation queue for you to approve before they are allowed full privileges. (You can determine what permissions these users have while they are awaiting validation by modifying the permissions for the 'Users Awaiting Moderation' group.) If you also have Verify Email Address in Registration enabled, below, the user must first verify their email address, and then they will be put into the validation queue.]]></text>
 		</helptopic>
 		<helptopic disp="700" act="options" opt="welcomemail">
 			<title date="0" username="vBulletin Solutions" version="">Send Welcome Email</title>
@@ -4580,7 +4838,7 @@ Some double-byte character sets may have their display broken by using this sett
 		</helptopic>
 		<helptopic disp="730" act="options" opt="verifyemail">
 			<title date="0" username="vBulletin Solutions" version="">Verify Email Address in Registration</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[If you enable this option, a user's email address will be verified during registration by sending an email to it; the user must click a link in the email to confirm that they control the email address. If they do not click the link, the user will remain in the Users Awaiting Activation usergroup until they do so, or until you remove them. If you also enable the Moderate New Members setting above, the users will be required to complete email verification and then moved to the (COPPA) Users Awaiting Moderation group for your validation.]]></text>
+			<text date="1311585963" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[If you enable this option, a user's email address will be verified during registration by sending an email to it; the user must click a link in the email to confirm that they control the email address. If they do not click the link, the user will remain in the Users Awaiting Activation usergroup until they do so, or until you remove them. If you also enable the Moderate New Members setting above, the users will be required to complete email verification and then moved to the 'Users Awaiting Moderation' group for your validation.]]></text>
 		</helptopic>
 		<helptopic disp="740" act="options" opt="requireuniqueemail">
 			<title date="0" username="vBulletin Solutions" version="">Require Unique Email Addresses</title>
@@ -4680,10 +4938,6 @@ Do *not* use quotation marks or the results may be unexpected or it may cause er
 <br />
 A line of text without a hard linebreak may wrap when displayed in a browser and actually appear as two lines. This option controls how many characters (other than linebreaks) that are allowed before the text counts as multiple lines.]]></text>
 		</helptopic>
-		<helptopic disp="830" act="options" opt="sigmax">
-			<title date="0" username="vBulletin Solutions" version="">Maximum Length of Signature</title>
-			<text date="0" username="vBulletin Solutions" version="">This setting is the maximum number of characters that a user can use in their signature.</text>
-		</helptopic>
 		<helptopic disp="840" act="options" opt="allowbbcode">
 			<title date="1206964493" username="vBulletin Solutions" version="3.7.0 Release Candidate 2">Allow BB Code in Non Forum Specific Areas</title>
 			<text date="1206964476" username="vBulletin Solutions" version="3.7.0 Release Candidate 2"><![CDATA[If you enable this option, users will be allowed to use BB code tags (such as [b], [i], etc.) in non forum specific areas. This setting is not used anywhere in vBulletin itself, but may be used by addons/plugins.]]></text>
@@ -4697,6 +4951,10 @@ This setting is not used anywhere in vBulletin itself, but may be used by addons
 			<title date="1172666378" username="vBulletin Solutions" version="3.6.5"><![CDATA[Allow [IMG] Code in Non Forum Specific Areas]]></title>
 			<text date="1172666378" username="vBulletin Solutions" version="3.6.5"><![CDATA[If you enable this, users will be able to use the [IMG] tag to show images in non forum specific areas. This setting is not used anywhere in vBulletin itself, but may be used by addons/plugins.]]></text>
 		</helptopic>
+		<helptopic disp="860" act="options" opt="allowbbvideocode">
+			<title date="1172666378" username="vBulletin Solutions" version="4.1.10 Alpha 2"><![CDATA[Allow [VIDEO] Code in Non Forum Specific Areas]]></title>
+			<text date="1172666378" username="vBulletin Solutions" version="4.1.10 Alpha 2"><![CDATA[If you enable this, users will be able to use the [VIDEO] tag to show videos in non forum specific areas. This setting is not used anywhere in vBulletin itself, but may be used by addons/plugins.]]></text>
+		</helptopic>
 		<helptopic disp="870" act="options" opt="allowhtml">
 			<title date="1172666411" username="vBulletin Solutions" version="3.6.5">Allow HTML in Non Forum Specific Areas</title>
 			<text date="1172666411" username="vBulletin Solutions" version="3.6.5"><![CDATA[It is <b>strongly</b> recommended that you do not enable this setting. It will allow users to use HTML in non forum specific areas, which could be used maliciously. This setting is not used anywhere in vBulletin itself, but may be used by addons/plugins.]]></text>
@@ -4708,10 +4966,6 @@ This setting is not used anywhere in vBulletin itself, but may be used by addons
 		<helptopic disp="890" act="options" opt="avatarenabled">
 			<title date="0" username="vBulletin Solutions" version="">Avatars Enabled</title>
 			<text date="0" username="vBulletin Solutions" version=""><![CDATA[If you enable this setting, users will able to choose avatars, small pictures which show up on their posts under their usernames. You can enable/disable avatars on a per-usergroup level by disabling their ability to use any avatar categories under Avatars > Avatar Manager. You can enable/disable custom avatars in Usergroups > Usergroup Manager.]]></text>
-		</helptopic>
-		<helptopic disp="900" act="options" opt="numavatarswide">
-			<title date="0" username="vBulletin Solutions" version="">Avatar Display Width</title>
-			<text date="0" username="vBulletin Solutions" version="">This setting is the number of columns of avatars you wish to display for the display of predefined avatars in the User CP.</text>
 		</helptopic>
 		<helptopic disp="910" act="options" opt="numavatarsperpage">
 			<title date="0" username="vBulletin Solutions" version="">Avatars Per-Page</title>
@@ -4726,10 +4980,6 @@ This setting is not used anywhere in vBulletin itself, but may be used by addons
 		<helptopic disp="930" act="options" opt="reputationenable">
 			<title date="0" username="vBulletin Solutions" version="">Enable User Reputation System</title>
 			<text date="0" username="vBulletin Solutions" version="">This enables or disables the user reputation system.</text>
-		</helptopic>
-		<helptopic disp="940" act="options" opt="reputationhide">
-			<title date="0" username="vBulletin Solutions" version="">Allow Users to Hide Their Reputation</title>
-			<text date="0" username="vBulletin Solutions" version="">If you enable this option, users will be able to disable the display of their reputation to the public. (Users will still be able to give reputation to users who have disabled the public display of their reputation.)</text>
 		</helptopic>
 		<helptopic disp="945" act="options" opt="reputationundefined">
 			<title date="0" username="vBulletin Solutions" version="">Reputation Undefined</title>
@@ -4788,6 +5038,10 @@ If you change this value then you may want to <a href="misc.php?do=chooser" targ
 		<helptopic disp="1070" act="options" opt="unallowimg">
 			<title date="0" username="vBulletin Solutions" version=""><![CDATA[Allow [IMG] Code in User Notes]]></title>
 			<text date="0" username="vBulletin Solutions" version=""><![CDATA[If this is enabled, the [img] tag may be used in User Notes and it will be parsed.]]></text>
+		</helptopic>
+		<helptopic disp="1070" act="options" opt="unallowvideo">
+			<title date="0" username="vBulletin Solutions" version="4.1.10 Alpha 2"><![CDATA[Allow [VIDEO] Code in User Notes]]></title>
+			<text date="0" username="vBulletin Solutions" version="4.1.10 Alpha 2"><![CDATA[If this is enabled, the [video] tag may be used in User Notes and it will be parsed.]]></text>
 		</helptopic>
 		<helptopic disp="1080" act="options" opt="unallowhtml">
 			<title date="0" username="vBulletin Solutions" version="">Allow HTML in User Notes</title>
@@ -4903,8 +5157,8 @@ If you use the 'require click' option, users will have to click a post's QR icon
 			<text date="0" username="vBulletin Solutions" version="">Set this option to the maximum number of characters you wish to allow in one post. If you set this to 0 it will disable the maximum character check.</text>
 		</helptopic>
 		<helptopic disp="1240" act="options" opt="maximages">
-			<title date="0" username="vBulletin Solutions" version="">Maximum Images Per Post/Signature</title>
-			<text date="0" username="vBulletin Solutions" version="">Set this to the maximum number of images you wish to allow per post and signature. For the purposes of this count, the post and any signature the user has are counted together. Set this to 0 to disable the images count.</text>
+			<title date="1329383013" username="vBulletin Solutions" version="4.1.11 Alpha 2">Maximum Images Per Post</title>
+			<text date="1329383013" username="vBulletin Solutions" version="4.1.11 Alpha 2">Set this to the maximum number of images you wish to allow per post and signature. Set this to 0 to disable the images count.</text>
 		</helptopic>
 		<helptopic disp="1250" act="options" opt="stopshouting">
 			<title date="0" username="vBulletin Solutions" version=""><![CDATA[Prevent 'SHOUTING']]></title>
@@ -4940,14 +5194,6 @@ For some international forums with different character sets this setting may cau
 			<title date="0" username="vBulletin Solutions" version="">Log IP Addresses</title>
 			<text date="0" username="vBulletin Solutions" version="">If this setting is set to Do Not Log IP, no IPs will be logged when messages are posted. If set to Display, But Require Admin or Mod, then the IP will be logged and an administrator or moderator with permission can view it. Display Publicly will show the IP on the post itself for all to see.</text>
 		</helptopic>
-		<helptopic disp="1320" act="options" opt="allowvbcodebuttons">
-			<title date="0" username="vBulletin Solutions" version="">Enable Clickable Message Formatting Controls</title>
-			<text date="1206966247" username="vBulletin Solutions" version="3.7.0 Release Candidate 2"><![CDATA[If you set this option to Disable Controls, no one will be able to use the enhanced toolbar that assists users in using BB codes, or the <span style="cursor:help; border: 1px dotted black;" title="What You See Is What You Get">WYSIWYG</span> editor, which allows users to use a Word-like editing box. Using Disable Controls will also keep the Clickable Smilies box from showing.<br /><br />
-
-Setting this option to Enable Standard Controls will allow users to opt to use a vB2-style toolbar for quick use of BB codes.<br /><br />
-
-Setting this option to Enable Standard &amp; WYSIWYG Controls will allow users to choose between the standard and WYSIWYG controls.]]></text>
-		</helptopic>
 		<helptopic disp="1335" act="options" opt="editormodes">
 			<title date="1155819213" username="vBulletin Solutions" version="3.6.1">Enable Clickable Message Formatting Controls</title>
 			<text date="1155819213" username="vBulletin Solutions" version="3.6.1"><![CDATA[This option controls what level over editor formatting controls are available in various areas.<br />
@@ -4970,12 +5216,12 @@ Set this value to 0 if you would like to hide the popup smilie menu completely.]
 		</helptopic>
 		<helptopic disp="1370" act="options" opt="attachtotalspace">
 			<title date="0" username="vBulletin Solutions" version="">Limit Space Taken Up By Attachments (Total)</title>
-			<text date="1172228521" username="vBulletin Solutions" version="3.6.5"><![CDATA[Enter a byte value.<br /><br />
+			<text date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[Enter a byte value.<br /><br />
 
 1024 bytes = 1 kilobyte<br />
 1048576 bytes = 1 megabyte<br /><br />
 
-The total file size of all attachments cannot exceed this number.]]></text>
+The total file-size of all attachments cannot exceed this number.]]></text>
 		</helptopic>
 		<helptopic disp="1380" act="options" opt="attachlimit">
 			<title date="0" username="vBulletin Solutions" version="">Attachments Per Post</title>
@@ -5029,7 +5275,7 @@ If you are changing this value and have existing image attachments on your forum
 		</helptopic>
 		<helptopic disp="1445" act="options" opt="thumbquality">
 			<title date="0" username="vBulletin Solutions" version="">Thumbnail Quality</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[Quality vs file size... it's a trade off.  You can experiment to find a good setting.  75 is usually a good compromise.]]></text>
+			<text date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[Quality vs file-size... it's a trade off.  You can experiment to find a good setting.  75 is usually a good compromise.]]></text>
 		</helptopic>
 		<helptopic disp="1450" act="options" opt="attachrow">
 			<title date="0" username="vBulletin Solutions" version="">Thumbnails Per Row</title>
@@ -5075,10 +5321,8 @@ For example, if this is set to 4 then users can't search for 3 letter words.  Yo
 		</helptopic>
 		<helptopic disp="1530" act="options" opt="maxsearchlength">
 			<title date="0" username="vBulletin Solutions" version="">Search Index Maximum Word Length</title>
-			<text date="1222169467" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[For both vBulletin default search and Fulltext search, this option also limits the maximum size that of words that users can search for.  
-For example, if this is set to 15 then users can't search for 16 letter words.<br /><br />
-When using the vBulletin default search, this option limits the maximum size of indexed words. The larger this number is, the larger your search index, and conversely your database is going to be.
-You can reduce the size of your database by decreasing this number and re-indexing <a href="misc.php?do=chooser" target="_blank">here</a>.]]></text>
+			<text date="1314635369" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[This option also limits the maximum size that of words that users can search for.
+For example, if this is set to 15 then users can't search for 16 letter words.]]></text>
 		</helptopic>
 		<helptopic disp="1540" act="options" opt="goodwords">
 			<title date="0" username="vBulletin Solutions" version="">Words to be Included Despite Character Limit</title>
@@ -5104,71 +5348,9 @@ You can reduce the size of your database by decreasing this number and re-indexi
 
 If you are concerned about server load you can disable this feature.]]></text>
 		</helptopic>
-		<helptopic disp="1585" act="options" opt="searchsharing">
-			<title date="0" username="vBulletin Solutions" version="">Search Result Sharing</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[In order to conserve resources, vBulletin will allow search results to be shared among users for one hour. The downside of this is that search results can appear out of order if a thread is updated in the interim. Example, a user searches for 'test' in last post order.  Thirty minutes later another user searches for test.  If the second search has the same parameters as the first (sort order, search type, etc) then vBulletin will use the cached result.  If the order of threads has changed because some have been posted to, the results will no longer be in date order.  This is a cosmetic issue that can be rectified by disabling this option.]]></text>
-		</helptopic>
-		<helptopic disp="1590" act="options" opt="similarthreadthreshold">
-			<title date="0" username="vBulletin Solutions" version="">Similar Threads Relevance Threshold</title>
-			<text date="1205430879" username="vBulletin Solutions" version="3.7.0 Release Candidate 1"><![CDATA[Search results are scored by relevance.  This setting defines the minimum score a thread must have in a "similar threads" search to qualify as a similar thread.<br /><br />
-
-You can see and change the scoring system <a href="options.php?dogroup=searchfunc&amp;do=options" target="_blank">here</a>.]]></text>
-		</helptopic>
 		<helptopic disp="1595" act="options" opt="badwords">
 			<title date="0" username="vBulletin Solutions" version="">Words to be excluded from search</title>
 			<text date="0" username="vBulletin Solutions" version=""><![CDATA[Several common words are already excluded from searches.  These "default bad words" can be seen in the <i>includes/searchwords.php</i> file.]]></text>
-		</helptopic>
-		<helptopic disp="1598" act="options" opt="searchimagecheck">
-			<title date="1155819310" username="vBulletin Solutions" version="3.6.1">Guest Search Image Verification</title>
-			<text date="1155819310" username="vBulletin Solutions" version="3.6.1">If this option is enabled, guests will need to verify that they are human by entering the contents of a verification image into a text box.</text>
-		</helptopic>
-		<helptopic disp="1600" act="options" opt="multimatchscore">
-			<title date="0" username="vBulletin Solutions" version="">Search Relevance Multi-Word Match Bonus Score</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This setting allows you to give a higher relevance score to search results that contain more of the words in a multi-word search string.<br /><br />
-
-For example, if your search string consists of two words then posts that contain both words will be given higher relevance than posts that only contain one of the two words.]]></text>
-		</helptopic>
-		<helptopic disp="1610" act="options" opt="datescore">
-			<title date="0" username="vBulletin Solutions" version="">Search Relevance Date Score</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This setting allows you to give a higher relevance score to search results that are newer.<br /><br />
-
-This can be deceiving for multi-word searches.  For example, for multi-word search strings a search result might only match one of the words but end up with a higher relevance score than an older search result that matched all of the words.]]></text>
-		</helptopic>
-		<helptopic disp="1620" act="options" opt="threadtitlescore">
-			<title date="0" username="vBulletin Solutions" version="">Search Relevance Thread Title Score</title>
-			<text date="0" username="vBulletin Solutions" version="">This setting allows you to give a higher relevance score to search results whose threads contain search words.</text>
-		</helptopic>
-		<helptopic disp="1630" act="options" opt="posttitlescore">
-			<title date="0" username="vBulletin Solutions" version="">Search Relevance Post Title Score</title>
-			<text date="0" username="vBulletin Solutions" version="">This setting allows you to give a higher relevance score to search results whose titles contain search words.  This is for post titles, not thread titles.</text>
-		</helptopic>
-		<helptopic disp="1640" act="options" opt="replyscore">
-			<title date="0" username="vBulletin Solutions" version="">Search Relevance Reply Score</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This setting allows you to give a higher relevance score to search results contained within threads with a high reply count.<br /><br />
-
-Remember that quantity doesn't necessarily equal quality.  In this way, this setting can skew the search results.]]></text>
-		</helptopic>
-		<helptopic disp="1650" act="options" opt="replyfunc">
-			<title date="0" username="vBulletin Solutions" version="">Search Relevance Reply Function</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This setting allows you to perform a PHP function on the $replyscore of a search result.  An example would be to return the log() (Natural logarithm) value of the $replyscore.  You would do this by entering 'safelog' as the function name.]]></text>
-		</helptopic>
-		<helptopic disp="1660" act="options" opt="viewscore">
-			<title date="0" username="vBulletin Solutions" version="">Search Relevance View Score</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This setting allows you to give a higher relevance score to search results contained within threads with a high view count.<br /><br />
-
-Remember that quantity doesn't necessarily equal quality.  In this way, this setting can skew the search results.]]></text>
-		</helptopic>
-		<helptopic disp="1670" act="options" opt="viewfunc">
-			<title date="0" username="vBulletin Solutions" version="">Search Relevance View Score</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This setting allows you to perform a PHP function on the $viewscore of a search result.  An example would be to return the log() (Natural logarithm) value of the $viewscore.  You would do this by entering 'safelog' as the function name.]]></text>
-		</helptopic>
-		<helptopic disp="1680" act="options" opt="ratescore">
-			<title date="0" username="vBulletin Solutions" version="">Search Relevance Rating Score</title>
-			<text date="0" username="vBulletin Solutions" version="">This setting allows you to give a higher relevance score to search results contained within threads that have a high thread rating.</text>
-		</helptopic>
-		<helptopic disp="1690" act="options" opt="ratefunc">
-			<title date="0" username="vBulletin Solutions" version="">Search Relevance Rating Score</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This setting allows you to perform a PHP function on the $ratingscore of a search result.  An example would be to return the log() (Natural logarithm) value of the $ratingscore.  You would do this by entering 'safelog' as the function name.]]></text>
 		</helptopic>
 		<helptopic disp="1700" act="options" opt="forumhome">
 			<title date="0" username="vBulletin Solutions" version="">Script Name for Forum Home Page</title>
@@ -5185,10 +5367,6 @@ Remember that quantity doesn't necessarily equal quality.  In this way, this set
 		<helptopic disp="1720" act="options" opt="showbirthdays">
 			<title date="0" username="vBulletin Solutions" version=""><![CDATA[Display Today's Birthdays?]]></title>
 			<text date="0" username="vBulletin Solutions" version=""><![CDATA[Enable this option to display today's birthday's on your forum homepage.]]></text>
-		</helptopic>
-		<helptopic disp="1730" act="options" opt="birthdaydatecut">
-			<title date="0" username="vBulletin Solutions" version="">Show birthdays for active users only</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This setting allows you to display only the birthdays of active users.  The "Display Today's Birthdays" option must be enabled for this setting to be applicable.]]></text>
 		</helptopic>
 		<helptopic disp="1740" act="options" opt="showevents">
 			<title date="0" username="vBulletin Solutions" version="">Display Calendar Events?</title>
@@ -5266,12 +5444,6 @@ parent<br />
 			<title date="0" username="vBulletin Solutions" version="">Show Private Forums</title>
 			<text date="0" username="vBulletin Solutions" version=""><![CDATA[Select 'No' here will hide private forums from users who are not allowed to access them. Users who do have permission to access them will have to log in before they can see these forums too.<br /><br />Either of the yes options will allow users to see all forums that they don't have access to.  The ability to see the forum's post count is controlled by the two yes options.  If a forum is passworded, it is treated as a private forum until the user enters the valid password.]]></text>
 		</helptopic>
-		<helptopic disp="1810" act="options" opt="hideprivateforums">
-			<title date="0" username="vBulletin Solutions" version="">Show Private Forums</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[A private forum is one that the current logged in user doesn't have access to. Disabling this option will hide private forums from users so they don't know what they're missing. ;)<br /><br />
-
-If you enable this option then users will be able to see private forums but not access them.]]></text>
-		</helptopic>
 		<helptopic disp="1820" act="options" opt="showlocks">
 			<title date="0" username="vBulletin Solutions" version="">Show Lock Icons to Users</title>
 			<text date="0" username="vBulletin Solutions" version="">Enable this option to display a lock icon on forums that the logged in user does not have access to.</text>
@@ -5298,9 +5470,9 @@ If you enable this option then users will be able to see private forums but not 
 		</helptopic>
 		<helptopic disp="1860" act="options" opt="maxthreads">
 			<title date="0" username="vBulletin Solutions" version="">Maximum Displayed Threads Before Page Split</title>
-			<text date="1208965541" username="vBulletin Solutions" version="3.7.0 Release Candidate 4"><![CDATA[This is the maximum number of threads per page on forumdisplay.php.<br />
+			<text date="1314805903" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[This is the maximum number of threads per page on forumdisplay.php.<br />
 <br />
-<b>Note: </b>This number must be at least 1.]]></text>
+<b>Note: </b>This number must be between 1 and 200.]]></text>
 		</helptopic>
 		<helptopic disp="1870" act="options" opt="showstickies">
 			<title date="0" username="vBulletin Solutions" version="">Show Sticky Threads on All Pages</title>
@@ -5465,6 +5637,10 @@ Limiting the length of these post titles in the pane can help to make the post t
 
 [IMG]http://www.domain.com/image.gif[/IMG]]]></text>
 		</helptopic>
+		<helptopic disp="2180" act="options" opt="privallowbbvideocode">
+			<title date="0" username="vBulletin Solutions" version="4.1.10 Alpha 2"><![CDATA[Allow [VIDEO] Code in Private Messages]]></title>
+			<text date="0" username="vBulletin Solutions" version="4.1.10 Alpha 2"><![CDATA[[VIDEO] code allows users to display inline videos.]]></text>
+		</helptopic>
 		<helptopic disp="2190" act="options" opt="privallowhtml">
 			<title date="0" username="vBulletin Solutions" version="">Allow HTML in Private Messages</title>
 			<text date="0" username="vBulletin Solutions" version="">HTML code allows the user tremendous freedom in formatting their messages but also allows for malicious code to be inserted.  Allowing HTML code is not recommended.</text>
@@ -5491,7 +5667,7 @@ Reported locations <b>do</b> take forum permissions into consideration.  For exa
 			<title date="0" username="vBulletin Solutions" version="">Enable Spider Display</title>
 			<text date="0" username="vBulletin Solutions" version=""><![CDATA[Spiders are programs that browse the internet and index web sites.  Enabling this option will identify guests that are spiders according to the definitions in the settings below.<br />
 <br />
-]]></text>
+See <b>http://www.vbulletin.com/docs/html/spider_xml_file</b> in the vBulletin manual for information on how spiders are identified.]]></text>
 		</helptopic>
 		<helptopic disp="2270" act="options" opt="archiveenabled">
 			<title date="0" username="vBulletin Solutions" version="">Forum Archive Enabled</title>
@@ -5582,7 +5758,7 @@ Or on a *nix server it might be something like:<br /><br />
 <i>/home/yoursite/logs/vbulletin.log</i>]]></text>
 		</helptopic>
 		<helptopic disp="2400" act="options" opt="errorlogmaxsize">
-			<title date="0" username="vBulletin Solutions" version="">Maximum File Size of Error Logs</title>
+			<title date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1">Maximum File-Size of Error Logs</title>
 			<text date="0" username="vBulletin Solutions" version="">Enter a byte size.  1048576 bytes = 1 megabyte</text>
 		</helptopic>
 		<helptopic disp="2410" act="options" opt="disableerroremail">
@@ -5624,18 +5800,6 @@ Set this to 0 for no limit.]]></text>
 		<helptopic disp="2740" act="options" opt="vm_moderation">
 			<title date="1195732951" username="vBulletin Solutions" version="3.7.0 Beta 1">Visitor Message Moderation</title>
 			<text date="1195732951" username="vBulletin Solutions" version="3.7.0 Beta 1">When enabled, all new visitor messages are placed into moderation. This can also be enabled in usergroup permissions.</text>
-		</helptopic>
-		<helptopic disp="1" act="searchtype">
-			<title date="0" username="vBulletin Solutions" version="">Search Type</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[Fulltext searching uses a search index that is constructed by MySQL itself, whereas vBulletin's own search feature uses its own index.]]></text>
-		</helptopic>
-		<helptopic disp="10" act="searchtype" opt="deleteindex">
-			<title date="1197976871" username="vBulletin Solutions" version="3.7.0 Beta 3">Delete Indexes</title>
-			<text date="1197976864" username="vBulletin Solutions" version="3.7.0 Beta 3"><![CDATA[When switching a forum to the fulltext search mode, you will want to consider emptying the indexes that the default search engine built.  These indexes are not used by the fulltext search and consume a large portion of your database.  You should be certain that you are going to permanently use the fulltext search before removing these indexes since, generally, it takes a lot of time and server load to rebuild these indexes.  Another consideration is during any time that the fulltext option is enabled, these indexes will not be updated by any new posts.  Using fulltext search for an extended period of time will leave these indexes stale and you may still wish to rebuild them.<br />
-<br />
-You can also empty these indexes in the <i>Update Counters</i> section of <i>Maintenance</i>.<br />
-<br />
-You may want to optimize the <i>postindex</i> and <i>word</i> tables afterwards by going to the <i>Repair / Optimize Tables</i> section of <i>Maintenance</i>.]]></text>
 		</helptopic>
 	</helpscript>
 	<helpscript name="passwordcheck">
@@ -6083,7 +6247,7 @@ If this is set to Yes, the first radio button will be preselected for the user. 
 		</helptopic>
 		<helptopic disp="240" act="add,edit" opt="regex">
 			<title date="0" username="vBulletin Solutions" version=""><![CDATA[Regular Expression (<i>Select, Input, Radio, Textarea only</i>)]]></title>
-			<text date="1161192426" username="vBulletin Solutions" version="3.6.3"><![CDATA[You may require this field's contents to match a PCRE-type regular expression. For example, you could have a field that is for the user's ICQ number. Since ICQ numbers consist of only numerals, you could write a regular expression to check for non-numerals. 
+			<text date="1161192426" username="vBulletin Solutions" version="3.6.3"><![CDATA[You may require this field's contents to match a PCRE-type regular expression. For example, you could have a field that is for the user's ICQ number. Since ICQ numbers consist of only numerals, you could write a regular expression to check for non-numerals.
 <br /><br />
 Example: <span class="smallfont">(Do not start or end the expression with an escape character)</span><br />
 <br />
@@ -6638,12 +6802,6 @@ The [Registration Statistics], [User Activity Statistics], [New Thread Statistic
 		<helptopic disp="1" act="top">
 			<title date="0" username="vBulletin Solutions" version="">Top Statistics</title>
 			<text date="0" username="vBulletin Solutions" version="">Below is a list of trivial statistics for your forums.  You can click on the individual links in the statistics to view the corresponding user, thread, or forum.</text>
-		</helptopic>
-	</helpscript>
-	<helpscript name="stylevar">
-		<helptopic disp="1" act="fetchstylevareditor" opt="units">
-			<title date="1255458198" username="vBulletin Solutions" version="4.0.0 Alpha 6" />
-			<text date="1255458236" username="vBulletin Solutions" version="4.0.0 Alpha 6" />
 		</helptopic>
 	</helpscript>
 	<helpscript name="subscriptionpermission">
@@ -7437,13 +7595,13 @@ Skype is a popular voice-over-IP and telephony service. Find out more at the <a 
 			<title date="0" username="vBulletin Solutions" version="">COPPA</title>
 			<text date="1231760814" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[A COPPA user is under the age of 13.  COPPA is a law that requires children under the age of 13 to get parental consent before they can post.
 <br /><br />
-For more info about this law, see here: <a href="http://www.coppa.org" target="_blank"><b>http://www.coppa.org</b></a>.]]></text>
+For more info about this law, see here: <b>http://www.vbulletin.com/go/coppa</b>.]]></text>
 		</helptopic>
 		<helptopic disp="160" act="add,edit" opt="parentemail">
 			<title date="0" username="vBulletin Solutions" version="">Parent Email Address</title>
 			<text date="1231760814" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[Enter the user's parent's email address here.  This only needs to be filled in for COPPA users.
 <br /><br />
-For more info about this law, see here: <a href="http://www.coppa.org" target="_blank"><b>http://www.coppa.org</b></a>.]]></text>
+For more info about this law, see here: <b>http://www.vbulletin.com/go/coppa</b>.]]></text>
 		</helptopic>
 		<helptopic disp="170" act="add,edit" opt="posts">
 			<title date="0" username="vBulletin Solutions" version="">Post Count</title>
@@ -7517,7 +7675,7 @@ Keep in mind that if you update your users' post counts <a href="misc.php?do=cho
 		</helptopic>
 		<helptopic disp="310" act="add,edit" opt="showavatars">
 			<title date="0" username="vBulletin Solutions" version="">Display Avatars</title>
-			<text date="0" username="vBulletin Solutions" version="">This option determines if this user sees avatars when viewing posts.  Users with slow connections can disable this option to speed up load time on forums where the users have large (file size) avatars.</text>
+			<text date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1">This option determines if this user sees avatars when viewing posts.  Users with slow connections can disable this option to speed up load time on forums where the users have large (file-size) avatars.</text>
 		</helptopic>
 		<helptopic disp="320" act="add,edit" opt="showimages">
 			<title date="0" username="vBulletin Solutions" version="">Display Images</title>
@@ -7663,9 +7821,9 @@ Make sure access masks are enabled <a href="options.php?dogroup=general&amp;do=o
 		</helptopic>
 		<helptopic disp="1" act="modify">
 			<title date="0" username="vBulletin Solutions" version="">Search for Users</title>
-			<text date="1231760814" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[On this page you can search for users based on several different criteria.  The are "Quick Search" options and then there are "Advanced Search" options.<br /><br />
+			<text date="1311585963" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[On this page you can search for users based on several different criteria.  The are "Quick Search" options and then there are "Advanced Search" options.<br /><br />
 
-The "Quick Search" table has several options.  "Show All Users" does exactly that... no restrictions on search results.  "List Top Posters" returns all users and orders them according to their post counts, showing the highest post counts first.  "List Visitors in the Last 24 Hours" returns all users who have visited your forums within the last 24 hours.  "List New Registrations" returns all users and orders them by their registration dates, showing the newest registrations first.  "List Users Awaiting Moderation" returns all users who are in the "(COPPA) Users Awaiting Moderation" user group.  "Show All COPPA Users" returns all users who are marked as COPPA users in their profiles.  For more information about COPPA visit <a href="http://www.coppa.org" target="_blank">this link</a>.<br /><br />
+The "Quick Search" table has several options.  "Show All Users" does exactly that... no restrictions on search results.  "List Top Posters" returns all users and orders them according to their post counts, showing the highest post counts first.  "List Visitors in the Last 24 Hours" returns all users who have visited your forums within the last 24 hours.  "List New Registrations" returns all users and orders them by their registration dates, showing the newest registrations first.  "List Users Awaiting Moderation" returns all users who are in the 'Users Awaiting Moderation' user group. "Show All COPPA Users" returns all users who are marked as COPPA users in their profiles.  For more information about COPPA visit <b>http://www.vbulletin.com/go/coppa</b>.<br /><br />
 
 The "Advanced Search" table contains several search options.  Please see the individual help topics below if you have any questions.]]></text>
 		</helptopic>
@@ -7992,6 +8150,10 @@ vBulletin's usergroup system also supports group promotions based on certain con
 			<title date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1">Can Upload Animated Profile Picture</title>
 			<text date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1">This permission allows animated GIF images to be uploaded.</text>
 		</helptopic>
+		<helptopic disp="1" act="add,edit" opt="canattachmentcss">
+			<title date="1329955337" username="vBulletin Solutions" version="4.1.11 Beta 2">Can Define Arbitrary Styles for Inline Attached Images</title>
+			<text date="1329955337" username="vBulletin Solutions" version="4.1.11 Beta 2">This setting allows user to add CSS styles to inline attached images. Styles are added by double clicking on inline images which opens a new window which includes a field for style definition. This permission should be used with caution as it can be abused by users to deface your forum.</text>
+		</helptopic>
 		<helptopic disp="1" act="add,edit" opt="canemailmember">
 			<title date="1145033153" username="vBulletin Solutions" version="3.6.0 Beta 1">Can Email Members</title>
 			<text date="1145033153" username="vBulletin Solutions" version="3.6.0 Beta 1">When enabled this permission allows users to email other members through the forums.  Your forum must have email enabled and each user can still choose to disable the receipt of email from other users.</text>
@@ -8001,8 +8163,8 @@ vBulletin's usergroup system also supports group promotions based on certain con
 			<text date="1149889255" username="vBulletin Solutions" version="3.6.0 Beta 2"><![CDATA[This permission allows the user to specify an arbitrary infraction point value and expiration date. The user must also have the "Can Give Infractions to Others" permission.]]></text>
 		</helptopic>
 		<helptopic disp="1" act="add,edit" opt="cansearchft_bool">
-			<title date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1">Boolean Fulltext Search</title>
-			<text date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1"><![CDATA[This permission allows members of this group to search your forums using the Boolean option. This permission only applies to search performed when your forum's search type is set to Fulltext.  This permission allows Boolean searches, which includes the usage of AND, OR, and NOT to limit results.  This option can be  server intensive for very large forums so its usage is cautioned.  When this permission is disabled, the Fulltext search will use a less intensive relevance based search.<br /><br />For this permission to work you must have the search engine enabled in your vBulletin options and the usergroup must also have search permission.]]></text>
+			<title date="1314635369" username="vBulletin Solutions" version="4.1.7 Beta 1">Boolean Search</title>
+			<text date="1314635369" username="vBulletin Solutions" version="4.1.7 Beta 1">This permission allows members of this group to search your forums using the Boolean option, which includes the usage of AND, OR, and NOT to limit results. This option can be server intensive for very large forums so its usage is cautioned. When this permission is disabled, the search will use a less intensive relevance based search.</text>
 		</helptopic>
 		<helptopic disp="1" act="add,edit" opt="canusefriends">
 			<title date="1199282335" username="vBulletin Solutions" version="3.7.0 Beta 4">Can use Friends List?</title>
@@ -8015,6 +8177,10 @@ vBulletin's usergroup system also supports group promotions based on certain con
 		<helptopic disp="1" act="add,edit" opt="isnotmoderated">
 			<title date="1155823343" username="vBulletin Solutions" version="3.6.1">Posted Events are Not Moderated</title>
 			<text date="1155823343" username="vBulletin Solutions" version="3.6.1"><![CDATA[Event moderation can be enabled for an entire calendar by editing that calendar's settings. This permission allows you to make an exception for a specific usergroup.]]></text>
+		</helptopic>
+		<helptopic disp="1" act="add,edit" opt="sigmaxvideos">
+			<title date="1325208744" username="vBulletin Solutions" version="4.1.10 Alpha 3">Maximum Number of Videos in Signature</title>
+			<text date="1325208744" username="vBulletin Solutions" version="4.1.10 Alpha 3">This controls the maximum number of videos that users in this group may use in their signatures.  0 means no limit.</text>
 		</helptopic>
 		<helptopic disp="10" act="add,edit" opt="title">
 			<title date="0" username="vBulletin Solutions" version="">Title</title>
@@ -8279,8 +8445,8 @@ Avatars must be enabled in your <a href="options.php?dogroup=userpix&amp;do=opti
 			<text date="0" username="vBulletin Solutions" version="">This is the maximum pixel height that a custom avatar can have for members of this usergroup.</text>
 		</helptopic>
 		<helptopic disp="460" act="add,edit" opt="avatarmaxsize">
-			<title date="0" username="vBulletin Solutions" version="">Custom Avatar Maximum File Size</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This is the maximum file size that a custom avatar can have for members of this group.  Enter a byte value.<br /><br />
+			<title date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1">Custom Avatar Maximum File-Size</title>
+			<text date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[This is the maximum file-size that a custom avatar can have for members of this group.  Enter a byte value.<br /><br />
 
 1024 bytes = 1 kilobyte<br />
 10240 bytes = 10 kilobytes<br />
@@ -8289,7 +8455,7 @@ Avatars must be enabled in your <a href="options.php?dogroup=userpix&amp;do=opti
 		</helptopic>
 		<helptopic disp="465" act="add,edit" opt="cansigpic">
 			<title date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1">Can Upload images for Signature</title>
-			<text date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1">This controls whether users can upload a picture to be placed within their signature. This will use some bandwidth as the images are served from your server, but with this method you may control the dimensions and file size of the uploaded image; if the user simply links to an image on a different site, this is not possible.</text>
+			<text date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1">This controls whether users can upload a picture to be placed within their signature. This will use some bandwidth as the images are served from your server, but with this method you may control the dimensions and file-size of the uploaded image; if the user simply links to an image on a different site, this is not possible.</text>
 		</helptopic>
 		<helptopic disp="470" act="add,edit" opt="cananimatesigpic">
 			<title date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1">Can Upload Animated GIF for Signature</title>
@@ -8314,8 +8480,8 @@ Profile pictures must be enabled in your <a href="options.php?dogroup=userpix&am
 			<text date="0" username="vBulletin Solutions" version="">This is the maximum pixel width that a profile picture can have for members of this usergroup.</text>
 		</helptopic>
 		<helptopic disp="485" act="add,edit" opt="sigpicmaxsize">
-			<title date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1">Signature Image Maximum Filesize (bytes)</title>
-			<text date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1"><![CDATA[This is the maximum file size that a signature image can be for members of this group. Enter a byte value. You may use 0 to specify no limit.<br />
+			<title date="1311525963" username="vBulletin Solutions" version="4.1.7 Beta 1">Signature Image Maximum File-size (bytes)</title>
+			<text date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[This is the maximum file-size that a signature image can be for members of this group. Enter a byte value. You may use 0 to specify no limit.<br />
 <br />
 1024 bytes = 1 kilobyte<br />
 10240 bytes = 10 kilobytes<br />
@@ -8327,8 +8493,8 @@ Profile pictures must be enabled in your <a href="options.php?dogroup=userpix&am
 			<text date="0" username="vBulletin Solutions" version="">This is the maximum pixel height that a profile picture can have for members of this usergroup.</text>
 		</helptopic>
 		<helptopic disp="500" act="add,edit" opt="profilepicmaxsize">
-			<title date="0" username="vBulletin Solutions" version="">Profile Picture Maximum File Size</title>
-			<text date="0" username="vBulletin Solutions" version=""><![CDATA[This is the maximum file size that a profile picture can have for members of this group.  Enter a byte value.<br /><br />
+			<title date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1">Profile Picture Maximum File-Size</title>
+			<text date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[This is the maximum file-size that a profile picture can have for members of this group.  Enter a byte value.<br /><br />
 
 1024 bytes = 1 kilobyte<br />
 10240 bytes = 10 kilobytes<br />
@@ -8567,9 +8733,13 @@ Note that custom BB codes cannot be controlled by any permission; you can only d
 			<title date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1"><![CDATA[Allow [IMG] Code]]></title>
 			<text date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1"><![CDATA[This controls whether [img] tag may be used in signatures by users of this group. If they attempt to use this tag and this setting is set to "No", the image will be linked to instead; no error will be issued.]]></text>
 		</helptopic>
+		<helptopic disp="875" act="add,edit" opt="allowvideo">
+			<title date="1142519066" username="vBulletin Solutions" version="4.1.10 Alpha 2"><![CDATA[Allow [VIDEO] Code]]></title>
+			<text date="1142519066" username="vBulletin Solutions" version="4.1.10 Alpha 2"><![CDATA[This controls whether [video] tag may be used in signatures by users of this group. If they attempt to use this tag and this setting is set to "No", the video will be linked to instead; no error will be issued.]]></text>
+		</helptopic>
 		<helptopic disp="880" act="add,edit" opt="sigmaximages">
-			<title date="1272921133" username="vBulletin Solutions" version="4.0.4">Maximum Number of Images/Videos in Signature</title>
-			<text date="1272922056" username="vBulletin Solutions" version="4.0.4"><![CDATA[This controls the maximum number of images and videos that users in this group may use in their signatures. This includes [video] tags, [img] tags, [sigpic] tags (uploaded pictures), and smilies. 0 means no limit.]]></text>
+			<title date="1325208743" username="vBulletin Solutions" version="4.1.10 Alpha 3">Maximum Number of Images in Signature</title>
+			<text date="1325208743" username="vBulletin Solutions" version="4.1.10 Alpha 3"><![CDATA[This controls the maximum number of images that users in this group may use in their signatures. This includes [img] tags, [sigpic] tags (uploaded pictures), and smilies. 0 means no limit.]]></text>
 		</helptopic>
 		<helptopic disp="885" act="add,edit" opt="allowsmilies">
 			<title date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1">Allow Smilies</title>
@@ -8604,12 +8774,12 @@ Note that custom BB codes cannot be controlled by any permission; you can only d
 			<text date="1195735277" username="vBulletin Solutions" version="3.7.0 Beta 1">The maximum amount of Pictures a user is allowed to upload</text>
 		</helptopic>
 		<helptopic disp="1040" act="add,edit" opt="albumpicmaxsize">
-			<title date="1195734373" username="vBulletin Solutions" version="3.7.0 Beta 1">Album Picture Maximum File Size (bytes)</title>
-			<text date="1195735300" username="vBulletin Solutions" version="3.7.0 Beta 1">The Maximum Filesize for a Picture. vBulletin will try to recompress the Picture down to this size if you have an Image Processing Library Enabled.</text>
+			<title date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1">Album Picture Maximum File-Size (bytes)</title>
+			<text date="1311525963" username="vBulletin Solutions" version="4.1.7 Beta 1">The Maximum File-size for a Picture. vBulletin will try to recompress the Picture down to this size if you have an Image Processing Library Enabled.</text>
 		</helptopic>
 		<helptopic disp="1050" act="add,edit" opt="albummaxsize">
-			<title date="1195735356" username="vBulletin Solutions" version="3.7.0 Beta 1">Maximum Total File Size of Album Pictures (bytes)</title>
-			<text date="1195735356" username="vBulletin Solutions" version="3.7.0 Beta 1"><![CDATA[The maximum total file size for all the User's uploaded Pictures]]></text>
+			<title date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1">Maximum Total File-Size of Album Pictures (bytes)</title>
+			<text date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[The maximum total file-size for all the User's uploaded Pictures]]></text>
 		</helptopic>
 		<helptopic disp="1055" act="add,edit" opt="canpiccomment">
 			<title date="1205426424" username="vBulletin Solutions" version="3.7.0 Release Candidate 1">Can Comment on Pictures</title>
@@ -8720,6 +8890,10 @@ Usergroup leaders can moderate join requests for their group from the <a href=".
 			<text date="1218464861" username="vBulletin Solutions" version="3.8.0 Alpha 1"><![CDATA[This permission allows the user to customize their profile so that they can hide certain blocks and categories from other users, such as users on their ignored list; unregistered guests; users who are not on their contacts list; and users who are not on their friends list.<br /><br />
 Note: When enabled, the 'Profile Privacy' link on the User Control Panel allows users to customize their profile page in this way.]]></text>
 		</helptopic>
+		<helptopic disp="1" act="edit,add" opt="bypassdoublepost">
+			<title date="1334941604" username="vBulletin Solutions" version="4.2.0 Alpha 1">Exclude From Double Post Merges</title>
+			<text date="1334941604" username="vBulletin Solutions" version="4.2.0 Alpha 1">Determines if members of the usergroup are exclude from the Double Post merging feature.</text>
+		</helptopic>
 		<helptopic disp="1" act="edit,add" opt="canalwayscreatediscussion">
 			<title date="1260378028" username="vBulletin Solutions" version="4.0.0 Release Candidate 2">Can Always Create Discussions in Groups</title>
 			<text date="1225812775" username="vBulletin Solutions" version="4.0.0 Alpha 1"><![CDATA[If this is set to 'yes' the user will be able to create new discussions in groups, even if:
@@ -8766,6 +8940,10 @@ Note: If the user has this permission, they will always be able to see the conte
 			<title date="1210937879" username="vBulletin Solutions" version="3.7.1">Can Post Messages in Groups</title>
 			<text date="1260378100" username="vBulletin Solutions" version="4.0.0 Release Candidate 2"><![CDATA[When this is set to 'yes' the user can post messages and in group discussions.  This permission is also required to create new discussions in groups.]]></text>
 		</helptopic>
+		<helptopic disp="1" act="edit,add" opt="canprofilerep">
+			<title date="1335192837" username="vBulletin Solutions" version="4.2.0 Alpha 1">Can View Reputation Tab in User Profiles</title>
+			<text date="1335192837" username="vBulletin Solutions" version="4.2.0 Alpha 1">Allows you to view the reputation tab on a members profile page. This displays the reputation comments a member has received.</text>
+		</helptopic>
 		<helptopic disp="1" act="edit,add" opt="canreverseinfraction">
 			<title date="1142519066" username="vBulletin Solutions" version="3.6.0 Beta 1">Can Reverse Infractions</title>
 			<text date="1153746203" username="vBulletin Solutions" version="3.6.0 Release Candidate 3">This permission allows users to reverse active or expired infractions.  This permission also allows users to see details on infractions since they must view infractions in order to reverse them.</text>
@@ -8782,9 +8960,17 @@ Note: If the user has this permission, they will always be able to see the conte
 			<title date="1260378028" username="vBulletin Solutions" version="4.0.0 Release Candidate 2">Can Upload Group Icons</title>
 			<text date="1260378100" username="vBulletin Solutions" version="4.0.0 Release Candidate 2"><![CDATA[If this is set to 'yes' the user will be able to upload an icon for the groups that they create.]]></text>
 		</helptopic>
+		<helptopic disp="1" act="edit,add" opt="canwgomembers">
+			<title date="1335316712" username="vBulletin Solutions" version="4.2.0 Alpha 1">Can View the Visiting Members Display on Forum Home</title>
+			<text date="1335231159" username="vBulletin Solutions" version="4.2.0 Alpha 1">Determines if members of the usergroup can view the Who Visited display on Forumhome.</text>
+		</helptopic>
+		<helptopic disp="1" act="edit,add" opt="canwrtmembers">
+			<title date="1335193375" username="vBulletin Solutions" version="4.2.0 Alpha 1">Can View Who Read a Thread</title>
+			<text date="1335193375" username="vBulletin Solutions" version="4.2.0 Alpha 1">Determines if members of the usergroup can view the Who Read a Thread display.</text>
+		</helptopic>
 		<helptopic disp="1" act="edit,add" opt="groupiconmaxsize">
-			<title date="1260378028" username="vBulletin Solutions" version="4.0.0 Release Candidate 2">Maximum File Size of Group Icons (bytes)</title>
-			<text date="1260378100" username="vBulletin Solutions" version="4.0.0 Release Candidate 2"><![CDATA[The maximum filesize of the image that the user can upload as a group icon.<br /><br />
+			<title date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1">Maximum File-Size of Group Icons (bytes)</title>
+			<text date="1312495367" username="vBulletin Solutions" version="4.1.7 Beta 1"><![CDATA[The maximum file-size of the image that the user can upload as a group icon.<br /><br />
 
 <strong>Note:</strong> Group Icons are always limited to 200px by 200px.]]></text>
 		</helptopic>
@@ -9076,11 +9262,11 @@ The referrer system can be toggled <a href="options.php?dogroup=register&amp;do=
 		</helptopic>
 		<helptopic disp="1" act="intro" opt="hv_recaptcha_privatekey">
 			<title date="1208796155" username="vBulletin Solutions" version="3.7.0 Release Candidate 4"><![CDATA[reCAPTCHA&trade; Private Key]]></title>
-			<text date="1208796155" username="vBulletin Solutions" version="3.7.0 Release Candidate 4"><![CDATA[In order to use reCAPTCHA&trade; you need to sign up for the service at <a href="http://www.recaptcha.net">recaptcha.net</a>, which will provide you with a public and a private key. You need to enter the private key you are given here.]]></text>
+			<text date="1329130967" username="vBulletin Solutions" version="4.1.11 Alpha 1"><![CDATA[In order to use reCAPTCHA&trade; you need to sign up for the service at <a href="http://www.google.com/recaptcha">recaptcha.net</a>, which will provide you with a public and a private key. You need to enter the private key you are given here.]]></text>
 		</helptopic>
 		<helptopic disp="1" act="intro" opt="hv_recaptcha_publickey">
 			<title date="1208796122" username="vBulletin Solutions" version="3.7.0 Release Candidate 4"><![CDATA[reCAPTCHA&trade; Public Key]]></title>
-			<text date="1208796122" username="vBulletin Solutions" version="3.7.0 Release Candidate 4"><![CDATA[In order to use reCAPTCHA&trade; you need to sign up for the service at <a href="http://www.recaptcha.net">recaptcha.net</a>, which will provide you with a public and a private key. You need to enter the public key you are given here.]]></text>
+			<text date="1329131034" username="vBulletin Solutions" version="4.1.11 Alpha 1"><![CDATA[In order to use reCAPTCHA&trade; you need to sign up for the service at <a href="http://www.google.com/recaptcha">recaptcha.net</a>, which will provide you with a public and a private key. You need to enter the public key you are given here.]]></text>
 		</helptopic>
 		<helptopic disp="1" act="intro" opt="hv_recaptcha_theme">
 			<title date="1208796230" username="vBulletin Solutions" version="3.7.0 Release Candidate 4"><![CDATA[reCAPTCHA&trade; Theme]]></title>
@@ -9088,14 +9274,14 @@ The referrer system can be toggled <a href="options.php?dogroup=register&amp;do=
 		</helptopic>
 		<helptopic disp="1" act="intro" opt="hv_type">
 			<title date="1205929473" username="vBulletin Solutions" version="3.7.0 Release Candidate 1">Human Verification Library</title>
-			<text date="1205930139" username="vBulletin Solutions" version="3.7.0 Release Candidate 1"><![CDATA[<p><strong>Image Verification</strong></p>
+			<text date="1329124596" username="vBulletin Solutions" version="4.1.11 Alpha 1"><![CDATA[<p><strong>Image Verification</strong></p>
 <p>Image verification presents a series of distorted numbers and letters that the user is required to enter. Either GD2 or ImageMagick support is required from your PHP server in order to use this option. This is the classic option that most users are accustomed to encountering.  Disabled users will be blocked with this option.</p>
 
 <p><strong>Question &amp; Answer</strong></p>
 <p>Question &amp; Answer verification employs a random question challenge with a predefined set of appropriate answers.  The questions and answers must be defined by the administrator. This allows the questions to be tailored to the forum content as well as preventing a common set of questions from becoming prevalent across a large section of vBulletin forums. Maintaining unique questions is required for this option to be successful. This option should be accessible to any impaired user that is able to use the Internet.</p>
 
 <p><strong>reCAPTCHA&trade;</strong></p>
-<p>reCAPTCHA&trade; employs an image verification provided by <a href="http://recaptcha.net/" target="_blank">recaptcha.net</a>.  Two obscured words are provided for the user to enter.  This feature offers the user the option to choose an audio test.</p>]]></text>
+<p>reCAPTCHA&trade; employs an image verification provided by <a href="http://www.google.com/recaptcha" target="_blank">recaptcha.net</a>.  Two obscured words are provided for the user to enter.  This feature offers the user the option to choose an audio test.</p>]]></text>
 		</helptopic>
 		<helptopic disp="1" act="intro" opt="regimagetype">
 			<title date="1205930455" username="vBulletin Solutions" version="3.7.0 Release Candidate 1">Image Verification Library</title>

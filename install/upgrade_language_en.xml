@@ -14,8 +14,13 @@
 		<phrase name="upgrade_title"><![CDATA[Upgrade System]]></phrase>
 		<phrase name="enter_upgrade_system"><![CDATA[Enter Upgrade System]]></phrase>
 		<phrase name="enter_install_system"><![CDATA[Enter Install System]]></phrase>
+		<phrase name="enter_cust_num"><![CDATA[Please Enter Your Customer Number]]></phrase>
+		<phrase name="customer_number"><![CDATA[Customer Number]]></phrase>
+		<phrase name="cust_num_explanation"><![CDATA[This is the number with which you log in to the vBulletin.com Members' Area]]></phrase>
+		<phrase name="cust_num_success"><![CDATA[Customer number entered successfully.]]></phrase>
 		<phrase name="redirecting"><![CDATA[Redirecting...]]></phrase>
-		</group>
+		<phrase name="cust_num_incorrect"><![CDATA[Customer Number Incorrect]]></phrase>
+	</group>
 	<group name="install">
 		<phrase name="cli_install_not_supported"><![CDATA[Command line installation is not supported]]></phrase>
 		<phrase name="upgrade_title"><![CDATA[Upgrade System]]></phrase>
@@ -62,6 +67,7 @@
 		<phrase name="master_language_decimalsep"><![CDATA[.]]></phrase>
 		<phrase name="master_language_thousandsep"><![CDATA[,]]></phrase>
 		<phrase name="default_style"><![CDATA[Default Style]]></phrase>
+		<phrase name="default_mobile_style"><![CDATA[Default Mobile Style]]></phrase>
 		<phrase name="smilie_smile"><![CDATA[Smile]]></phrase>
 		<phrase name="smilie_embarrass"><![CDATA[Embarrassment]]></phrase>
 		<phrase name="smilie_grin"><![CDATA[Big Grin]]></phrase>
@@ -127,10 +133,11 @@
 		<phrase name="administrator_account_setup"><![CDATA[Administrator Account Setup]]></phrase>
 	</group>
 	<group name="core">
+		<phrase name="merge_template_updates"><![CDATA[Merge Template Updates]]></phrase>
+		<phrase name="options"><![CDATA[Options]]></phrase>
 		<phrase name="javascript_disabled"><![CDATA[Javascript support within your browser may be disabled; this is required to continue. If javascript is enabled, verify that this file is in place: <br /><br /><a href="vbulletin-upgrade.js">Upgrade Javascript</a>]]></phrase>
 		<phrase name="no_alter_permission"><![CDATA[You not have 'ALTER' permission for this database. Please contact your host and request the 'ALTER' permission.]]></phrase>
 		<phrase name="css_not_writable"><![CDATA[The 'clientscript/vbulletin_css' directory and/or its sub directories is/are not writable. Please make sure that this directory and its sub directories are writable by your web server.]]></phrase>
-		<phrase name="forumpath_needed"><![CDATA[<strong>Configuration</strong>: You must insert a value for <strong>forumpath</strong> in config.php]]></phrase>
 		<phrase name="VB_AREA_not_defined"><![CDATA[VB_AREA or THIS_SCRIPT must be defined to continue]]></phrase>
 		<phrase name="request_tainting_attempted"><![CDATA[Request tainting attempted.]]></phrase>
 		<phrase name="admin_cp"><![CDATA[Admin CP]]></phrase>
@@ -177,9 +184,9 @@
 		<phrase name="dump_table"><![CDATA[Dump Table]]></phrase>
 		<phrase name="vb_db_dump_completed"><![CDATA[VBULLETIN DATABASE DUMP COMPLETED]]></phrase>
 		<phrase name="dump_all_tables"><![CDATA[* DUMP ALL TABLES *]]></phrase>
-		<phrase name="dump_database_desc"><![CDATA[<p class="smallfont">From here, you can back up your vBulletin database.</p> <p class="smallfont">Please note that if you have a particularly large database, this script <i>may</i> not be able to fully back it up.</p> <p class="smallfont">For a foolproof backup, login to your server via Telnet or SSH and use the <i>mysqldump</i> command on the command line. </p>]]></phrase>
+		<phrase name="dump_database_desc"><![CDATA[<p class="smallfont">From here, you can back up your vBulletin database.</p> <p class="smallfont">Please note that if you have a particularly large database, this script <i>may</i> not be able to fully back it up.</p> <p class="smallfont">For a foolproof backup, login to your server via Telnet or SSH and use the <i>mysqldump</i> command on the command line. For more details, <b>http://www.vbulletin.com/manual/html/manual_database_backup</b>.</p>]]></phrase>
 		<phrase name="vb_database_backup_system"><![CDATA[vBulletin Database Backup System]]></phrase>
-		<phrase name="backup_after_upgrade"><![CDATA[<p class="smallfont">Backups must be run prior to the upgrade, if the upgrade is complete please use the Admin Control Panel.</p> <p class="smallfont">For a foolproof backup, login to your server via Telnet or SSH and use the <i>mysqldump</i> command on the command line.</p>]]></phrase>
+		<phrase name="backup_after_upgrade"><![CDATA[<p class="smallfont">Backups must be run prior to the upgrade, if the upgrade is complete please use the Admin Control Panel.</p> <p class="smallfont">For a foolproof backup, login to your server via Telnet or SSH and use the <i>mysqldump</i> command on the command line. For more details, <b>http://www.vbulletin.com/docs/html/maintenance_ssh_backup</b>.</p>]]></phrase>
 		<phrase name="eaccelerator_too_old"><![CDATA[eAccelerator for PHP must be upgraded to 0.9.3 or newer.]]></phrase>
 		<phrase name="apc_too_old"><![CDATA[Your server is running a version of the <a href="http://pecl.php.net/package/APC/">Alternative PHP Cache</a> (APC) that is incompatible with vBulletin. Please upgrade APC to version 3.0.0 or newer.]]></phrase>
 		<phrase name="mmcache_not_supported"><![CDATA[Turck MMCache has been made obsolete by eAccelerator and does not function properly with vBulletin.]]></phrase>
@@ -215,6 +222,8 @@
 		<phrase name="status_vbcms_x_y"><![CDATA[Status: Processing CMS, Step %1$s of %2$s]]></phrase>
 		<phrase name="status_vbblog_x_y"><![CDATA[Status: Processing Blog, Step %1$s of %2$s]]></phrase>
 		<phrase name="status_skimlinks_x_y"><![CDATA[Status: Processing Skimlinks, Step %1$s of %2$s]]></phrase>
+		<phrase name="status_forumrunner_x_y"><![CDATA[Status: Processing Forum Runner, Step %1$s of %2$s]]></phrase>
+		<phrase name="status_postrelease_x_y"><![CDATA[Status: Processing Post Release, Step %1$s of %2$s]]></phrase>
 		<phrase name="status_final_x_y"><![CDATA[Status: Processing XML, Step %1$s of %2$s]]></phrase>
 		<phrase name="status_install_x_y"><![CDATA[Status: Installing, Step %1$s of %2$s]]></phrase>
 		<phrase name="status_aborted"><![CDATA[Status: Aborted]]></phrase>
@@ -224,6 +233,8 @@
 		<phrase name="processing_vbblog"><![CDATA[<strong>Processing Blog</strong>]]></phrase>
 		<phrase name="processing_vbcms"><![CDATA[<strong>Processing CMS</strong>]]></phrase>
 		<phrase name="processing_skimlinks"><![CDATA[<strong>Processing Skimlinks</strong>]]></phrase>
+		<phrase name="processing_forumrunner"><![CDATA[<strong>Processing Forum Runner</strong>]]></phrase>
+		<phrase name="processing_postrelease"><![CDATA[<strong>Processing Post Release</strong>]]></phrase>
 		<phrase name="processing_install"><![CDATA[<strong>Installing</strong>]]></phrase>
 		<!-- "upgradeing" is a purposeful typo -->
 		<phrase name="upgradeing_to_x"><![CDATA[<strong>Upgrading to %1$s</strong>]]></phrase>
@@ -241,8 +252,10 @@
 		<phrase name="press_button_to_begin_vbblog_upgrade"><![CDATA[Press the button below to run the Blog Upgrade step]]></phrase>
 		<phrase name="press_button_to_begin_vbcms_upgrade"><![CDATA[Press the button below to run the CMS Upgrade step]]></phrase>
 		<phrase name="press_button_to_begin_skimlinks_upgrade"><![CDATA[Press the button below to run the Skimlinks Upgrade step]]></phrase>
+		<phrase name="press_button_to_begin_forumrunner_upgrade"><![CDATA[Press the button below to run the Forum Runner Upgrade step]]></phrase>
+		<phrase name="press_button_to_begin_postrelease_upgrade"><![CDATA[Press the button below to run the Post Release Upgrade step]]></phrase>
 		<phrase name="press_button_to_begin_final_upgrade"><![CDATA[Press the button below to run the Final Upgrade step]]></phrase>
-		<phrase name="console_upgrade_steps"><![CDATA[At present, your forum has more than %1$s posts. If you encounter timeouts during the install process, there is a console version of the upgrade available to you. In order to perform a console upgrade, perform the following steps:<ol><li>Login to your server via SSH</li><li>Change your directory to the install directory of your forums, example: <ul><li>cd /forums/install</li></ul></li><li>Execute the upgrade script, example: <ul><li>php -f upgrade.php</li></ul></li></ol>]]></phrase>
+		<phrase name="console_upgrade_steps"><![CDATA[At present, your forum has more than %1$s posts. If you encounter timeouts during the install process, there is a console version of the upgrade available to you. In order to perform a console upgrade, perform the following steps:<ol><li>Login to your server via SSH</li><li>Change your directory to the install directory of your forums, example: <ul><li>cd /forums/install</li></ul></li><li>Execute the upgrade script, example: <ul><li>php -f upgrade.php</li></ul></li></ol>Contact vBulletin Customer Support if you are still unsure of how to continue.]]></phrase>
 		<phrase name="unexpected_text"><![CDATA[<strong>Unexpected Text:</strong><pre>%1$s</pre>]]></phrase>
 		<phrase name="server_no_response"><![CDATA[The server returned no response. This is probably due to a timeout setting. Please contact vBulletin Support for assistance]]></phrase>
 		<phrase name="turck"><![CDATA[Turck MMCache has been detected on your server. Turck MMCache is not supported in recent versions of PHP and can cause problems with vBulletin. We recommend that it be disabled.]]></phrase>
@@ -253,6 +266,17 @@
 		<phrase name="invalid_modification_type_x"><![CDATA[Invalid modification type '%1$s' specified.]]></phrase>
 		<phrase name="table_creation_x_failed"><![CDATA[Creation of InnoDB Table '%1$s' failed. Contact support. Failure code 1005:121. Associated .frm file needs to be copied in to place and table properly deleted before table creation can continue.]]></phrase>
 		<phrase name="after_upgrade_cli"><![CDATA[<br />Please note that the 'clientscript/vbulletin_css' directory and its sub directories need to be writable by your web server. If you did not execute this upgrade as the user under which your web server operates, there may have been files and folders written to 'clientscript/vbulletin_css' that are not writable. If you encounter error messages about not being able to write to the 'clientscript/vbulletin_css' directory within the admin cp, check that this directory and its sub directories allow your web server to write to them.]]></phrase>
+		<phrase name="unable_to_read_md5_sums"><![CDATA[Unable to verify that the correct files are in place. Is the following file missing?<br /><br /><strong>includes/md5_sums_vbulletin.php</strong>]]></phrase>
+		<phrase name="invalid_md5_sums"><![CDATA[The version of <strong>includes/md5_sums_vbulletin.php</strong> is '<em>%1$s</em>' which does not match the upgrade version of '<em>%2$s</em>'. Have all of the '<em>%2$s</em>' files been uploaded?]]></phrase>		
+		<phrase name="file_version_mismatch_x_expected_y"><![CDATA[File version mismatch: found %1$s, expected %2$s]]></phrase>
+		<phrase name="file_contents_mismatch"><![CDATA[File does not contain expected contents]]></phrase>
+		<phrase name="file_not_readable"><![CDATA[File not readable]]></phrase>
+		<phrase name="file_not_recognized"><![CDATA[File not recognized as part of vBulletin]]></phrase>
+		<phrase name="file_not_found"><![CDATA[File not found]]></phrase>
+		<phrase name="ignore_and_continue"><![CDATA[Ignore and Continue]]></phrase>
+		<phrase name="suspect_files_detected"><![CDATA[Following is a list of files that are either missing or contain unexpected contents. The most likely cause is that all of the files from this release have not been properly uploaded. You should resolve this error before continuing.]]></phrase>
+		<phrase name="suspect_files_detected_cli"><![CDATA[Following is a list of files that are either missing or contain unexpected contents. The most likely cause is that all of the files from this release have not been properly uploaded. You should resolve this error before continuing.\r\n\r\n%1$s\r\n\r\nContinue? (Y/N)]]></phrase>
+		<phrase name="sv_mappings"><![CDATA[Processing Stylevar Mappings]]></phrase>
 	</group>
 	<group name="phrasetype">
 		<phrase name="global"><![CDATA[GLOBAL]]></phrase>
@@ -308,7 +332,6 @@
 		<phrase name="cp_help"><![CDATA[Control Panel Help Text]]></phrase>
 		<phrase name="faq_title"><![CDATA[FAQ Title]]></phrase>
 		<phrase name="faq_text"><![CDATA[FAQ Text]]></phrase>
-		<phrase name="stop_message"><![CDATA[Control Panel Stop Message]]></phrase>
 		<phrase name="plugins"><![CDATA[Plugin System]]></phrase>
 		<phrase name="inlinemod"><![CDATA[Inline Moderation]]></phrase>
 		<phrase name="reputationlevel"><![CDATA[Reputation Levels]]></phrase>
@@ -326,6 +349,7 @@
 		<phrase name="vbblocksettings"><![CDATA[Forum Blocks Settings]]></phrase>
 		<phrase name="advertising"><![CDATA[Advertising]]></phrase>
 		<phrase name="ckeditor"><![CDATA[CKEditor]]></phrase>
+		<phrase name="activitystream"><![CDATA[Activity Stream]]></phrase>
 	</group>
 	<group name="vbphrase">
 		<phrase name="bitfield_conflicts_x"><![CDATA[A conflict was detected in the bitfields. You cannot continue with the installation of this product until this has been fixed. The conflicts found were:
@@ -380,11 +404,12 @@
 		<phrase name="proceed"><![CDATA[Proceed]]></phrase>
 		<phrase name="reset"><![CDATA[Reset]]></phrase>
 		<phrase name="alter_table_step_x"><![CDATA[Altering %1$s Table (%2$d of %3$d)]]></phrase>
-		<phrase name="vbulletin_copyright"><![CDATA[vBulletin v{VERSION}, Copyright &copy;, {date("Y")} vBulletin Solutions, Inc. All rights reserved.]]></phrase>
-		<phrase name="vbulletin_copyright_orig"><![CDATA[vBulletin v%1$s, Copyright &copy;, %2$s vBulletin Solutions, Inc. All rights reserved.]]></phrase>
+		<phrase name="vbulletin_copyright"><![CDATA[vBulletin v{VERSION}, Copyright &copy; {date("Y")} vBulletin Solutions, Inc. All rights reserved.]]></phrase>
+		<phrase name="vbulletin_copyright_orig"><![CDATA[vBulletin v%1$s, Copyright &copy; %2$s vBulletin Solutions, Inc. All rights reserved.]]></phrase>
 		<phrase name="processing_complete_proceed"><![CDATA[Processing Complete - Proceed]]></phrase>
 		<phrase name="xml_error_x_at_line_y"><![CDATA[XML Error: %1$s at Line %2$s]]></phrase>
 		<phrase name="apply_critical_template_change_to_x"><![CDATA[Applying critical template change to template %1$s in styleid %2$s]]></phrase>
+		<phrase name="compile_template_x_failed"><![CDATA[Compilation of template %1$s failed. Update must be done manually]]></phrase>
 		<phrase name="compatible_starting_with_x"><![CDATA[Compatible starting with %1$s]]></phrase>
 		<phrase name="incompatible_with_x_and_greater"><![CDATA[Incompatible with %1$s and greater]]></phrase>
 		<phrase name="dependencies_not_met_x"><![CDATA[The following dependencies were not met: %1$s]]></phrase>
@@ -546,6 +571,53 @@
 			<phrase name="delete_orphan_articles"><![CDATA[Deleting orphaned article records]]></phrase>
 			<phrase name="setting_volatile_flag"><![CDATA[Setting the volatile flag for setting %1$s]]></phrase>
 		</group>
+		<group name="418b1">
+			<phrase name="updating_mobile"><![CDATA[Updating mobile style defaults, Step %1$d of %2$d]]></phrase>
+		</group>
+		<group name="4110a1">
+			<phrase name="remove_vbapi_product"><![CDATA[Removing vbapi Product]]></phrase>
+		</group>		
+		<group name="4110a3">
+			<phrase name="processing_filenames"><![CDATA[Updating Attachment Filenames (%1$d)]]></phrase>
+			<phrase name="updated_attachments"><![CDATA[Processed %1$d Attachments]]></phrase>
+			<phrase name="updated_attachments_complete"><![CDATA[Attachment Processing Completed]]></phrase>
+		</group>
+		<group name="4111a1">
+			<phrase name="processing_articles"><![CDATA[Updating CMS Articles (%1$d)]]></phrase>
+			<phrase name="updated_articles"><![CDATA[Updated %1$d out of %2$d Articles]]></phrase>
+			<phrase name="updated_articles_complete"><![CDATA[Article Processing Completed]]></phrase>
+		</group>
+		<group name="4111a2">
+			<phrase name="updating_widget"><![CDATA[Updating CMS Widget (%1$d)]]></phrase>
+		</group>
+		<group name="420a1">
+			<phrase name="disabled_by_42"><![CDATA[* Disabled by vBulletin 4.2 * ]]></phrase>
+			<phrase name="disable_products"><![CDATA[Disable or Remove Old Products]]></phrase>
+			<phrase name="activitystream"><![CDATA[Please select the content types that are to be included in the Activity Stream. These options can also be modified after the upgrade.]]></phrase>
+			<phrase name="select_as_time"><![CDATA[Select the length of time in days that you would like the activity stream to store in history. Large histories may affect site performance. 0 - 180 days.]]></phrase>
+		</group>
+		<group name="420a1_as">
+			<phrase name="album_album"><![CDATA[Albums]]></phrase>
+			<phrase name="album_photo"><![CDATA[Album Photos]]></phrase>
+			<phrase name="album_comment"><![CDATA[Album Photo Comments]]></phrase>
+			<phrase name="forum_thread"><![CDATA[Forum Threads]]></phrase>
+			<phrase name="forum_post"><![CDATA[Forum Posts]]></phrase>
+			<phrase name="forum_visitormessage"><![CDATA[Visitor Messages]]></phrase>
+			<phrase name="socialgroup_group"><![CDATA[Groups]]></phrase>
+			<phrase name="socialgroup_discussion"><![CDATA[Group Discussions]]></phrase>
+			<phrase name="socialgroup_groupmessage"><![CDATA[Group Messages]]></phrase>
+			<phrase name="socialgroup_photo"><![CDATA[Group Photos]]></phrase>
+			<phrase name="socialgroup_photocomment"><![CDATA[Group Photo Comments]]></phrase>
+			<phrase name="calendar_event"><![CDATA[Calendar Event]]></phrase>
+		</group>
+		<group name="420a1_as_blog">
+			<phrase name="blog_entry"><![CDATA[Blog Entries]]></phrase>
+			<phrase name="blog_comment"><![CDATA[Blog Comments]]></phrase>
+		</group>
+		<group name="420a1_as_cms">
+			<phrase name="cms_article"><![CDATA[CMS Articles]]></phrase>
+			<phrase name="cms_comment"><![CDATA[CMS Comments]]></phrase>
+		</group>
 	</group>
 	<group name="final">
 		<phrase name="final_upgrade_steps"><![CDATA[Performing Final Upgrade Steps]]></phrase>
@@ -584,5 +656,6 @@
 		<phrase name="verifying_product_x"><![CDATA[Verifying Product: %1$s]]></phrase>
 		<phrase name="product_x_disabled"><![CDATA[Product %1$s has been disabled]]></phrase>
 		<phrase name="step_timed_out"><![CDATA[Step skipped, as it exceeded PHP max execution time]]></phrase>
+		<phrase name="import_navigation"><![CDATA[Importing Navigation Elements]]></phrase>
 	</group>
 </phrases>

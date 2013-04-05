@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -21,7 +21,7 @@ if (!is_object($db))
 
 require_once(DIR . '/install/functions_installupgrade.php');
 
-$tabletype = 'MEMORY';
+$sessionengine = get_session_engine($db);
 $hightrafficengine = get_high_concurrency_table_engine($db);
 
 $phrasegroups = array();
@@ -38,6 +38,44 @@ CREATE TABLE " . TABLE_PREFIX . "access (
 )
 ";
 $schema['CREATE']['explain']['access'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "access");
+
+
+
+$schema['CREATE']['query']['activitystream'] = "
+CREATE TABLE " . TABLE_PREFIX . "activitystream (
+	activitystreamid INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	userid INT UNSIGNED NOT NULL DEFAULT '0',
+	dateline INT UNSIGNED NOT NULL DEFAULT '0',
+	data MEDIUMTEXT NOT NULL,
+	contentid INT UNSIGNED NOT NULL DEFAULT '0',
+	typeid INT UNSIGNED NOT NULL DEFAULT '0',
+	action enum('create','edit','delete') NOT NULL DEFAULT 'create',
+	score DECIMAL(13,3) NOT NULL DEFAULT '0.000',
+	PRIMARY KEY (activitystreamid),
+	KEY score (score, dateline),
+	KEY dateline (dateline),
+	KEY typeid (typeid, dateline),
+	KEY typeid_2 (typeid, score, dateline),
+	KEY contentid (contentid, typeid),
+	KEY userid (userid, dateline)
+)
+";
+$schema['CREATE']['explain']['activitystream'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "activitystream");
+
+
+
+$schema['CREATE']['query']['activitystreamtype'] = "
+CREATE TABLE " . TABLE_PREFIX . "activitystreamtype (
+	typeid INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	packageid INT UNSIGNED NOT NULL,
+	section CHAR(25) NOT NULL DEFAULT '',
+	type CHAR(25) NOT NULL DEFAULT '',
+	enabled SMALLINT NOT NULL DEFAULT '1',
+	PRIMARY KEY (typeid),
+	UNIQUE KEY section (section, type)
+)
+";
+$schema['CREATE']['explain']['activitystreamtype'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "activitystreamtype");
 
 
 
@@ -261,7 +299,7 @@ CREATE TABLE " . TABLE_PREFIX . "apiclient (
 	dateline INT UNSIGNED NOT NULL,
 	lastactivity INT UNSIGNED NOT NULL,
 	PRIMARY KEY  (apiclientid),
-	KEY clienthash (uniqueid)
+	KEY clienthash (clienthash)
 )
 ";
 $schema['CREATE']['explain']['apiclient'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "apiclient");
@@ -462,6 +500,7 @@ CREATE TABLE " . TABLE_PREFIX . "block (
   displayorder SMALLINT NOT NULL DEFAULT '0',
   active SMALLINT NOT NULL DEFAULT '0',
   configcache MEDIUMBLOB,
+  product VARCHAR(25) NOT NULL DEFAULT '',
   PRIMARY KEY (blockid),
   KEY blocktypeid (blocktypeid)
 )
@@ -524,7 +563,8 @@ CREATE TABLE " . TABLE_PREFIX . "cache (
 	locktime INT UNSIGNED NOT NULL,
 	serialized ENUM('0','1') NOT NULL DEFAULT '0',
 	data MEDIUMTEXT,
-	PRIMARY KEY (cacheid)
+	PRIMARY KEY (cacheid),
+	KEY expires (expires)
 )
 ";
 $schema['CREATE']['explain']['cache'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "cache");
@@ -643,6 +683,26 @@ $schema['CREATE']['explain']['contentpriority'] = sprintf($vbphrase['create_tabl
 
 
 
+$schema['CREATE']['query']['contentread'] = "
+CREATE TABLE " . TABLE_PREFIX . "contentread (
+	readid INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+	contenttypeid SMALLINT UNSIGNED NOT NULL DEFAULT '0',
+	contentid INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	userid INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	readtype ENUM('read','view','other') NOT NULL DEFAULT 'other',
+	dateline INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	ipid INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	PRIMARY KEY (contenttypeid, contentid, userid, readtype),
+	KEY utd (userid, contenttypeid, dateline),
+	KEY tcd (contenttypeid, contentid, dateline),
+	KEY dateline (dateline),
+	UNIQUE KEY readid (readid)
+)
+";
+$schema['CREATE']['explain']['contentread'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "contentread");
+
+
+
 $schema['CREATE']['query']['contenttype'] = "
 CREATE TABLE " . TABLE_PREFIX . "contenttype (
 	contenttypeid INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -667,7 +727,7 @@ CREATE TABLE " . TABLE_PREFIX . "cpsession (
 	hash VARCHAR(32) NOT NULL DEFAULT '',
 	dateline INT UNSIGNED NOT NULL DEFAULT '0',
 	PRIMARY KEY (userid, hash)
-)
+)	ENGINE = $sessionengine
 ";
 $schema['CREATE']['explain']['cpsession'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "cpsession");
 
@@ -1131,7 +1191,7 @@ CREATE TABLE " . TABLE_PREFIX . "hvanswer (
 	questionid INT NOT NULL DEFAULT '0',
 	answer VARCHAR(255) NOT NULL DEFAULT '',
 	dateline INT UNSIGNED NOT NULL DEFAULT '0',
-	INDEX (questionid)
+	KEY (questionid)
 )
 ";
 $schema['CREATE']['explain']['hvanswer'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "hvanswer");
@@ -1278,6 +1338,26 @@ $schema['CREATE']['explain']['infractionlevel'] = sprintf($vbphrase['create_tabl
 
 
 
+$schema['CREATE']['query']['ipdata'] = "
+CREATE TABLE " . TABLE_PREFIX . "ipdata (
+	ipid INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+	contenttypeid SMALLINT UNSIGNED NOT NULL DEFAULT '0',
+	contentid INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	userid INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	rectype ENUM('content','read','view','visit','register','logon','logoff','other') NOT NULL DEFAULT 'other',
+	dateline INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	ip VARCHAR(40) NOT NULL DEFAULT '0.0.0.0',
+	altip VARCHAR(40) NOT NULL DEFAULT '0.0.0.0',
+	PRIMARY KEY (contenttypeid, contentid, userid, rectype),
+	KEY usertype (userid, contenttypeid),
+	KEY dateline (dateline),
+	UNIQUE KEY ipid (ipid)
+)
+";
+$schema['CREATE']['explain']['ipdata'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "ipdata");
+
+
+
 $schema['CREATE']['query']['language'] = "
 CREATE TABLE " . TABLE_PREFIX . "language (
 	languageid smallint(5) UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -1357,6 +1437,7 @@ CREATE TABLE " . TABLE_PREFIX . "language (
 	phrasegroup_vbblock MEDIUMTEXT,
 	phrasegroup_vbblocksettings MEDIUMTEXT,
 	phrasegroup_ckeditor MEDIUMTEXT,
+	phrasegroup_activitystream MEDIUMTEXT,
 	phrasegroupinfo MEDIUMTEXT,
 	PRIMARY KEY  (languageid)
 )
@@ -1437,6 +1518,30 @@ CREATE TABLE " . TABLE_PREFIX . "moderatorlog (
 )
 ";
 $schema['CREATE']['explain']['moderatorlog'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "moderatorlog");
+
+
+
+$schema['CREATE']['query']['navigation'] = "
+CREATE TABLE " . TABLE_PREFIX . "navigation (
+	navid INT UNSIGNED NOT NULL AUTO_INCREMENT,
+	name VARCHAR(20) NOT NULL DEFAULT '',
+	navtype ENUM('tab','menu','link') NOT NULL DEFAULT 'tab',
+	displayorder SMALLINT UNSIGNED NOT NULL DEFAULT '0',
+	parent VARCHAR(20) NOT NULL DEFAULT '',
+	url VARCHAR(255) NOT NULL DEFAULT '',
+	state TINYINT UNSIGNED NOT NULL DEFAULT '0',
+	scripts VARCHAR(30) NULL DEFAULT '',
+	showperm VARCHAR(30) NULL DEFAULT '',
+	productid VARCHAR(25) NOT NULL DEFAULT '',
+	username VARCHAR(100) NOT NULL DEFAULT '',
+	version VARCHAR(30) NOT NULL DEFAULT '',
+	dateline INT NOT NULL DEFAULT '0',
+	PRIMARY KEY (navid),
+	UNIQUE KEY identity (name, productid),
+	KEY productid (productid, state)
+)
+";
+$schema['CREATE']['explain']['navigation'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "navigation");
 
 
 
@@ -1623,6 +1728,9 @@ CREATE TABLE " . TABLE_PREFIX . "picturecomment (
 	allowsmilie SMALLINT NOT NULL DEFAULT '1',
 	reportthreadid INT UNSIGNED NOT NULL DEFAULT '0',
 	messageread SMALLINT UNSIGNED NOT NULL DEFAULT '0',
+	sourcecontenttypeid INT UNSIGNED NOT NULL DEFAULT '0',
+	sourcecontentid INT UNSIGNED NOT NULL DEFAULT '0',
+	sourceattachmentid INT UNSIGNED NOT NULL DEFAULT '0',
 	PRIMARY KEY (commentid),
 	KEY filedataid (filedataid, userid, dateline, state),
 	KEY postuserid (postuserid, filedataid, userid, state),
@@ -1828,9 +1936,10 @@ CREATE TABLE " . TABLE_PREFIX . "post (
 	PRIMARY KEY (postid),
 	KEY userid (userid),
 	KEY threadid (threadid, userid),
-  KEY threadid_visible_dateline (threadid, visible, dateline, userid, postid),
+	KEY threadid_visible_dateline (threadid, visible, dateline, userid, postid),
 	KEY dateline (dateline),
-	KEY ipaddress (ipaddress)
+	KEY ipaddress (ipaddress),
+	KEY user_date (userid, dateline)
 )
 ";
 $schema['CREATE']['explain']['post'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "post");
@@ -1947,7 +2056,7 @@ CREATE TABLE " . TABLE_PREFIX . "product (
 	url VARCHAR(250) NOT NULL DEFAULT '',
 	versioncheckurl VARCHAR(250) NOT NULL DEFAULT '',
 	PRIMARY KEY (productid),
-	INDEX (active)
+	KEY (active)
 )
 ";
 $schema['CREATE']['explain']['product'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "product");
@@ -2324,13 +2433,13 @@ CREATE TABLE " . TABLE_PREFIX . "session (
 	apiaccesstoken VARCHAR(32) NOT NULL DEFAULT '',
 	isbot TINYINT NOT NULL DEFAULT '0',
 	PRIMARY KEY (sessionhash),
-	KEY user_activity (userid, lastactivity),
+	KEY last_activity USING BTREE (lastactivity),
+	KEY user_activity USING BTREE (userid, lastactivity),
 	KEY guest_lookup (idhash, host, userid),
 	KEY apiaccesstoken (apiaccesstoken)
-)
+)	ENGINE = $sessionengine
 ";
 $schema['CREATE']['explain']['session'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "session");
-
 
 
 $schema['CREATE']['query']['setting'] = "
@@ -2538,6 +2647,7 @@ CREATE TABLE " . TABLE_PREFIX . "style (
 	userselect SMALLINT UNSIGNED NOT NULL DEFAULT '1',
 	displayorder SMALLINT UNSIGNED NOT NULL DEFAULT '0',
 	dateline INT UNSIGNED NOT NULL DEFAULT '0',
+	type enum('standard','mobile') NOT NULL DEFAULT 'standard',
 	PRIMARY KEY (styleid)
 )
 ";
@@ -2572,7 +2682,7 @@ CREATE TABLE " . TABLE_PREFIX . "stylevardfn (
 	failsafe MEDIUMBLOB NOT NULL,
 	units enum('','%','px','pt','em','ex','pc','in','cm','mm') NOT NULL default '',
 	uneditable tinyint(3) unsigned NOT NULL default '0',
-	PRIMARY KEY (stylevarid)
+	PRIMARY KEY (stylevarid, styleid)
 )
 ";
 $schema['CREATE']['explain']['stylevardfn'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "stylevardfn");
@@ -2802,7 +2912,8 @@ $schema['CREATE']['query']['tagsearch'] = "
 CREATE TABLE " . TABLE_PREFIX . "tagsearch (
 	tagid INT UNSIGNED NOT NULL DEFAULT '0',
 	dateline INT UNSIGNED NOT NULL DEFAULT '0',
-	KEY (tagid)
+	KEY (tagid),
+	KEY (dateline)
 )
 ";
 $schema['CREATE']['explain']['tagsearch'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "tagsearch");
@@ -2875,6 +2986,7 @@ CREATE TABLE " . TABLE_PREFIX . "thread (
 	pollid INT UNSIGNED NOT NULL DEFAULT '0',
 	open SMALLINT NOT NULL DEFAULT '0',
 	replycount INT UNSIGNED NOT NULL DEFAULT '0',
+	postercount INT UNSIGNED NOT NULL DEFAULT '0',
 	hiddencount INT UNSIGNED NOT NULL DEFAULT '0',
 	deletedcount INT UNSIGNED NOT NULL DEFAULT '0',
 	postusername VARCHAR(100) NOT NULL DEFAULT '',
@@ -2967,7 +3079,8 @@ CREATE TABLE " . TABLE_PREFIX . "upgradelog (
 	perpage SMALLINT UNSIGNED NOT NULL DEFAULT '0',
 	dateline INT UNSIGNED NOT NULL DEFAULT '0',
 	only TINYINT NOT NULL DEFAULT '0',
-	PRIMARY KEY (upgradelogid)
+	PRIMARY KEY (upgradelogid),
+	KEY script (script)
 )
 ";
 $schema['CREATE']['explain']['upgradelog'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "upgradelog");
@@ -3047,14 +3160,15 @@ CREATE TABLE " . TABLE_PREFIX . "user (
 	fbname VARCHAR(255) NOT NULL DEFAULT '',
 	logintype ENUM('vb', 'fb') NOT NULL DEFAULT 'vb',
 	fbaccesstoken VARCHAR(255) NOT NULL DEFAULT '',
+	newrepcount SMALLINT UNSIGNED NOT NULL DEFAULT '0',
 	PRIMARY KEY (userid),
 	KEY usergroupid (usergroupid),
 	KEY username (username),
 	KEY birthday (birthday, showbirthday),
 	KEY birthday_search (birthday_search),
 	KEY referrerid (referrerid),
-	INDEX (fbuserid),
-	INDEX (email)
+	KEY (fbuserid),
+	KEY (email)
 )
 ";
 $schema['CREATE']['explain']['user'] = sprintf($vbphrase['create_table'], TABLE_PREFIX . "user");
@@ -3196,6 +3310,7 @@ CREATE TABLE " . TABLE_PREFIX . "usergroup (
 	sigpicmaxheight SMALLINT UNSIGNED NOT NULL DEFAULT '0',
 	sigpicmaxsize INT UNSIGNED NOT NULL DEFAULT '0',
 	sigmaximages SMALLINT UNSIGNED NOT NULL DEFAULT '0',
+	sigmaxvideos SMALLINT UNSIGNED NOT NULL DEFAULT '0',
 	sigmaxsizebbcode SMALLINT UNSIGNED NOT NULL DEFAULT '0',
 	sigmaxchars SMALLINT UNSIGNED NOT NULL DEFAULT '0',
 	sigmaxrawchars SMALLINT UNSIGNED NOT NULL DEFAULT '0',
@@ -3346,9 +3461,6 @@ $schema['CREATE']['explain']['sigpic'] = sprintf($vbphrase['create_table'], TABL
 // ***************************************************************************************************************************
 
 $altertabletype = array(
-	'session'   => 'MEMORY',
-	'cpsession' => 'MEMORY',
-
 	// innodb tables are limited to about 10 varchar/blob/text fields http://bugs.mysql.com/bug.php?id=10035
 	'language'  => 'MYISAM',
 	'userfield' => 'MYISAM',
@@ -3361,6 +3473,24 @@ foreach ($altertabletype AS $table => $type)
 }
 
 // ***************************************************************************************************************************
+
+$schema['INSERT']['query']['activitystreamtype'] = "
+INSERT INTO " . TABLE_PREFIX . "activitystreamtype
+	(packageid, section, type, enabled)
+VALUES
+	(1, 'album', 'album', 1),
+	(1, 'album', 'comment', 1),
+	(1, 'album', 'photo', 1),
+	(1, 'calendar', 'event', 1),
+	(1, 'forum', 'post', 1),
+	(1, 'forum', 'thread', 1),
+	(1, 'forum', 'visitormessage', 1),
+	(1, 'socialgroup', 'discussion', 1),
+	(1, 'socialgroup', 'group', 1),
+	(1, 'socialgroup', 'groupmessage', 1),
+	(1, 'socialgroup', 'photo', 1),
+	(1, 'socialgroup', 'photocomment', 1)";
+$schema['INSERT']['explain']['activitystreamtype'] = sprintf($vbphrase['default_data_type'], TABLE_PREFIX . "activitystreamtype");
 
 
 $schema['INSERT']['query']['adminutil'] = "
@@ -3419,7 +3549,7 @@ VALUES
 	('png', '" . $db->escape_string(serialize(array('Content-type: image/png'))) . "', '20000', '620', '280', '0', '" . $db->escape_string(serialize($contenttype_post + $contenttype_album_enabled + $contenttype_group_enabled)) . "'),
 	('doc', '" . $db->escape_string(serialize(array('Content-type: application/msword'))) . "', '20000', '0', '0', '0', '" . $db->escape_string(serialize($contenttype_post + $contenttype_album_disabled + $contenttype_group_disabled)) . "'),
 	('pdf', '" . $db->escape_string(serialize(array('Content-type: application/pdf'))) . "', '20000', '0', '0', '0', '" . $db->escape_string(serialize($contenttype_post + $contenttype_album_disabled + $contenttype_group_disabled)) . "'),
-	('bmp', '" . $db->escape_string(serialize(array('Content-type: image/bitmap'))) . "', '20000', '620', '280', '0', '" . $db->escape_string(serialize($contenttype_post + $contenttype_album_enabled + $contenttype_group_enabled)) . "'),
+	('bmp', '" . $db->escape_string(serialize(array('Content-type: image/bmp'))) . "', '20000', '620', '280', '0', '" . $db->escape_string(serialize($contenttype_post + $contenttype_album_enabled + $contenttype_group_enabled)) . "'),
 	('psd', '" . $db->escape_string(serialize(array('Content-type: unknown/unknown'))) . "', '20000', '0', '0', '0', '" . $db->escape_string(serialize($contenttype_post + $contenttype_album_disabled + $contenttype_group_disabled)) . "'),
 	('zip', '" . $db->escape_string(serialize(array('Content-type: application/zip'))) . "', '100000', '0', '0', '0', '" . $db->escape_string(serialize($contenttype_post + $contenttype_album_disabled + $contenttype_group_disabled)) . "')
 ";
@@ -3509,10 +3639,11 @@ VALUES
 	(1053271600, -1, -1, -1, 'a:1:{i:0;i:10;}',          './includes/cron/ccbill.php',          1, 'ccbill',          1, 'vbulletin'),
 	(1053271600, -1, -1, -1, 'a:6:{i:0;i:0;i:1;i:10;i:2;i:20;i:3;i:30;i:4;i:40;i:5;i:50;}', './includes/cron/rssposter.php', 1, 'rssposter',1, 'vbulletin'),
 	(1232082000, -1, -1,  5, 'a:1:{i:0;i:0;}',           './includes/cron/sitemap.php',         1, 'sitemap',         1, 'vbulletin'),
+	(1178750700, -1, -1, -1, 'a:4:{i:0;i:0;i:1;i:15;i:2;i:30;i:3;i:45;}', './includes/cron/activity.php', 0, 'activitypopularity', 1, 'vbulletin'),
+	(1320000000, -1, -1, -1, 'a:6:{i:0;i:0;i:1;i:10;i:2;i:20;i:3;i:30;i:4;i:40;i:5;i:50;}',           './includes/cron/mailqueue.php',         1, 'cronmail',         1, 'vbulletin'),
 	(1232082000, -1, -1,  5, 'a:6:{i:0;i:0;i:1;i:10;i:2;i:20;i:3;i:30;i:4;i:40;i:5;i:50;}',           './includes/cron/queueprocessor.php',         1, 'searchqueueupdates',         1, 'vbulletin')
 ";
 $schema['INSERT']['explain']['cron'] = sprintf($vbphrase['default_data_type'], TABLE_PREFIX . "cron");
-
 
 
 $schema['INSERT']['query']['datastore'] = "
@@ -3586,7 +3717,7 @@ VALUES
 	'" . $db->escape_string($install_phrases['category_title']) . "', '" . $db->escape_string($install_phrases['category_desc']) . "'),
 
 	(2, 0, '" . $db->escape_string($install_phrases['forum_title']) . "', '" . $db->escape_string($install_phrases['forum_desc']) . "',
-	'89799', '1', '0', '0', '', '', '0', '0', '0', '-1', '', '', '1', '2,1,-1', '', '', '2,-1',
+	'3235527', '1', '0', '0', '', '', '0', '0', '0', '-1', '', '', '1', '2,1,-1', '', '', '2,-1',
 	'" . $db->escape_string($install_phrases['forum_title']) . "', '" . $db->escape_string($install_phrases['forum_desc']) . "')
 ";
 $schema['INSERT']['explain']['forum'] = sprintf($vbphrase['default_data_type'], TABLE_PREFIX . "forum");
@@ -3858,7 +3989,6 @@ VALUES
 	('cphelptext',       '" . $db->escape_string($phrasetype['cp_help']) . "', 8, 1),
 	('faqtitle',         '" . $db->escape_string($phrasetype['faq_title']) . "', 3, 1),
 	('faqtext',          '" . $db->escape_string($phrasetype['faq_text']) . "', 10, 1),
-	('cpstopmsg',        '" . $db->escape_string($phrasetype['stop_message']) . "', 8, 1),
 	('hvquestion',       '" . $db->escape_string($phrasetype['hvquestion']) . "', 3, 1),
 	('socialgroups',     '" . $db->escape_string($phrasetype['socialgroups']) . "', 3, 0),
 	('tagscategories',   '" . $db->escape_string($phrasetype['tagscategories']) . "', 3, 0),
@@ -3866,20 +3996,29 @@ VALUES
 	('contenttypes',     '" . $db->escape_string($phrasetype['contenttypes']) . "', 3, 0),
 	('vbblock',	         '" . $db->escape_string($phrasetype['vbblock']) . "', 3, 0),
 	('vbblocksettings',  '" . $db->escape_string($phrasetype['vbblocksettings']) . "', 3, 0),
-	('ckeditor',         '" . $db->escape_string($phrasetype['ckeditor']) . "', 3, 0)
+	('ckeditor',         '" . $db->escape_string($phrasetype['ckeditor']) . "', 3, 0),
+	('activitystream',   '" . $db->escape_string($phrasetype['activitystream']) . "', 3, 0)
 ";
 $schema['INSERT']['explain']['phrasetype'] = sprintf($vbphrase['default_data_type'], TABLE_PREFIX . "phrasetype");
 
 
 $emptyarray = @serialize(array());
-$schema['INSERT']['query']['style'] = "
+$schema['INSERT']['query']['masterstyle'] = "
 INSERT INTO " . TABLE_PREFIX . "style
 	(styleid, title, parentid, parentlist, templatelist, css, replacements, userselect, displayorder, csscolors, stylevars)
 VALUES
 	(1, '{$install_phrases['default_style']}', -1, '1,-1', '1,-1', '', '', 1, 1, '" . $db->escape_string($emptyarray) . "', '" . $db->escape_string($emptyarray) . "')
 ";
-$schema['INSERT']['explain']['style'] = sprintf($vbphrase['default_data_type'], TABLE_PREFIX . "style");
+$schema['INSERT']['explain']['masterstyle'] = sprintf($vbphrase['default_data_type'], TABLE_PREFIX . "style");
 
+
+$schema['INSERT']['query']['mobilestyle'] = "
+INSERT INTO " . TABLE_PREFIX . "style
+	(styleid, title, parentid, parentlist, templatelist, css, replacements, userselect, displayorder, csscolors, stylevars, type)
+VALUES
+	(2, '{$install_phrases['default_mobile_style']}', -2, '2,-2', '2,-2', '', '', 1, 1, '" . $db->escape_string($emptyarray) . "', '" . $db->escape_string($emptyarray) . "', 'mobile')
+";
+$schema['INSERT']['explain']['mobilestyle'] = sprintf($vbphrase['default_data_type'], TABLE_PREFIX . "style");
 
 
 $schema['INSERT']['query']['infractionlevel'] = "
@@ -3997,7 +4136,7 @@ INSERT INTO " . TABLE_PREFIX . "usergroup
 		albumpermissions,
 		attachlimit, avatarmaxwidth, avatarmaxheight, avatarmaxsize,
 		profilepicmaxwidth, profilepicmaxheight, profilepicmaxsize,
-		sigmaxrawchars, sigmaxchars, sigmaxlines, sigmaxsizebbcode, sigmaximages,
+		sigmaxrawchars, sigmaxchars, sigmaxlines, sigmaxsizebbcode, sigmaximages, sigmaxvideos,
 		sigpicmaxwidth, sigpicmaxheight, sigpicmaxsize,
 		albumpicmaxwidth, albumpicmaxheight, albummaxpics, albummaxsize,
 		pmthrottlequantity, groupiconmaxsize, maximumsocialgroups
@@ -4012,7 +4151,7 @@ VALUES
 		{$groupinfo[1]['albumpermissions']},
 		0, 80, 80, 20000,
 		100, 100, 65535,
-		1000, 500, 0, 7, 4,
+		1000, 500, 0, 7, 4, 1,
 		500, 100, 10000,
 		600, 600, 100, 0,
 		0, 65535, 0
@@ -4026,7 +4165,7 @@ VALUES
 		{$groupinfo[2]['albumpermissions']},
 		0, 80, 80, 20000,
 		100, 100, 65535,
-		1000, 500, 0, 7, 4,
+		1000, 500, 0, 7, 4, 1,
 		500, 100, 10000,
 		600, 600, 100, 0,
 		0, 65535, 5
@@ -4040,7 +4179,7 @@ VALUES
 		{$groupinfo[3]['albumpermissions']},
 		0, 80, 80, 20000,
 		100, 100, 65535,
-		1000, 500, 0, 7, 4,
+		1000, 500, 0, 7, 4, 1,
 		500, 100, 10000,
 		600, 600, 100, 0,
 		0, 65535, 5
@@ -4054,7 +4193,7 @@ VALUES
 		{$groupinfo[4]['albumpermissions']},
 		0, 80, 80, 20000,
 		100, 100, 65535,
-		1000, 500, 0, 7, 4,
+		1000, 500, 0, 7, 4, 1,
 		500, 100, 10000,
 		600, 600, 100, 0,
 		0, 65535, 5
@@ -4068,7 +4207,7 @@ VALUES
 		{$groupinfo[5]['albumpermissions']},
 		0, 80, 80, 20000,
 		100, 100, 65535,
-		1000, 500, 0, 7, 4,
+		1000, 500, 0, 7, 4, 1,
 		500, 100, 10000,
 		600, 600, 100, 0,
 		0, 65535, 5
@@ -4082,7 +4221,7 @@ VALUES
 		{$groupinfo[6]['albumpermissions']},
 		0, 80, 80, 20000,
 		100, 100, 65535,
-		0, 0, 0, 7, 0,
+		0, 0, 0, 7, 0, 0,
 		500, 100, 10000,
 		600, 600, 100, 0,
 		0, 65535, 5
@@ -4096,7 +4235,7 @@ VALUES
 		{$groupinfo[7]['albumpermissions']},
 		0, 80, 80, 20000,
 		100, 100, 65535,
-		1000, 500, 0, 7, 4,
+		1000, 500, 0, 7, 4, 1,
 		500, 100, 10000,
 		600, 600, 100, 0,
 		0, 65535, 5
@@ -4110,7 +4249,7 @@ VALUES
 		{$groupinfo[8]['albumpermissions']},
 		0, 80, 80, 20000,
 		100, 100, 65535,
-		1000, 500, 0, 7, 4,
+		1000, 500, 0, 7, 4, 1,
 		500, 100, 10000,
 		600, 600, 100, 0,
 		0, 65535, 5
@@ -4130,11 +4269,8 @@ VALUES
 ";
 $schema['INSERT']['explain']['usertitle'] = sprintf($vbphrase['default_data_type'], TABLE_PREFIX . "usertitle");
 
-
-
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 39181 $
 || ####################################################################
 \*======================================================================*/

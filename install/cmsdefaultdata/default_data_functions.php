@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -99,8 +99,6 @@ function add_default_attachments($userid)
 {
 	@set_time_limit(0);
 	global $vbulletin, $startimage, $endimage;
-	require_once(DIR . '/includes/class_bootstrap_framework.php');
-	vB_Bootstrap_Framework::init();
 
 	$imagedir = DIR . '/install/cmsdefaultdata/attachments/';
 
@@ -117,8 +115,6 @@ function add_default_attachments($userid)
 		SET userid = " . $vbulletin->userinfo['userid'] . " WHERE userid = 1"
 	);
 	//if we can, automatically blow out the cache.
-	require_once DIR . '/includes/class_bootstrap_framework.php';
-	vB_Bootstrap_Framework::init();
 	if (VB_AREA != 'Upgrade' AND VB_AREA != 'Install')
 	{
 		print_cp_header($vbphrase['category_manager']);
@@ -301,7 +297,7 @@ function attach_image($file_name, $filedirectory, $nodeid, &$errors)
 	$poststarttime = time();
 	$posthash = md5($vbulletin->GPC['poststarttime'] . $vbulletin->userinfo['userid'] . $vbulletin->userinfo['salt']);
 
-	$contenttypeid = vB_Types::instance()->getContentTypeId("vBCms_Article");
+	$contenttypeid = vB_Types::instance()->getContentTypeID("vBCms_Article");
 
 	// here we call the attach/file data combined dm
 	$attachdata =& datamanager_init('AttachmentFiledata', $vbulletin, ERRTYPE_SILENT, 'attachment');

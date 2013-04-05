@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -71,8 +71,6 @@ class vB_Upgrade_vbcms extends vB_Upgrade_Version
 			return;
 		}
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 		require_once(DIR . '/includes/class_upgrade_product.php');
 		$this->product = new vB_Upgrade_Product($registry, $phrase, true, $this->caller);
 		if ($this->caninstall = (($this->productresult =  $this->product->verify_install('vbcms')) === true))
@@ -322,6 +320,7 @@ class vB_Upgrade_vbcms extends vB_Upgrade_Version
 				widgettypeid INT NOT NULL,
 				title VARCHAR(255) NOT NULL,
 				description MEDIUMTEXT DEFAULT '',
+				product VARCHAR(25) NOT NULL DEFAULT '',
 				PRIMARY KEY  (widgetid),
 				UNIQUE KEY title(title),
 				KEY widgettypeid (widgettypeid)
@@ -741,21 +740,6 @@ $grid_html =
 		// for previous step
 		build_options();
 
-		$this->add_cronjob(
-			array(
-				'varname'  => 'vbcms_dailycleanup',
-				'nextrun'  => 1053533100,
-				'weekday'  => -1,
-				'day'      => -1,
-				'hour'     => 0,
-				'minute'   => 'a:1:{i:0;i:10;}',
-				'filename' => './includes/cron/vbcms_dailycleanup.php',
-				'loglevel' => 0,
-				'volatile' => 1,
-				'product'  => 'vbcms'
-			)
-		);
-
 		// default comments forum
 		$this->db->query_write("
 			INSERT INTO " . TABLE_PREFIX . "forum
@@ -763,7 +747,7 @@ $grid_html =
 				lastthread, lastthreadid, lasticonid, threadcount, daysprune, newpostemail, newthreademail,
 				parentid, parentlist, password, link, childlist, title_clean)
 			VALUES
-				(0, 'vBCms Comments', '24262', '0', '0', '0', '', '', '0', '0', '0', '-1', '', '', '-1', '', '', '', '', 'vBCms Comments')
+				(0, 'vBCms Comments', '3169990', '0', '0', '0', '', '', '0', '0', '0', '-1', '', '', '-1', '', '', '', '', 'vBCms Comments')
 		");
 		$forumid = $this->db->insert_id();
 
@@ -1287,16 +1271,14 @@ $grid_html =
 				'stylevar_vbcms_widget_border_name','stylevar_vbcms_widget_shadow_color_name',
 				'cms_articles_preview','cms_articles_preview_add','cms_priority_manager',
 				'sitemap_cms_priority_desc','vbcms', 'sections',
-				'cms_section','search_for_cms_comments','stylevar_content_msg_font_description',
+				'cms_section','search_for_cms_comments',
 				'stylevar_imgdir_cms_name','blocktype_cmsarticles','setting_cmsarticles_catids_desc',
 				'setting_cmsarticles_catids_title','setting_cmsarticles_limit_title','setting_cmsarticles_messagemaxchars_desc',
 				'setting_cmsarticles_messagemaxchars_title','setting_cmsarticles_sectionids_desc',
 				'setting_cmsarticles_catids_title','setting_cmsarticles_limit_desc','setting_cmsarticles_limit_title',
 				'setting_cmsarticles_messagemaxchars_desc','setting_cmsarticles_messagemaxchars_title',
-				'setting_cmsarticles_sectionids_desc','setting_cmsarticles_sectionids_title','',
-				'setting_cmsarticles_type_desc','setting_cmsarticles_type_title',
-				'setting_default_route_segment_desc','widgettype_vbcms_friend_activity',
-				'setting_default_route_segment_title')
+				'setting_cmsarticles_sectionids_desc','setting_cmsarticles_sectionids_title','setting_cmsarticles_type_desc',
+				'setting_cmsarticles_type_title','widgettype_vbcms_friend_activity')
 		");
 
 		$this->run_query(
@@ -1325,7 +1307,7 @@ $grid_html =
 			"UPDATE " . TABLE_PREFIX . "template SET product = 'vbcms'
 			WHERE title IN ('vbcms_grid_1','vbcms_grid_2','vbcms_grid_3','vbcms_grid_4',
 				'vbcms_grid_5','vbcms_grid_6','vbcms_grid_7','vbcms_grid_8',
-				'vbcms_grid_9','vbcms_grid_15')
+				'vbcms_grid_9')
 					AND
 				styleid < 1
 		");
@@ -1337,10 +1319,10 @@ $grid_html =
 				'remove_per_mo_since_post', 'sitemap_blog_priority_desc','after_upgrade_40_update_blog_attachment','blog_priority_manager',
 				'vbblog_faq_general_customsidebar','vbblog_faq_general_what','vbblog_faq_groups_what',
 				'vbblog_faq_general_customsidebar',
-				'vbblog_faq_general_what','vbblog_faq_groups_what','stylevar_content_msg_font_description',
+				'vbblog_faq_general_what','vbblog_faq_groups_what',
 				'stylevar_profile_content_blog_head_description','stylevar_profile_content_blog_head_name',
 				'stylevar_profile_content_blogentrybit_continue_reading_description',
-				'stylevar_profile_content_blogentrybit_continue_reading_name','stylevar_vbblog_link_color_name',
+				'stylevar_profile_content_blogentrybit_continue_reading_name',
 				'stylevar_vbblog_pagetitle_border_name','stylevar_vbblog_pagetitle_color_name',
 				'stylevar_vbblog_pagetitle_description_color_name','stylevar_vbblog_pagetitle_description_font_name',
 				'stylevar_vbblog_pagetitle_font_name','stylevar_vbblog_sidebar_header_font_description',
@@ -1414,7 +1396,7 @@ $grid_html =
 	    {
 	        return;
 	    }
-	    
+
 		$this->add_index(
 			sprintf($this->phrase['core']['altering_x_table'], 'cms_nodeinfo', 1, 1),
 			'cms_nodeinfo',
@@ -1438,17 +1420,280 @@ $grid_html =
 	}
 
 	/**
-	* Step #20 - Final Step
-	*	This must always be the second to last numbered step. Just renumnber this step as more upgrade steps are added before
+	* Step #20 - Add index on 'new' so that the scheduled task to remove orphan articles is not expensive
 	*
 	*/
 	function step_20()
 	{
+		if (!$this->verify_product_version('4.1.10 Alpha 1'))
+	    {
+	        return;
+	    }
+
+		$this->add_index(
+			sprintf($this->phrase['core']['altering_x_table'], 'cms_node', 1, 1),
+			'cms_node',
+			'new',
+			'new'
+		);
+	}
+
+	/**
+	* Step #21
+	*
+	*/
+	function step_21()
+	{
+		if (!$this->verify_product_version('4.1.11 Alpha 1'))
+		{
+			return;
+		}
+
+		$this->add_field(
+			sprintf($this->phrase['core']['altering_x_table'], 'cms_article', 1, 1),
+			'cms_article',
+			'keepthread',
+			'SMALLINT',
+			self::FIELD_DEFAULTS
+			);
+		$this->db->show_errors();
+	}
+
+	/**
+	* Step #22
+	*
+	*/
+	function step_22()
+	{
+		if (!$this->verify_product_version('4.1.11 Alpha 1'))
+		{
+			return;
+		}
+
+		$this->add_field(
+			sprintf($this->phrase['core']['altering_x_table'], 'cms_article', 1, 1),
+			'cms_article',
+			'allcomments',
+			'SMALLINT',
+			self::FIELD_DEFAULTS
+			);
+	}
+
+	/**
+	* Step #23
+	*
+	*/
+	function step_23()
+	{
+		if (!$this->verify_product_version('4.1.11 Alpha 1'))
+		{
+			return;
+		}
+
+		$this->add_field(
+			sprintf($this->phrase['core']['altering_x_table'], 'cms_article', 1, 1),
+			'cms_article',
+			'movethread',
+			'SMALLINT',
+			self::FIELD_DEFAULTS
+			);
+	}
+
+
+	/**
+	* Step #24 - Fix Preview Images
+	* If more changes are needed for 4.1.11 - add them to a subsequent step
+	*
+	*/
+	function step_24($data = null)
+	{
+		if (!$this->verify_product_version('4.1.11 Alpha 1'))
+	    {
+	        return;
+	    }
+
+		$process = 100;
+		$startat = intval($data['startat']);
+
+		if ($startat == 0)
+		{
+			$articles = $this->db->query_first_slave("
+				SELECT COUNT(*) AS articles
+				FROM " . TABLE_PREFIX . "cms_article
+				WHERE previewimage IS NOT NULL AND previewimage <> ''
+			");
+
+			$total = $articles['articles'];
+
+			if ($total)
+			{
+				$this->show_message(sprintf($this->phrase['version']['4111a1']['processing_articles'], $total));
+				return array('startat' => 1);
+			}
+			else
+			{
+				$this->skip_message();
+				return;
+			}
+		}
+		else
+		{
+			$first = $startat - 1;
+		}
+
+		$articles = $this->db->query_read_slave("
+			SELECT contentid, previewimage
+			FROM " . TABLE_PREFIX . "cms_article
+			WHERE previewimage IS NOT NULL AND previewimage <> ''
+			LIMIT $first, $process
+		");
+
+		$rows = $this->db->num_rows($articles);
+		if ($rows)
+		{
+			$count = 0;
+			while ($article = $this->db->fetch_array($articles))
+			{
+				// urls don't have hashes but consistency in function calls is key
+				if (preg_match('#^' . preg_quote($this->registry->options['bburl'], '#') . '/attachment.php#si', $article['previewimage']))
+				{
+					$previewimage = preg_replace('#^' . preg_quote($this->registry->options['bburl'], '#') . '/#si', '', $article['previewimage']);
+					$this->db->query_write("
+						UPDATE " . TABLE_PREFIX . "cms_article
+						SET previewimage = '" . $this->db->escape_string($previewimage) . "'
+						WHERE contentid = {$article['contentid']}
+					");
+						$count++;
+				}
+			}
+
+			$this->db->free_result($articles);
+			$this->show_message(sprintf($this->phrase['version']['4111a1']['updated_articles'], $count, $first + $rows));
+			return array('startat' => $startat + $process);
+		}
+		else
+		{
+			$this->show_message($this->phrase['version']['4111a1']['updated_articles_complete']);
+		}
+	}
+
+	/*
+	 * Step 25 - Set Category Widget Config
+	 */
+	function step_25()
+	{
+		if (!$this->verify_product_version('4.1.11 Alpha 2'))
+		{
+			return;
+		}
+
+		$this->run_query(
+			sprintf($this->phrase['version']['4111a2']['updating_widget'], 1),
+			"	INSERT IGNORE INTO " . TABLE_PREFIX . "cms_widgetconfig
+				(widgetid, nodeid, name, VALUE, serialized)
+				(SELECT widgetid, 0, 'showparent', 1, 0
+				FROM " . TABLE_PREFIX . "cms_widget
+				INNER JOIN " . TABLE_PREFIX . "cms_widgettype AS wtype USING (widgettypeid)
+				INNER JOIN " . TABLE_PREFIX . "package AS ptype USING (packageid)
+				WHERE wtype.class = 'CategoryNavAll' AND ptype.class = 'vBCms')
+			");
+	}
+
+	/*
+	 * Step 26 - Set Category Widget Config
+	 */
+	function step_26()
+	{
+		if (!$this->verify_product_version('4.1.11 Alpha 2'))
+	    {
+	        return;
+	    }
+
+		$this->run_query(
+			sprintf($this->phrase['version']['4111a2']['updating_widget'], 2),
+			"	INSERT IGNORE INTO " . TABLE_PREFIX . "cms_widgetconfig
+				(widgetid, nodeid, name, VALUE, serialized)
+				(SELECT widgetid, 0, 'showsection', 1, 0
+				FROM " . TABLE_PREFIX . "cms_widget
+				INNER JOIN " . TABLE_PREFIX . "cms_widgettype AS wtype USING (widgettypeid)
+				INNER JOIN " . TABLE_PREFIX . "package AS ptype USING (packageid)
+				WHERE wtype.class = 'CategoryNavAll' AND ptype.class = 'vBCms')
+			");
+	}
+
+	/*
+	  Step 27 - VBIV-14283 / VBIV-952 Set default for Movethread
+	*/
+	function step_27()
+	{
+		if (!$this->verify_product_version('4.1.11 Beta 1'))
+	    {
+	        return;
+	    }
+
+		$this->run_query(
+			sprintf($this->phrase['vbphrase']['update_table'], TABLE_PREFIX . "cms_article"),
+			"	ALTER TABLE " . TABLE_PREFIX . "cms_article
+				CHANGE COLUMN movethread movethread
+				SMALLINT(5) UNSIGNED NOT NULL DEFAULT '1'
+			");
+	}
+
+	/*
+	  Step 28 - Add Product Field to Widgets
+	*/
+	function step_28()
+	{
+		if (!$this->verify_product_version('4.2.0 Alpha 1'))
+	    {
+	        return;
+	    }
+
+		$this->add_field(
+			sprintf($this->phrase['core']['altering_x_table'], 'cms_widget', 1, 1),
+			'cms_widget',
+			'product',
+			'varchar',
+			array('length' => 25, 'attributes' => self::FIELD_DEFAULTS)
+		);
+	}
+
+	/**
+	* Step #29 - Activity Stream Types
+	*/
+	function step_29()
+	{
+		if (!$this->verify_product_version('4.2.0 Alpha 1'))
+		{
+			return;
+		}
+
+		$package = $this->db->query_first("
+			SELECT packageid
+			FROM " . TABLE_PREFIX . "package where productid = 'vbcms'
+		");
+		$packageid = $package['packageid'];
+
+		$this->run_query(
+			sprintf($this->phrase['vbphrase']['update_table'], TABLE_PREFIX . 'activitystreamtype') ,
+				"INSERT IGNORE INTO " . TABLE_PREFIX . "activitystreamtype
+					(packageid, section, type, enabled)
+				VALUES
+					({$packageid}, 'cms', 'article', 1),
+					({$packageid}, 'cms', 'comment', 1)
+		");
+	}
+
+	/**
+	* Step #30 - Third to Final Step
+	*	This must always be the third to last numbered step. Just renumnber this step as more upgrade steps are added before
+	*
+	*/
+	function step_30()
+	{
 		if ($this->caninstall)
 		{
 			// Clear cms cache objects
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			vB_Bootstrap_Framework::init();
 			vB_Cache::instance()->event('vb_types.contenttype_updated');
 			vB_Cache::instance()->event('vb_types.package_updated');
 			vB_Cache::instance()->event('vb_types.type_updated');
@@ -1470,14 +1715,13 @@ $grid_html =
 	}
 
 	/**
-	* Step #21 - Final Step
-	*	This must always be the last numbered step. Just renumber this step as more upgrade steps are added before
+	* Step #31 - Second to Final Step
+	*	This must always be the second to last numbered step. Just renumber this step as more upgrade steps are added before
 	*
 	* @param	array	contains prompt results
 	*/
-	function step_21($data = null)
+	function step_31($data = null)
 	{
-
 		if ($this->caninstall)
 		{
 			if (!isset($data['response']))
@@ -1552,6 +1796,15 @@ $grid_html =
 		}
 	}
 
+	/*
+	 * Final Step 32 - Install CMS Mobile Templates
+	 * This must always be the last step. Just renumber this step as more upgrade steps are added before
+	 */
+	function step_32($data = null)
+	{
+		return $this->import_product_mobile($data, 'vbcms');
+	}
+
 	/**
 	* Show CMS Data install prompt
 	*
@@ -1602,7 +1855,6 @@ $grid_html =
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

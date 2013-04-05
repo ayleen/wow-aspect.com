@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -245,20 +245,28 @@ class vB_Upgrade_403 extends vB_Upgrade_Version
 
 				$template_un = $template;
 				$template = compile_template($template);
-
-				$this->run_query(
-					sprintf($this->phrase['vbphrase']['update_table'], TABLE_PREFIX . 'templatehistory'),
-					"
-						UPDATE " . TABLE_PREFIX . "template SET
-							template = '" . $this->db->escape_string($template) . "',
-							template_un = '" . $this->db->escape_string($template_un) . "',
-							dateline = " . TIMENOW . ",
-							username = '" . $this->db->escape_string($this->registry->userinfo['username']) . "'
-						WHERE
-							title = 'ad_" . $this->db->escape_string($location) . "'
-							AND styleid IN (-1,0)
-					"
-				);
+				if (template === false)
+				{
+					$this->show_message(
+						sprintf($this->phrase['vbphrase']['compile_template_x_failed'], 'ad_' . $location)
+					);
+				}
+				else
+				{
+					$this->run_query(
+						sprintf($this->phrase['vbphrase']['update_table'], TABLE_PREFIX . 'templatehistory'),
+						"
+							UPDATE " . TABLE_PREFIX . "template SET
+								template = '" . $this->db->escape_string($template) . "',
+								template_un = '" . $this->db->escape_string($template_un) . "',
+								dateline = " . TIMENOW . ",
+								username = '" . $this->db->escape_string($this->registry->userinfo['username']) . "'
+							WHERE
+								title = 'ad_" . $this->db->escape_string($location) . "'
+								AND styleid IN (-1,0)
+						"
+					);
+				}
 			}
 
 			build_all_styles();
@@ -346,7 +354,6 @@ class vB_Upgrade_403 extends vB_Upgrade_Version
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

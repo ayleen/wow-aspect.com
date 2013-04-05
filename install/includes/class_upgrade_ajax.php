@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -80,7 +80,6 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 	protected function init()
 	{
 		parent::init();
-		 
 
 		$this->registry->input->clean_array_gpc('p', array(
 			'ajax'   => TYPE_BOOL,
@@ -111,6 +110,7 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 				'only'       => TYPE_BOOL,
 				'htmlsubmit' => TYPE_BOOL,
 				'htmldata'   => TYPE_ARRAY,
+				'options'    => TYPE_ARRAY,
 			));
 
 			$this->registry->GPC['response'] = convert_urlencoded_unicode($this->registry->GPC['response']);
@@ -129,7 +129,7 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 			);
 			$script = $this->load_script($this->scriptinfo['version']);
 
-			$this->process_step($this->registry->GPC['version'], $this->registry->GPC['step'], $this->registry->GPC['startat'], $this->registry->GPC['checktable'], $this->registry->GPC_exists['response'] ? $this->registry->GPC['response'] : null, $this->registry->GPC['firstrun'], $this->registry->GPC['only'], $this->registry->GPC['htmlsubmit'], $this->registry->GPC['htmldata']);
+			$this->process_step($this->registry->GPC['version'], $this->registry->GPC['step'], $this->registry->GPC['startat'], $this->registry->GPC['checktable'], $this->registry->GPC_exists['response'] ? $this->registry->GPC['response'] : null, $this->registry->GPC['firstrun'], $this->registry->GPC['only'], $this->registry->GPC['htmlsubmit'], $this->registry->GPC['htmldata'], $this->registry->GPC['options']);
 		}
 		else
 		{
@@ -140,7 +140,7 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 				'only'    => TYPE_BOOL,
 			));
 
-					$proceed = true;
+			$proceed = true;
 
 			if ($proceed)
 			{
@@ -275,7 +275,7 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 
 			if (!in_array($script->SHORT_VERSION, $this->endscripts))
 			{
-				$addscripts = array('skimlinks', 'final');
+				$addscripts = array('skimlinks', 'forumrunner', 'postrelease', 'final');
 				if ($this->install_suite())
 				{
 					foreach($this->products AS $product)
@@ -289,7 +289,8 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 				}
 				else
 				{
-					$this->htmloptions['upgrademessage'] = sprintf($this->phrase['core']['press_button_to_begin_upgrade'], $this->registry->options['templateversion'], end($this->versions));
+					$display_version = ($this->registry->GPC['version']) ? $script->LONG_VERSION : $this->registry->options['templateversion'];
+					$this->htmloptions['upgrademessage'] = sprintf($this->phrase['core']['press_button_to_begin_upgrade'], $display_version, end($this->versions));
 					$this->htmloptions['suggestconsole'] = $this->is_big_forum();
 				}
 			}
@@ -323,8 +324,14 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 					? $this->fetch_status($script->LONG_VERSION, $this->htmloptions['step'], $script->stepcount)
 					: $this->fetch_status($script->LONG_VERSION);
 
-			if ($this->startup_errors)
+			if ($this->startup_errors OR $this->startup_file_errors)
 			{
+				if ($this->startup_file_errors)
+				{
+					$this->startup_errors = array_merge($this->startup_errors, $this->startup_file_errors);
+					$this->htmloptions['startup_continue'] = true;
+				}
+				
 				$this->htmloptions['startup_errors'] = '';
 				foreach ($this->startup_errors AS $error)
 				{
@@ -341,14 +348,16 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 	* Process a step
 	*
 	* @var	string	Version
-	* @var	int			Step
-	* @var	int			Startat
-	* @var 	bool		Check table status
+	* @var	int		Step
+	* @var	int		Startat
+	* @var 	bool	Check table status
 	* @var	string	Response from a prompt
-	* @var	bool		Received an HTML form response
-	* @var	array		Values returned from an HTML form
+	* @var	bool	First run of the script
+	* @var	bool	Received an HTML form response
+	* @var	array	Values returned from an HTML form
+	* @var	array	Options information
 	*/
-	private function process_step($version, $step, $startat, $checktable = true, $response = null, $firstrun = false, $only = false, $htmlsubmit = false, $htmldata = array())
+	private function process_step($version, $step, $startat, $checktable = true, $response = null, $firstrun = false, $only = false, $htmlsubmit = false, $htmldata = array(), $options = array())
 	{
 		$script = $this->load_script($version);
 		$startstep = $step ? $step : 1;
@@ -363,7 +372,7 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 
 		if ($endstep)
 		{
-			$result = $this->execute_step($startstep, $startat, $script, $xml, $checktable, $response, $htmlsubmit, $htmldata);
+			$result = $this->execute_step($startstep, $startat, $script, $xml, $checktable, $response, $htmlsubmit, $htmldata, $options);
 			if ($result AND $result['returnvalue']['startat'])
 			{
 				$script->log_upgrade_step($startstep, $result['returnvalue']['startat'], $only);
@@ -505,7 +514,7 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 		if ($firstrun OR ($result['returnvalue']['startat'] == 0 AND $startstep == 1))
 		{
 			// Might be able to replace the array_merge with $this->endscripts --- Check
-			if (in_array($this->scriptinfo['version'], array_merge(array('final', 'skimlinks', 'install', $this->products))) AND $script->LONG_VERSION == $this->scriptinfo['version'])
+			if (in_array($this->scriptinfo['version'], array_merge(array('install'), $this->endscripts)) AND $script->LONG_VERSION == $this->scriptinfo['version'])
 			{
 				$xml->add_tag('upgradenotice', $this->phrase['core']['processing_' . $this->scriptinfo['version']]);
 			}
@@ -555,17 +564,19 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 	* @var	startat	Startat
 	* @var	Object	vB_Upgrade Object
 	* @var	Object	vB_AJAX_XML_Builder
-	* @var	bool		Check table status
+	* @var	bool	Check table status
 	* @var	string	Response from a prompt
-	* @var	bool		Received an HTML form response
-	* @var	array		Values returned from an HTML form
+	* @var	bool	Received an HTML form response
+	* @var	array	Values returned from an HTML form
+	* @var	array	Skip Step Info
 	*/
-	private function execute_step($step, $startat, $script, &$xml, $checktable = true, $response = null, $htmlsubmit = false, $htmldata = array())
+	private function execute_step($step, $startat, $script, &$xml, $checktable = true, $response = null, $htmlsubmit = false, $htmldata = array(), $options = array())
 	{
 		$data = array(
 			'startat'    => $startat,
 			'htmlsubmit' => $htmlsubmit,
 			'htmldata'   => $htmldata,
+			'options'    => $options,
 		);
 		if ($response !== null)
 		{
@@ -684,6 +695,11 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 			<input type=\"hidden\" name=\"only\" value=\"{$this->registry->GPC['only']}\" />
 		";
 
+		if ($this->htmloptions['startup_errors'])
+		{
+			$this->htmloptions['startup_errors'] = preg_replace('#(?<!\<)/(?!\>)#s', '<img src="" alt="" />/', $this->htmloptions['startup_errors']);
+		}
+			
 		$output_version = defined('ADMIN_VERSION_VBULLETIN') ? ADMIN_VERSION_VBULLETIN : ($this->registry->options['templateversion'] ? $this->registry->options['templateversion'] : $this->htmloptions['finalversion']);
 		?>
 		<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -792,12 +808,34 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 				margin-top:20px;
 			}
 
+			#startup_errors {
+				overflow:hidden;
+				max-height:400px;
+				_height:400px;				
+			}
+			
 			#startup_errors .messagebody
 			{
 				text-align:<?php echo vB_Template_Runtime::fetchStyleVar('left'); ?>;
 				padding:10px;
+				overflow:auto;
+				max-height:330px;
+				_height:330px;
 			}
 
+			#startup_errors form {
+				margin:0;
+				padding:5px;
+			}
+			
+			#startup_errors input[type="submit"] {
+				margin:0;
+			}
+			
+			#startup_errors li img {
+				width:0;
+			}
+			
 			#promptmessage, #confirmmessage {
 				padding:10px;
 				text-align:<?php echo vB_Template_Runtime::fetchStyleVar('left'); ?>;
@@ -918,7 +956,7 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 				float:left;
 			}
 
-			 #showdetails, #hidedetails {
+			#showdetails, #hidedetails {
 				margin-<?php echo vB_Template_Runtime::fetchStyleVar('left'); ?>: 7px;
 			}
 
@@ -931,6 +969,10 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 				margin:0;
 			}
 
+			#optionsbox {
+				text-align:<?php echo vB_Template_Runtime::fetchStyleVar('left'); ?>
+			}
+			
 			.hidden {
 				display:none;
 			}
@@ -983,7 +1025,6 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 			</script>
 			<script type="text/javascript" src="../clientscript/yui/yuiloader-dom-event/yuiloader-dom-event.js"></script>
 			<script type="text/javascript" src="../clientscript/yui/connection/connection-min.js"></script>
-			<script type="text/javascript" src="../clientscript/vbulletin_global.js"></script>
 			<script type="text/javascript" src="../clientscript/vbulletin-core.js"></script>
 		</head>
 		<body>
@@ -992,16 +1033,20 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 			<div class="xml2">
 				<ul>
 					<li id="vb_style_version"><?php echo $this->xml_versions['style']; ?></li>
+					<li id="vb_mobile_style_version"><?php echo $this->xml_versions['mobile-style']; ?></li>
 					<li id="vb_settings_version"><?php echo $this->xml_versions['settings']; ?></li>
 					<li id="vb_language_version"><?php echo $this->xml_versions['language']; ?></li>
+					<li id="vb_navigation_version"><?php echo $this->xml_versions['navigation']; ?></li>
 					<li id="vb_admin_help_version"><?php echo $this->xml_versions['adminhelp']; ?></li>
 				</ul>
 			</div>
 			<div class="xml1">
 				<ul>
 					<li>vbulletin-style.xml:</li>
+					<li>vbulletin-mobile-style.xml:</li>					
 					<li>vbulletin-settings.xml:</li>
 					<li>vbulletin-language.xml:</li>
+					<li>vbulletin-navigation.xml:</li>
 					<li>vbulletin-adminhelp.xml:</li>
 				</ul>
 			</div>
@@ -1022,8 +1067,11 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 					<ul>
 						<li class="hidden"></li>
 						<?php echo $this->htmloptions['startup_errors']; ?>
-					</ul>
+					</ul>				
 				</div>
+				<form action="<?php echo $this->setuptype; ?>.php" method="post" id="submitconfirmform" class="status<?php if (!$this->htmloptions['startup_continue']) { echo ' hidden'; } ?>">
+					<input class="button" type="submit" name="submit" tabindex="1" accesskey="s" id="submitconfirmok" value="<?php echo $this->phrase['core']['ignore_and_continue']; ?>" />
+				</form>					
 			</div>
 			<div class="tborder<?php if (!$this->htmloptions['mismatch']) { echo " hidden"; } ?>" id="mismatch">
 				<div class="navbody messageheader"><?php echo $this->phrase['core']['version_mismatch']; ?></div>
@@ -1058,12 +1106,28 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 						</div>
 					</div>
 					<div id="beginsection">
-						<form action="<?php echo $this->setuptype; ?>.php" method="post">
+						<form action="<?php echo $this->setuptype; ?>.php" id="optionsform" method="post">
 							<?php if ($this->htmloptions['suggestconsole']) { echo '<div class="consolemsg">' . construct_phrase($this->phrase['core']['console_upgrade_steps'], $this->htmloptions['suggestconsole']) . '</div>'; } ?>
 							<p><?php echo $this->htmloptions['upgrademessage']; ?></p>
 							<input type="hidden" name="jsfail" value="1" />
+							<div class="hidden" id="optionsbox">
+								<table cellspacing="0" cellpadding="4" border="0" align="center" width="100%" id="cpform_table" class="" style="border-collapse: separate;">
+								<tbody>
+									<tr>
+										<td class="alt1">
+											<?php echo $this->phrase['core']['merge_template_updates'] ?>
+										</td>
+										<td class="alt1">
+											<?php echo $this->phrase['vbphrase']['yes'] ?> <input id="rb_merge1" type="radio" name="options[skiptemplatemerge]" value="0" checked="checked" />
+											<?php echo $this->phrase['vbphrase']['no'] ?> <input id="rb_merge2" type="radio" name="options[skiptemplatemerge]" value="1" />
+										</td>
+									</tr>
+								</tbody>
+								</table>
+							</div>
 							<input class="button" type="submit" id="beginupgrade" tabindex="1" name="" value="<?php echo $this->htmloptions['begin_setup'] ?>" />
-						</form>
+							<input class="button" type="submit" id="options" tabindex ="2" name="" value="<?php echo $this->phrase['core']['options'] ?>" />
+					</form>
 					</div>
 				</div>
 			</div>
@@ -1119,7 +1183,6 @@ class vB_Upgrade_Ajax extends vB_Upgrade_Abstract
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

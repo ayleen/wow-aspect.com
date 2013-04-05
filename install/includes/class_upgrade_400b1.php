@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -102,8 +102,6 @@ class vB_Upgrade_400b1 extends vB_Upgrade_Version
 			$criteria = array();
 			$criteria['in_usergroup_x'] = array('active' => 1, 'condition1' => 1);
 
-			require_once(DIR . '/includes/class_bootstrap_framework.php');
-			vB_Bootstrap_Framework::init();
 			try
 			{
 				save_notice(null, 'default_guest_message', $this->phrase['install']['default_guest_message'], 10, 1, 1, 1, $criteria, 'System', $this->LONG_VERSION);
@@ -122,7 +120,6 @@ class vB_Upgrade_400b1 extends vB_Upgrade_Version
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

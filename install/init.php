@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -33,12 +33,31 @@ if (!defined('CWD'))
 // #############################################################################
 // fetch the core classes
 require_once(CWD . '/includes/class_core.php');
+require_once(CWD . '/includes/functions.php');
 
 // initialize the data registry
 $vbulletin = new vB_Registry();
 
 // parse the configuration ini file
 $vbulletin->fetch_config();
+
+if (CWD == '.')
+{
+	// getcwd() failed and so we need to be told the full forum path in config.php
+	if (!empty($vbulletin->config['Misc']['forumpath']))
+	{
+		define('DIR', $vbulletin->config['Misc']['forumpath']);
+	}
+	else
+	{
+		// This can not be phrased as it appears before phrase load and phrases won't load if we move this after ..
+		trigger_error('<strong>Configuration</strong>: You must insert a value for <strong>forumpath</strong> in config.php', E_USER_ERROR);
+	}
+}
+else
+{
+	define('DIR', CWD);
+}
 
 // Load Phrases
 $phrases = vB_Upgrade::fetch_language();
@@ -53,23 +72,6 @@ if (isset($_REQUEST['GLOBALS']) OR isset($_FILES['GLOBALS']))
 {
 	echo $phrases['core']['request_tainting_attempted'];
 	exit;
-}
-
-if (CWD == '.')
-{
-	// getcwd() failed and so we need to be told the full forum path in config.php
-	if (!empty($vbulletin->config['Misc']['forumpath']))
-	{
-		define('DIR', $vbulletin->config['Misc']['forumpath']);
-	}
-	else
-	{
-		trigger_error($phrases['core']['forumpath_needed'], E_USER_ERROR);
-	}
-}
-else
-{
-	define('DIR', CWD);
 }
 
 if (!empty($vbulletin->config['Misc']['datastorepath']))
@@ -189,7 +191,7 @@ if (!defined('SKIPDB'))
 			$vbulletin->datastore->fetch($specialtemplates);
 		}
 	}
-	else if (VB_AREA == 'Install')
+	else if (VB_AREA == 'Install' OR VB_AREA == 'tools')
 	{ // load it up but don't actually call fetch, we need the ability to overwrite fields.
 		$datastore_class = (!empty($vbulletin->config['Datastore']['class']) AND !defined('STDIN')) ? $vbulletin->config['Datastore']['class'] : 'vB_Datastore';
 
@@ -206,9 +208,10 @@ if (!defined('SKIPDB'))
 require_once(DIR . '/includes/class_hook.php');
 $vbulletin->pluginlist = '';
 
+bootstrap_framework(); // load the vB Framework.
+
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 39181 $
 || ####################################################################
 \*======================================================================*/

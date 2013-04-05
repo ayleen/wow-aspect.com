@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -71,8 +71,6 @@ class vB_Upgrade_vbblog extends vB_Upgrade_Version
 			return;
 		}
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 		require_once(DIR . '/includes/class_upgrade_product.php');
 		$this->product = new vB_Upgrade_Product($registry, $phrase['vbphrase'], true, $this->caller);
 		if ($this->caninstall = (($this->productresult =  $this->product->verify_install('vbblog')) === true))
@@ -109,7 +107,7 @@ class vB_Upgrade_vbblog extends vB_Upgrade_Version
 			{
 				return true;
 			}
-			
+
 			$this->skip_message();
 			return false;
 		}
@@ -143,6 +141,7 @@ class vB_Upgrade_vbblog extends vB_Upgrade_Version
 				firstblogtextid INT UNSIGNED NOT NULL DEFAULT '0',
 				userid INT UNSIGNED NOT NULL DEFAULT '0',
 				dateline INT UNSIGNED NOT NULL DEFAULT '0',
+				postercount INT UNSIGNED NOT NULL DEFAULT '0',
 				comments_visible INT UNSIGNED NOT NULL DEFAULT '0',
 				comments_moderation INT UNSIGNED NOT NULL DEFAULT '0',
 				comments_deleted INT UNSIGNED NOT NULL DEFAULT '0',
@@ -907,22 +906,22 @@ class vB_Upgrade_vbblog extends vB_Upgrade_Version
 		$perm_set = array(
 			'adminmod' => array(
 				'vbblog_general_permissions' => 262142,
-				'vbblog_entry_permissions'   => 24575,
-				'vbblog_comment_permissions' => 990,
+				'vbblog_entry_permissions'   => 57343,
+				'vbblog_comment_permissions' => 3038,
 				'vbblog_customblocks'        => 10,
 				'vbblog_custompages'         => 10,
 			),
 			'poster' => array(
 				'vbblog_general_permissions' => 257022,
-				'vbblog_entry_permissions'   => 8191,
-				'vbblog_comment_permissions' => 974,
+				'vbblog_entry_permissions'   => 40959,
+				'vbblog_comment_permissions' => 3022,
 				'vbblog_customblocks'        => 5,
 				'vbblog_custompages'         => 5,
 			),
 			'viewer' => array(
 				'vbblog_general_permissions' => 368,
 				'vbblog_entry_permissions'   => 834,
-				'vbblog_comment_permissions' => 960,
+				'vbblog_comment_permissions' => 3008,
 				'vbblog_customblocks'        => 0,
 				'vbblog_custompages'         => 0,
 			),
@@ -995,8 +994,8 @@ class vB_Upgrade_vbblog extends vB_Upgrade_Version
 		");
 
 		$package = $this->db->query_first("
-			SELECT package.packageid FROM " . TABLE_PREFIX . "package AS package
-			WHERE package.productid = 'vbblog'
+			SELECT packageid FROM " . TABLE_PREFIX . "package
+			WHERE productid = 'vbblog'
 		");
 		$packageid = $package['packageid'];
 
@@ -1009,6 +1008,15 @@ class vB_Upgrade_vbblog extends vB_Upgrade_Version
 				('BlogComment', $packageid, '0', '1', '0'),
 				('BlogDescription', $packageid, '0', '0', '0'),
 				('BlogCustomBlock', $packageid, '0', '0', '0')
+		");
+
+		$this->run_query(
+			sprintf($this->phrase['vbphrase']['update_table'], TABLE_PREFIX . 'activitystreamtype') ,
+				"INSERT IGNORE INTO " . TABLE_PREFIX . "activitystreamtype
+					(packageid, section, type, enabled)
+				VALUES
+					({$packageid}, 'blog', 'entry', 1),
+					({$packageid}, 'blog', 'comment', 1)
 		");
 	}
 
@@ -1844,11 +1852,74 @@ class vB_Upgrade_vbblog extends vB_Upgrade_Version
 	}
 
 	/**
-	* Step #15 - Final Step
-	*	This must always be the last step. Just renumber this step as more upgrade steps are added before
+	* Step #15 - Add [VIDEO] Permission where [IMG] permission exists
 	*
 	*/
 	function step_15()
+	{
+		if (!$this->verify_product_version('4.1.10 Alpha 2'))
+		{
+			return;
+		}
+
+		// 32768 is [VIDEO] permissions, 4096 is [IMG] permission
+		$this->run_query(
+			sprintf($this->phrase['vbphrase']['update_table'], TABLE_PREFIX . "usergroup"),
+			"UPDATE " . TABLE_PREFIX . "usergroup
+				SET vbblog_entry_permissions = vbblog_entry_permissions | 32768
+				WHERE vbblog_entry_permissions & 4096
+		");
+
+		// 2048 is [VIDEO] permission, 512 is [IMG] permission
+		$this->run_query(
+			sprintf($this->phrase['vbphrase']['update_table'], TABLE_PREFIX . "usergroup"),
+			"UPDATE " . TABLE_PREFIX . "usergroup
+				SET vbblog_comment_permissions = vbblog_comment_permissions | 2048
+				WHERE vbblog_comment_permissions & 512
+		");
+	}
+
+	/**
+	* Step #16 - Upgrade to Blog 4.2.0 Alpha 1
+	*
+	*/
+	function step_16()
+	{
+		if (!$this->verify_product_version('4.2.0 Alpha 1'))
+		{
+			return;
+		}
+
+		$this->add_field(
+			sprintf($this->phrase['core']['altering_x_table'], 'blog', 1, 1),
+			'blog',
+			'postercount',
+			'int',
+			self::FIELD_DEFAULTS
+		);
+
+		$package = $this->db->query_first("
+			SELECT packageid FROM " . TABLE_PREFIX . "package
+			WHERE productid = 'vbblog'
+		");
+		$packageid = $package['packageid'];
+
+		$this->run_query(
+			sprintf($this->phrase['vbphrase']['update_table'], TABLE_PREFIX . 'activitystreamtype') ,
+				"INSERT IGNORE INTO " . TABLE_PREFIX . "activitystreamtype
+					(packageid, section, type, enabled)
+				VALUES
+					({$packageid}, 'blog', 'entry', 1),
+					({$packageid}, 'blog', 'comment', 1)
+		");
+	}
+
+	/**
+	* Step #17 - Second to Final Step
+	*	This must always be the second to last step. Just renumber this step as more upgrade steps are added before
+	*
+	*/
+	function step_17()
 	{
 		if ($this->caninstall)
 		{
@@ -1865,11 +1936,19 @@ class vB_Upgrade_vbblog extends vB_Upgrade_Version
 			$this->skip_message();
 		}
 	}
+
+	/*
+	 * Final Step - Install Blog Mobile Templates
+	 * This must always be the last step. Just renumber this step as more upgrade steps are added before
+	 */
+	function step_18($data = null)
+	{
+		return $this->import_product_mobile($data, 'vbblog');
+	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -134,6 +134,8 @@ class vB_Upgrade_install extends vB_Upgrade_Version
 					}
 
 					$default_tables = array_merge($default_tables, $this->fetch_product_tables('skimlinks'));
+					$default_tables = array_merge($default_tables, $this->fetch_product_tables('forumrunner'));
+					$default_tables = array_merge($default_tables, $this->fetch_product_tables('postrelease'));
 
 					$html = '<div class="advancedconfirmbody">';
 					$html .= $this->phrase['install']['delete_tables_instructions'];
@@ -223,8 +225,6 @@ class vB_Upgrade_install extends vB_Upgrade_Version
 		$criteria = array();
 		$criteria['in_usergroup_x'] = array('active' => 1, 'condition1' => 1);
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 		try
 		{
 			save_notice(null, 'default_guest_message', $this->phrase['install']['default_guest_message'], 10, 1, 1, 1, $criteria, 'System', $this->maxversion);
@@ -259,8 +259,6 @@ class vB_Upgrade_install extends vB_Upgrade_Version
 				$this->add_error(sprintf($this->phrase['vbphrase']['file_not_found'], 'vbulletin-settings.xml'), self::PHP_TRIGGER_ERROR, true);
 				return;
 			}
-			// Enable fulltext search for new installs
-			$this->registry->options['fulltextsearch'] = 1;
 
 			$gdinfo = fetch_gdinfo();
 			if ($gdinfo['version'] >= 2)
@@ -734,7 +732,6 @@ class vB_Upgrade_install extends vB_Upgrade_Version
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

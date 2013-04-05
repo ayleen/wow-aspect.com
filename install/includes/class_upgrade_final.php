@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -35,7 +35,6 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 
 	/*Properties====================================================================*/
 
-
 	/**
 	* Step #1 - Import Settings XML
 	*
@@ -45,6 +44,7 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 		build_forum_permissions();
 		vBulletinHook::build_datastore($this->db);
 		build_product_datastore();
+		build_activitystream_datastore();
 
 		if (VB_AREA == 'Upgrade')
 		{
@@ -134,7 +134,7 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 			$this->show_message(sprintf($this->phrase['vbphrase']['importing_file'], 'vbulletin-style.xml'));
 		}
 
-		$info = xml_import_style($xml, -1, -1, '', false, 1, false, $startat, $perpage);
+		$info = xml_import_style($xml, -1, -1, '', false, 1, false, $startat, $perpage, 0, 'vbulletin-style.xml');
 
 		if (!$info['done'])
 		{
@@ -147,11 +147,93 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 		}
 	}
 
-		/**
-	* Step #5 Check Product Dependencies
+	/**
+	* Step #5 - Import Mobile Style
+	*
+	* @param	array	contains id to startat processing at
 	*
 	*/
-	function step_5()
+	function step_5($data = null)
+	{
+		$perpage = 1;
+		$startat = intval($data['startat']);
+		require_once(DIR . '/includes/adminfunctions_template.php');
+
+		$importfile = '';
+		if ($xml = file_read(DIR . '/install/vbulletin-mobile-style.xml'))
+		{
+			$importfile = 'vbulletin-mobile-style.xml';
+		}
+		else
+		{
+			// output a mobile style not found error
+			$this->add_error(sprintf($this->phrase['vbphrase']['file_not_found'], 'vbulletin-mobile-style.xml'), self::PHP_TRIGGER_ERROR, true);
+			return;
+		}
+
+		if ($startat == 0)
+		{
+			$this->show_message(sprintf($this->phrase['vbphrase']['importing_file'], $importfile));
+		}
+
+		$info = xml_import_style($xml, -2, -2, '', false, 1, false, $startat, $perpage, 0, $importfile);
+
+		if (!$info['done'])
+		{
+			$this->show_message($info['output']);
+			return array('startat' => $startat + $perpage);
+		}
+		else
+		{
+			$this->show_message($this->phrase['core']['import_done']);
+		}
+	}
+
+	/**
+	* Step #6 - Import Navigation XML
+	*
+	*/
+	function step_6()
+	{
+		require_once(DIR . '/includes/class_xml.php');
+		require_once(DIR . '/includes/adminfunctions_plugin.php');
+
+		$this->show_message($this->phrase['final']['import_navigation']);
+
+		if (!($xml = file_read(DIR . '/install/vbulletin-navigation.xml')))
+		{
+			$this->add_error(sprintf($this->phrase['vbphrase']['file_not_found'], 'vbulletin-navigation.xml'), self::PHP_TRIGGER_ERROR, true);
+			return;
+		}
+
+		$xmlobj = new vB_XML_Parser($xml);
+
+		if(!$navdata = $xmlobj->parse())
+		{
+			$this->add_error(sprintf($this->phrase['vbphrase']['xml_error_x_at_line_y'], $xmlobj->error_string(), $xmlobj->error_line()), self::PHP_TRIGGER_ERROR, true);
+			return;
+		}
+
+		unset($xmlobj);
+		$this->show_message(sprintf($this->phrase['vbphrase']['importing_file'], 'vbulletin-navigation.xml'));
+
+		$info = array(
+			'process'		=> VB_AREA,
+			'username'		=> 'System-'.VB_AREA,
+			'version'		=> $navdata['version'],
+			'productid'		=> substr(preg_replace('#[^a-z0-9_]#', '', strtolower($navdata['productid'])), 0, 25),
+		);
+
+		import_navigation($navdata, $info);
+
+		$this->show_message($this->phrase['core']['import_done']);
+	}
+
+	/**
+	* Step #7 Check Product Dependencies
+	*
+	*/
+	function step_7()
 	{
 		if (VB_AREA == 'Install')
 		{
@@ -161,8 +243,6 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 
 		$this->show_message($this->phrase['final']['verifying_product_dependencies']);
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 		require_once(DIR . '/includes/class_upgrade_product.php');
 		$this->product = new vB_Upgrade_Product($this->registry, $this->phrase['vbphrase'], true, $this->caller);
 
@@ -172,8 +252,7 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 			FROM " . TABLE_PREFIX . "productdependency AS pd
 			INNER JOIN " . TABLE_PREFIX . "product AS p ON (p.productid = pd.productid)
 			WHERE
-				###pd.productid NOT IN ('','vbulletin')###
-					pd.productid IN ('vbblog', 'vbcms', 'skimlinks')
+				pd.productid IN ('vbblog', 'vbcms', 'skimlinks', 'forumrunner', 'postrelease', 'vbapi')
 					AND
 				p.active = 1
 			ORDER BY
@@ -248,14 +327,44 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 	}
 
 	/**
-	* Step #6 Template Merge
-	* If this step changes from "Step 6", vbulletin-upgrade.js must also be updated in the process_bad_response() function
+	* Step #8 Master Template Merge
+	* If this step changes from "Step 8", vbulletin-upgrade.js must also be updated in the process_bad_response() function
 	*
 	* @param	array	contains start info
 	*
 	*/
-	function step_6($data = null)
+	function step_8($data = null)
 	{
+		return $this->merge_templates($data, 'standard');
+	}
+
+	/**
+	* Step #9 Mobile Master Template Merge
+	* If this step changes from "Step 9", vbulletin-upgrade.js must also be updated in the process_bad_response() function
+	*
+	* @param	array	contains start info
+	*
+	*/
+	function step_9($data = null)
+	{
+		return $this->merge_templates($data, 'mobile');
+	}
+
+	/**
+	* Template Merge
+	*
+	* @param	array	contains start info
+	* @param	int		Master styleid
+	*
+	*/
+	function merge_templates($data, $mastertype)
+	{
+		if ($data['options']['skiptemplatemerge'])
+		{
+			$this->skip_message();
+			return;
+		}
+
 		if ($data['response'] == 'timeout')
 		{
 			$this->show_message($this->phrase['final']['step_timed_out']);
@@ -266,7 +375,7 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 		$startat = intval($data['startat']);
 		require_once(DIR . '/includes/class_template_merge.php');
 
-		$products = array("''", "'vbulletin'", "'skimlinks'");
+		$products = array("''", "'vbulletin'", "'skimlinks'", "'forumrunner'", "'postrelease'");
 
 		if (should_install_suite())
 		{
@@ -280,7 +389,7 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 		$merge = new vB_Template_Merge($this->registry);
 		$merge->time_limit = 4;
 		$output = array();
-		$completed = $merge->merge_templates($merge_data, $output);
+		$completed = $merge->merge_templates($merge_data, $output, ($mastertype == 'standard') ? -1 : -2);
 
 		if ($output)
 		{
@@ -293,7 +402,7 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 		if ($completed)
 		{
 			$this->set_option('upgrade_from', 'version', '', 'string', '' );;
-			if ($error = build_all_styles(0, 0, '', true))
+			if ($error = build_all_styles(0, 0, '', true, $mastertype))
 			{
 				$this->add_error($error, self::PHP_TRIGGER_ERROR, true);
 				return false;
@@ -301,14 +410,13 @@ class vB_Upgrade_final extends vB_Upgrade_Version
 		}
 		else
 		{
-			return array('startat' => $startat + $merge->fetch_processed_count() );
+			return array('startat' => $startat + $merge->fetch_processed_count());
 		}
 	}
 }
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/

@@ -1,9 +1,9 @@
 <?php
 /*======================================================================*\
 || #################################################################### ||
-|| # vBulletin 4.1.5 Patch Level 1 
+|| # vBulletin 4.2.0 Patch Level 3
 || # ---------------------------------------------------------------- # ||
-|| # Copyright ©2000-2011 vBulletin Solutions Inc. All Rights Reserved. ||
+|| # Copyright ©2000-2012 vBulletin Solutions Inc. All Rights Reserved. ||
 || # This file may not be redistributed in whole or significant part. # ||
 || # ---------------- VBULLETIN IS NOT FREE SOFTWARE ---------------- # ||
 || # http://www.vbulletin.com | http://www.vbulletin.com/license.html # ||
@@ -71,8 +71,6 @@ class vB_Upgrade_skimlinks extends vB_Upgrade_Version
 			return;
 		}
 
-		require_once(DIR . '/includes/class_bootstrap_framework.php');
-		vB_Bootstrap_Framework::init();
 		require_once(DIR . '/includes/class_upgrade_product.php');
 		$this->product = new vB_Upgrade_Product($registry, $phrase['vbphrase'], true, $this->caller);
 		$this->caninstall = ($this->productresult =  $this->product->verify_install('skimlinks'));
@@ -130,7 +128,7 @@ class vB_Upgrade_skimlinks extends vB_Upgrade_Version
 		}
 
 		$this->run_query(
-			sprintf($this->phrase['vbphrase']['create_table'], TABLE_PREFIX . "skimlinks"),
+			sprintf($this->phrase['vbphrase']['create_table'],'skimlinks'),
 			"CREATE TABLE " . TABLE_PREFIX . "skimlinks (
 				userid INT UNSIGNED NOT NULL,
 				enabled TINYINT UNSIGNED NOT NULL,
@@ -144,11 +142,28 @@ class vB_Upgrade_skimlinks extends vB_Upgrade_Version
 	}
 
 	/**
-	* Step #2 - Final Step
-	*	This must always be the last step. Just renumber this step as more upgrade steps are added before
+	* Step #2 - Update Skimlinks Table (VBIV-12605)
 	*
 	*/
 	function step_2()
+	{
+		if ($this->verify_product_version('4.1.8 Beta 1'))
+		{
+			$this->run_query(
+				sprintf($this->phrase['vbphrase']['alter_table_step_x'],'skimlinks',1,1),
+				"ALTER TABLE " . TABLE_PREFIX . "skimlinks 
+				ADD COLUMN enabled TINYINT UNSIGNED NOT NULL",
+				self::MYSQL_ERROR_COLUMN_EXISTS
+			);
+		}
+	}
+
+	/**
+	* Step #3 - Final Step
+	*	This must always be the last step. Just renumber this step as more upgrade steps are added before
+	*
+	*/
+	function step_3()
 	{
 		if ($this->caninstall)
 		{
@@ -169,7 +184,6 @@ class vB_Upgrade_skimlinks extends vB_Upgrade_Version
 
 /*======================================================================*\
 || ####################################################################
-|| # 
 || # CVS: $RCSfile$ - $Revision: 35750 $
 || ####################################################################
 \*======================================================================*/
