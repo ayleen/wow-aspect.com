@@ -1,0 +1,82 @@
+﻿	body {
+		font: 0.92em Arial,sans-serif;
+		line-height: 1.4;
+		color: black;
+	}   
+   
+   h1 {
+		text-align: center;
+		margin: 0 0 0.6em;
+		font: 1.8em Georgia,Times,serif;
+	}
+	
+	h2 {
+	font: 1.4em Georgia,Times,serif;
+	color: #BD2026;
+	margin: 1.2em 0 0;
+	text-align: left;
+	}
+	
+	a, .item-list ul.pager li a {
+		color: #1D67A4;
+	}
+	
+	a:visited {
+		color: #90278E;
+	}
+	
+   #header {
+		display: block;
+		font-size: 2.2em; /* Размер текста */
+		text-align: center; /* Выравнивание по центру */
+		padding: 5px; /* Отступы вокруг текста */    
+		background: url(images/nav.png) repeat-x; 
+		background-clip: border-box; /* Фон под рамкой */   	
+		color: #ffe; /* Цвет текста */
+		height: 70px;
+		width: 100%;
+		margin-top: -2px;
+		z-index: -1;
+		left: 0;
+	}
+   #main {
+		padding: 20px 15px 15px 15px; /* Выравнивание по центру */
+		background: transparent; /* Цвет фона левой колонки */
+	}
+   
+   #sidebar {
+		float: left;
+		width: 240px;		
+		margin: 15px 0 30px;
+
+	}   
+	#sidebar .block{margin-bottom:20px;}
+	#sidebar .block h2 {
+		background: url(images/head-block.png) 0 -140px no-repeat;
+		font-size: 13pt;
+		margin: 0;
+		padding: 5px 7px;
+		color: white;
+	}
+	
+	#sidebar .block .border {
+		border: 1px solid #E6E6E6;
+		-moz-border-radius: 0 0 6px 6px;
+		-webkit-border-radius: 0 0 6px 6px;
+		border-radius: 0 0 6px 6px;
+	}
+   
+   
+   #content {
+	margin: 0 0 30px 270px;
+	padding: 0 20px 0 10px;
+   }
+	
+	#footer {					
+		clear: both;
+		padding: 15px 25px 0;
+		border-top: 1px solid #F0F0F0;
+		margin: 20px 0;
+		font-size: 0.9em;
+		background: url(images/footer-shadow.jpg) no-repeat 50% 0; 
+	}

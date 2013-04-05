@@ -1,0 +1,3 @@
+﻿<p style="text-align: center; ">
+			<span style="font-size:16px;"><em><strong><span style="color:#800000;"><span style="font-family:arial,helvetica,sans-serif;">Примеры профессиональных изображений&nbsp;<img alt="" src="http://wow-aspect.com/lu/images/Cartoon-Clipart-Free-08.gif" /></span></span></strong></em></span></p>
+<iframe width="420" height="315" src="http://www.youtube.com/embed/u4Onit_inkE" frameborder="0" allowfullscreen></iframe>
